@@ -27,7 +27,15 @@ export const inventoryService = {
 
         const { data, error } = await supabase.from('stock_levels').select('*');
         if (error) return MOCK_STOCK;
-        return data as StockLevel[];
+
+        // Map snake_case DB columns to camelCase TS interface
+        return data.map((s: any) => ({
+            id: s.id,
+            warehouseId: s.warehouse_id,
+            itemId: s.item_id,
+            quantity: s.quantity,
+            updatedAt: s.updated_at
+        })) as StockLevel[];
     },
 
     // Example of a mutation

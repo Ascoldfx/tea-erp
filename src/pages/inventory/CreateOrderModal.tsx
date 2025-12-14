@@ -14,8 +14,8 @@ interface CreateOrderModalProps {
 
 interface OrderItem {
     itemId: string;
-    quantity: number;
-    costPerUnit: number;
+    quantity: number | string;
+    costPerUnit: number | string;
 }
 
 export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
@@ -129,7 +129,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                     type="number"
                                     min="0"
                                     value={item.quantity}
-                                    onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))}
+                                    onChange={e => handleItemChange(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
                                     required
                                 />
                             </div>
@@ -139,7 +139,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                     type="number"
                                     min="0"
                                     value={item.costPerUnit}
-                                    onChange={e => handleItemChange(index, 'costPerUnit', Number(e.target.value))}
+                                    onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
                                     required
                                 />
                             </div>

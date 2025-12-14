@@ -14,7 +14,7 @@ export function Input({ className, label, id, type, ...props }: InputProps) {
             <input
                 id={id}
                 type={type}
-                className="w-full bg-slate-800 border-slate-700 text-slate-100 rounded-md focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-500"
+                className="flex h-10 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                 onKeyDown={(e) => {
                     if (type === 'number') {
                         // Allow: backspace, delete, tab, escape, enter, decimal point

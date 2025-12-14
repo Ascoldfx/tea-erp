@@ -38,7 +38,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
         }
     }, [contractorId]);
 
-    const totalCost = items.reduce((acc, item) => acc + (item.quantity * item.costPerUnit), 0);
+    const totalCost = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.costPerUnit)), 0);
 
     const handleAddItem = () => {
         setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0 }]);

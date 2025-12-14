@@ -43,10 +43,6 @@ export const seedService = {
                 id: s.id,
                 warehouse_id: s.warehouseId,
                 item_id: s.itemId,
-                quantity: s.quantity,
-                id: s.id,
-                warehouse_id: s.warehouseId,
-                item_id: s.itemId,
                 quantity: s.quantity
             })));
         if (stockError) throw new Error('Error seeding stock: ' + stockError.message);

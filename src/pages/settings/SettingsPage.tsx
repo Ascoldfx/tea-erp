@@ -197,7 +197,6 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                    </Card>
 
                     <Card>
                         <CardHeader>
@@ -221,34 +220,31 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
                 </div>
-    )
-}
+            )}
 
-{
-    activeTab === 'dev' && (
-        <Card className="border-amber-500/50">
-            <CardHeader>
-                <CardTitle className="text-amber-400">Инструменты разработчика (Role Switcher)</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-slate-400 mb-4">
-                    Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
-                </p>
-                <div className="flex flex-wrap gap-2">
-                    {(['admin', 'warehouse', 'procurement', 'planner', 'director'] as UserRole[]).map(role => (
-                        <Button
-                            key={role}
-                            variant={user?.role === role ? 'primary' : 'outline'}
-                            onClick={() => login(role)}
-                        >
-                            Login as {role}
-                        </Button>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
-        </div >
+            {activeTab === 'dev' && (
+                <Card className="border-amber-500/50">
+                    <CardHeader>
+                        <CardTitle className="text-amber-400">Инструменты разработчика (Role Switcher)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-slate-400 mb-4">
+                            Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {(['admin', 'warehouse', 'procurement', 'planner', 'director'] as UserRole[]).map(role => (
+                                <Button
+                                    key={role}
+                                    variant={user?.role === role ? 'primary' : 'outline'}
+                                    onClick={() => login(role)}
+                                >
+                                    Login as {role}
+                                </Button>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
     );
 }

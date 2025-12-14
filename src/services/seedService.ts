@@ -31,7 +31,6 @@ export const seedService = {
                 sku: i.sku,
                 name: i.name,
                 category: i.category,
-                description: i.description,
                 unit: i.unit,
                 min_stock_level: i.minStockLevel
             })));

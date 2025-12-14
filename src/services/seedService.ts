@@ -19,9 +19,7 @@ export const seedService = {
             .upsert(MOCK_WAREHOUSES.map(w => ({
                 id: w.id,
                 name: w.name,
-                type: (w as any).type || 'main', // Fallback or cast
-                location: w.location,
-                capacity: (w as any).capacity || 0
+                location: w.location
             })));
         if (whError) throw new Error('Error seeding warehouses: ' + whError.message);
 

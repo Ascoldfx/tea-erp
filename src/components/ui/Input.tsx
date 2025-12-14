@@ -6,12 +6,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export function Input({ className, label, id, type, ...props }: InputProps) {
     const isNumber = type === 'number';
-    // If value is 0 and we want to show empty, we can handle it here, 
-    // but better to control it from parent or use a refined value.
-    // However, user specifically asked to remove "0" symbol.
-    // We can conditionally modify the `value` prop passed to input.
-
-    const displayValue = (isNumber && props.value === 0) ? '' : props.value;
+    const displayValue = (isNumber && (props.value === 0 || props.value === '0')) ? '' : props.value;
 
     return (
         <div className={className}>

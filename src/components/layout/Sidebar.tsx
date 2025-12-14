@@ -38,17 +38,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}>
             <div className="p-6">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold">T</span>
-                        </div>
-                        <span className="text-xl font-bold text-slate-100">Tea ERP</span>
-                    </div>
-                    {/* Mobile Close Button (Optional, but overlay click handles it too) */}
-                </div>
-
-                <nav className="space-y-1">
+                <nav className="space-y-2 mt-4">
                     {filteredNavItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -56,14 +46,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             onClick={() => onClose?.()} // Close sidebar on nav click (mobile)
                             className={({ isActive }) =>
                                 clsx(
-                                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                                    'flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium transition-colors',
                                     isActive
                                         ? 'bg-emerald-500/10 text-emerald-500'
                                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                                 )
                             }
                         >
-                            <item.icon className="w-5 h-5" />
+                            <item.icon className="w-6 h-6" />
                             {item.label}
                         </NavLink>
                     ))}

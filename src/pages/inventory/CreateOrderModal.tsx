@@ -58,7 +58,11 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const contractorName = MOCK_CONTRACTORS.find(c => c.id === contractorId)?.name;
+
+        if (!supabase) {
+            alert('Ошибка: Нет соединения с базой данных');
+            return;
+        }
 
         try {
             // 1. Create Order

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { MOCK_ITEMS, MOCK_WAREHOUSES, MOCK_STOCK } from '../data/mockInventory';
+import { MOCK_ITEMS, MOCK_WAREHOUSES } from '../data/mockInventory';
 import { MOCK_CONTRACTORS } from '../data/mockContractors';
 
 export const seedService = {

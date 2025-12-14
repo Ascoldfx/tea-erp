@@ -33,7 +33,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                 className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
-            <div className="relative w-full max-w-lg transform rounded-xl bg-slate-900 border border-slate-800 p-6 text-left shadow-2xl transition-all">
+            <div className="relative w-full max-w-2xl transform rounded-xl bg-slate-900 border border-slate-800 p-6 text-left shadow-2xl transition-all">
                 <div className="flex items-center justify-between mb-5">
                     <h3 className="text-lg font-semibold leading-6 text-slate-100">
                         {title}

@@ -13,7 +13,13 @@ const navItems = [
     { to: '/settings', icon: Settings, label: 'Настройки' },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+    className?: string; // Add className prop definition
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { user, logout, hasPermission } = useAuth();
 
     // Filter nav items based on permissions/role
@@ -25,13 +31,20 @@ export default function Sidebar() {
     });
 
     return (
-        <div className="h-screen w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed left-0 top-0">
+        <div className={clsx(
+            "h-screen w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed left-0 top-0 transition-transform duration-300 z-50",
+            // Mobile: slide in/out based on isOpen. Desktop: always visible (translate-0)
+            isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}>
             <div className="p-6">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold">T</span>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                            <span className="text-white font-bold">T</span>
+                        </div>
+                        <span className="text-xl font-bold text-slate-100">Tea ERP</span>
                     </div>
-                    <span className="text-xl font-bold text-slate-100">Tea ERP</span>
+                    {/* Mobile Close Button (Optional, but overlay click handles it too) */}
                 </div>
 
                 <nav className="space-y-1">
@@ -39,6 +52,7 @@ export default function Sidebar() {
                         <NavLink
                             key={item.to}
                             to={item.to}
+                            onClick={() => onClose?.()} // Close sidebar on nav click (mobile)
                             className={({ isActive }) =>
                                 clsx(
                                     'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { FileSpreadsheet, Save, Users, UserPlus, Database } from 'lucide-react';
+import { FileSpreadsheet, Users, UserPlus, Database } from 'lucide-react';
 import { useAuth, type UserRole } from '../../context/AuthContext';
 import { seedService } from '../../services/seedService';
 import { clsx } from 'clsx';
@@ -197,32 +197,58 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
-            )}
+                    </Card>
 
-            {activeTab === 'dev' && (
-                <Card className="border-amber-500/50">
-                    <CardHeader>
-                        <CardTitle className="text-amber-400">Инструменты разработчика (Role Switcher)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-slate-400 mb-4">
-                            Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {(['admin', 'warehouse', 'procurement', 'planner', 'director'] as UserRole[]).map(role => (
-                                <Button
-                                    key={role}
-                                    variant={user?.role === role ? 'primary' : 'outline'}
-                                    onClick={() => login(role)}
-                                >
-                                    Login as {role}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Database className="text-blue-500" />
+                                Управление данными (Демо)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-slate-200">Генерация тестовых данных</p>
+                                    <p className="text-sm text-slate-400">
+                                        Создать начальные материалы, склады и остатки для тестирования.
+                                    </p>
+                                </div>
+                                <Button onClick={handleSeedData} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    Сгенерировать данные
                                 </Button>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+    )
+}
+
+{
+    activeTab === 'dev' && (
+        <Card className="border-amber-500/50">
+            <CardHeader>
+                <CardTitle className="text-amber-400">Инструменты разработчика (Role Switcher)</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-slate-400 mb-4">
+                    Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                    {(['admin', 'warehouse', 'procurement', 'planner', 'director'] as UserRole[]).map(role => (
+                        <Button
+                            key={role}
+                            variant={user?.role === role ? 'primary' : 'outline'}
+                            onClick={() => login(role)}
+                        >
+                            Login as {role}
+                        </Button>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+        </div >
     );
 }

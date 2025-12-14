@@ -35,6 +35,7 @@ export function Input({ className, label, id, type, ...props }: InputProps) {
                     }
                     props.onKeyDown?.(e);
                 }}
+                value={displayValue}
                 {...props}
             />
         </div>

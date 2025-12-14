@@ -25,9 +25,9 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
 
     // Financials & Logistics
     const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'nova_poshta'>('pickup');
-    const [prepayment, setPrepayment] = useState(0);
+    const [prepayment, setPrepayment] = useState<number | string>(0);
     const [paymentTerms, setPaymentTerms] = useState<'prepayment' | 'postpayment' | '50_50'>('postpayment');
-    const [paymentDelay, setPaymentDelay] = useState(0);
+    const [paymentDelay, setPaymentDelay] = useState<number | string>(0);
 
     useEffect(() => {
         if (contractorId) {
@@ -208,7 +208,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                             label="Отсрочка (дней)"
                             type="number"
                             value={paymentDelay}
-                            onChange={e => setPaymentDelay(Number(e.target.value))}
+                            onChange={e => setPaymentDelay(e.target.value === '' ? '' : Number(e.target.value))}
                             disabled={paymentTerms === 'prepayment'}
                         />
                         <Input
@@ -217,7 +217,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                             min="0"
                             max={totalCost}
                             value={prepayment}
-                            onChange={e => setPrepayment(Number(e.target.value))}
+                            onChange={e => setPrepayment(e.target.value === '' ? '' : Number(e.target.value))}
                             disabled={paymentTerms === 'postpayment'}
                         />
                     </div>

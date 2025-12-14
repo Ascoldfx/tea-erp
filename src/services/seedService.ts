@@ -40,11 +40,10 @@ export const seedService = {
         const { error: stockError } = await supabase
             .from('stock_levels')
             .upsert(MOCK_STOCK.map(s => ({
-                id: s.id,
                 warehouse_id: s.warehouseId,
                 item_id: s.itemId,
                 quantity: s.quantity
-            })));
+            })), { onConflict: 'warehouse_id, item_id' });
         if (stockError) throw new Error('Error seeding stock: ' + stockError.message);
 
         // 5. Contractors (if table exists)

@@ -34,7 +34,7 @@ export const inventoryService = {
             warehouseId: s.warehouse_id,
             itemId: s.item_id,
             quantity: s.quantity,
-            updatedAt: s.updated_at
+            lastUpdated: s.updated_at
         })) as StockLevel[];
     },
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { ShoppingCart, Calendar, Truck, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '../../components/ui/Card';
+import { ShoppingCart, Calendar, Truck } from 'lucide-react';
 
 interface Order {
     id: string;
@@ -20,6 +20,7 @@ export default function OrdersList() {
     }, []);
 
     const fetchOrders = async () => {
+        if (!supabase) return;
         try {
             const { data, error } = await supabase
                 .from('orders')

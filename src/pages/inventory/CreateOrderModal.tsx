@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { MOCK_ITEMS } from '../../data/mockInventory';
 import { MOCK_CONTRACTORS } from '../../data/mockContractors';
-import { Plus, Trash, Truck, DollarSign, FileText, ShoppingCart } from 'lucide-react';
+import { Plus, Trash, DollarSign, ShoppingCart } from 'lucide-react';
 
 interface CreateOrderModalProps {
     isOpen: boolean;
@@ -39,7 +39,6 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     }, [contractorId]);
 
     const totalCost = items.reduce((acc, item) => acc + (item.quantity * item.costPerUnit), 0);
-    const debt = Math.max(0, totalCost - prepayment);
 
     const handleAddItem = () => {
         setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0 }]);

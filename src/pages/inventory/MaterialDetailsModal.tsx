@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { MOCK_ORDERS, MOCK_MOVEMENT_LOGS } from '../../data/mockProcurement';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { Truck, History, Package, Play, CheckCircle } from 'lucide-react';
+import { Truck, History, Play, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface MaterialDetailsModalProps {

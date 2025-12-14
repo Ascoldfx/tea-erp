@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { Truck, Search, Plus, Filter, AlertTriangle, CheckCircle, Package, Trash } from 'lucide-react';
+import { Truck, Plus, AlertTriangle, CheckCircle, Package, Trash } from 'lucide-react';
 import { MOCK_CONTRACTORS, MOCK_JOBS } from '../../data/mockContractors';
 import { MOCK_RECIPES } from '../../data/mockProduction';
 import { MOCK_STOCK, MOCK_ITEMS } from '../../data/mockInventory';
@@ -13,7 +13,7 @@ import type { JobStatus } from '../../types/contractors';
 
 export function ContractorsList() {
     const [activeTab, setActiveTab] = useState<'contractors' | 'jobs'>('contractors');
-    const [searchTerm, setSearchTerm] = useState('');
+    // State for tabs
 
     // New Job Modal State
     const [isJobModalOpen, setIsJobModalOpen] = useState(false);

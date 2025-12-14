@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
+
 import { MOCK_RECIPES } from '../../data/mockProduction';
 import { MOCK_STOCK, MOCK_ITEMS } from '../../data/mockInventory';
 import { Calculator, AlertTriangle, CheckCircle, TrendingUp, CalendarClock } from 'lucide-react';

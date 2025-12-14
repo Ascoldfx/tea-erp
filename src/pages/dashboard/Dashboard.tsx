@@ -1,19 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { MOCK_STOCK, MOCK_ITEMS } from '../../data/mockInventory';
+
 import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
 import { MOCK_JOBS, MOCK_CONTRACTORS } from '../../data/mockContractors';
-import { Factory, Truck, AlertCircle, Clock, Banknote, Scale } from 'lucide-react';
+import { Factory, Clock, Banknote, Scale } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-
-    const lowStockCount = MOCK_ITEMS.filter(item => {
-        const stock = MOCK_STOCK.filter(s => s.itemId === item.id).reduce((acc, curr) => acc + curr.quantity, 0);
-        return stock <= item.minStockLevel;
-    }).length;
 
     const activeBatches = MOCK_BATCHES.filter(b => b.status === 'in_progress').length;
     const activeJobs = MOCK_JOBS.filter(j => j.status === 'in_progress').length;

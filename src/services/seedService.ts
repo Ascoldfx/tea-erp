@@ -36,14 +36,20 @@ export const seedService = {
             })));
         if (itemError) throw new Error('Error seeding items: ' + itemError.message);
 
-        // 4. Stock Levels
+        // 4. Stock Levels (Generate FRESH random stock)
+        const warehouses = ['wh-main', 'wh-prod-1', 'wh-contractor'];
+        const stockInserts = MOCK_ITEMS.flatMap(item => {
+            return warehouses.map(whId => ({
+                warehouse_id: whId,
+                item_id: item.id,
+                quantity: Math.floor(Math.random() * 500) + 50 // Random 50-550
+            }));
+        });
+
         const { error: stockError } = await supabase
             .from('stock_levels')
-            .upsert(MOCK_STOCK.map(s => ({
-                warehouse_id: s.warehouseId,
-                item_id: s.itemId,
-                quantity: s.quantity
-            })), { onConflict: 'warehouse_id, item_id' });
+            .upsert(stockInserts, { onConflict: 'warehouse_id, item_id' });
+
         if (stockError) throw new Error('Error seeding stock: ' + stockError.message);
 
         // 5. Contractors (if table exists)

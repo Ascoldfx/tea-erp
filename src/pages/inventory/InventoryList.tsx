@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { Package, ArrowRightLeft, AlertTriangle, Loader2 } from 'lucide-react';
+import { ShoppingCart, AlertTriangle, Loader2 } from 'lucide-react';
 import MaterialDetailsModal from './MaterialDetailsModal';
 import ReceiveGoodsModal from './ReceiveGoodsModal';
 import CreateOrderModal from './CreateOrderModal';
@@ -127,29 +127,8 @@ export default function InventoryList() {
                 <div className="flex gap-4 items-center">
                     {(user?.role === 'admin' || user?.role === 'procurement') && (
                         <Button onClick={() => setIsOrderModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 h-12 px-6 text-lg shadow-lg shadow-blue-900/20">
-                            <ArrowRightLeft className="w-5 h-5 mr-2" />
-                            Открыть заказ
-                        </Button>
-                    )}
-                    {hasPermission('receive_goods') && (
-                        <Button
-                            onClick={() => setIsReceiveModalOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-700 h-12 px-6 text-lg shadow-lg shadow-emerald-900/20"
-                        >
-                            <Package className="w-5 h-5 mr-3" />
-                            Принять материалы
-                        </Button>
-                    )}
-                    {(user?.role === 'admin' || user?.role === 'procurement') && (
-                        <Button variant="outline" onClick={() => setIsTransferModalOpen(true)} className="h-12 border-slate-600 text-slate-300 hover:text-white">
-                            <ArrowRightLeft className="w-4 h-4 mr-2" />
-                            Переместить
-                        </Button>
-                    )}
-                    {(user?.role === 'admin') && (
-                        <Button variant="ghost" onClick={() => setIsImportModalOpen(true)} className="h-12 text-slate-400 hover:text-white">
-                            <i className="w-4 h-4 mr-2">📊</i>
-                            Импорт
+                            <ShoppingCart className="w-5 h-5 mr-2" />
+                            Создать заказ
                         </Button>
                     )}
                 </div>

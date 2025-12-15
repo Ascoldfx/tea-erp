@@ -33,6 +33,7 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
                 .from('contractors')
                 .insert({
                     name,
+                    code: name.substring(0, 10).toUpperCase().replace(/\s/g, '_'),
                     contact_person: contactPerson || null,
                     phone: phone || null,
                     email: email || null,

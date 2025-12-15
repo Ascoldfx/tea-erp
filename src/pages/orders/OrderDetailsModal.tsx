@@ -3,7 +3,9 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { ordersService, type OrderWithItems } from '../../services/ordersService';
+import type { OrderWithItems } from '../../types/order';
+import { updateOrderStatus, updateReceivedQuantity, receiveOrder } from '../../services/ordersService';
+import { MOCK_WAREHOUSES } from '../../data/mockInventory';
 import { Loader2, Package, CheckCircle, XCircle, Truck, Clock, Warehouse } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -286,7 +288,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                             )}
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 items-end">
                             {order.status === 'ordered' && (
                                 <Button
                                     onClick={() => handleStatusChange('shipped')}
@@ -296,6 +298,29 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     <Truck className="w-4 h-4 mr-2" />
                                     Отправлен в путь
                                 </Button>
+                            )}
+
+                            {order.status === 'shipped' && (
+                                <>
+                                    <Select
+                                        label="Склад для приёмки"
+                                        value={selectedWarehouse}
+                                        onChange={(e) => setSelectedWarehouse(e.target.value)}
+                                        options={[
+                                            { value: '', label: 'Выберите склад' },
+                                            ...MOCK_WAREHOUSES.map(w => ({ value: w.id, label: w.name }))
+                                        ]}
+                                    />
+                                    <Button
+                                        onClick={handleReceiveOrder}
+                                        disabled={saving || !selectedWarehouse}
+                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                        <Package className="w-4 h-4 mr-2" />
+                                        Принять на склад
+                                    </Button>
+                                </>
                             )}
 
                             {canEditQuantities && (

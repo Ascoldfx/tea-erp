@@ -297,9 +297,6 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     Отправлен в путь
                                 </Button>
                             )}
-                            <Button variant="ghost" onClick={onClose}>
-                                Закрыть
-                            </Button>
 
                             {canEditQuantities && (
                                 <Button

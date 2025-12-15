@@ -1,31 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Users, Package, Search } from 'lucide-react';
+import { Users, Phone, Mail, Package } from 'lucide-react';
 
 interface Contractor {
     id: string;
     name: string;
     code: string;
-    contact_person?: string;
-    phone?: string;
-    email?: string;
-}
-
-interface ProductionOrder {
-    id: string;
-    material_id: string;
-    quantity: number;
-    status: string;
-    created_at: string;
-}
-
-interface MaterialTransfer {
-    id: string;
-    material_id: string;
-    quantity: number;
-    transfer_date: string;
+    contact_person: string | null;
+    phone: string | null;
+    email: string | null;
 }
 
 export default function ContractorsPage() {
@@ -81,7 +65,6 @@ export default function ContractorsPage() {
                         placeholder="Поиск по названию или коду..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        icon={<Search className="w-4 h-4" />}
                     />
                 </div>
             </div>

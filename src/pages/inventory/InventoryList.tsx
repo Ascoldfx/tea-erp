@@ -15,7 +15,7 @@ import { useInventory } from '../../hooks/useInventory';
 import ExcelImportModal from './ExcelImportModal';
 
 export default function InventoryList() {
-    const { hasPermission, user } = useAuth();
+    const { user } = useAuth();
     // Use Hook to fetch data (Real DB or Mock Fallback)
     const { items, warehouses, stock, loading } = useInventory();
 

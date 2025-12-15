@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Users, Plus, Search, Shield, UserCheck, UserX } from 'lucide-react';
+import { Users, Plus, Shield, UserCheck, UserX } from 'lucide-react';
 import { usersService, type UserProfile } from '../../services/usersService';
 import CreateUserModal from './CreateUserModal';
 import EditUserModal from './EditUserModal';

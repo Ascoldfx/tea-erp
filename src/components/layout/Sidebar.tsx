@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 const navItems = [
     { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
     { to: '/inventory', icon: Package, label: 'Материалы' },
+    { to: '/suppliers', icon: Truck, label: 'Поставщики' },
     { to: '/production', icon: Factory, label: 'Производство' },
     { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
     { to: '/contractors', icon: Truck, label: 'Подрядчики' },

@@ -8,6 +8,7 @@ import TechCardsList from './pages/production/TechCardsList';
 import RecipeEditor from './pages/production/RecipeEditor';
 import ProductionCalculator from './pages/production/ProductionCalculator';
 import { ContractorsList } from './pages/crm/ContractorsList';
+import SuppliersPage from './pages/suppliers/SuppliersPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { AuthProvider } from './context/AuthContext';
@@ -23,6 +24,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<InventoryList />} />
               <Route path="/orders" element={<OrdersList />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/catalog" element={<CatalogList />} />
               <Route path="/inventory" element={<InventoryList />} />
               <Route path="/production" element={<ProductionList />} />

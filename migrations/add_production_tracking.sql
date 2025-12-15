@@ -61,40 +61,20 @@ CREATE TRIGGER production_orders_updated_at
 -- RLS Policies for production_orders
 ALTER TABLE production_orders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all authenticated users to view production orders"
-    ON production_orders FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow admins and procurement to manage production orders"
+CREATE POLICY "Allow authenticated users to manage production orders"
     ON production_orders FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM users
-            WHERE users.id = auth.uid()
-            AND users.role IN ('admin', 'procurement', 'warehouse')
-        )
-    );
+    USING (true)
+    WITH CHECK (true);
 
 -- RLS Policies for material_transfers
 ALTER TABLE material_transfers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all authenticated users to view material transfers"
-    ON material_transfers FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow admins and warehouse to manage material transfers"
+CREATE POLICY "Allow authenticated users to manage material transfers"
     ON material_transfers FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM users
-            WHERE users.id = auth.uid()
-            AND users.role IN ('admin', 'warehouse', 'procurement')
-        )
-    );
+    USING (true)
+    WITH CHECK (true);
 
 -- Comments for documentation
 COMMENT ON TABLE production_orders IS 'Заказы на фасовку чая, переданные подрядчикам';

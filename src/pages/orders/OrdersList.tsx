@@ -1,15 +1,28 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Card, CardContent } from '../../components/ui/Card';
-import { ShoppingCart, Calendar, Truck } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
+import { clsx } from 'clsx';
 import OrderDetailsModal from './OrderDetailsModal';
+
+interface OrderItem {
+    id: string;
+    item_id: string;
+    quantity: number;
+    item?: {
+        name: string;
+        sku: string;
+        unit: string;
+    };
+}
 
 interface Order {
     id: string;
+    contractor_id: string;
+    contractor?: { name: string };
     status: string;
     total_amount: number;
     order_date: string;
-    contractor: { name: string } | null;
+    items?: OrderItem[];
 }
 
 export default function OrdersList() {
@@ -23,29 +36,43 @@ export default function OrdersList() {
     }, []);
 
     const fetchOrders = async () => {
-        if (!supabase) return;
+        if (!supabase) {
+            console.error('Supabase not initialized');
+            setLoading(false);
+            return;
+        }
+
         try {
-            const { data, error } = await supabase
+            // Fetch orders with contractor info
+            const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select(`
-                    id, 
-                    status, 
-                    total_amount, 
-                    order_date,
-                    contractors (name)
-                `)
+                .select('id, contractor_id, status, total_amount, order_date, contractors(name)')
                 .order('order_date', { ascending: false });
 
-            if (error) throw error;
+            if (ordersError) throw ordersError;
 
-            // Map join result to cleaner object
-            const mappedOrders = (data || []).map(o => ({
-                ...o,
-                contractor: o.contractors // Supabase join returns array or object depending on relationship, usually object for many-to-one
-            }));
+            // Fetch order items for each order
+            const ordersWithItems = await Promise.all(
+                (ordersData || []).map(async (order) => {
+                    if (!supabase) return { ...order, contractor: order.contractors as any, items: [] };
 
-            // @ts-ignore
-            setOrders(mappedOrders);
+                    const { data: itemsData } = await supabase
+                        .from('order_items')
+                        .select('id, item_id, quantity, items(name, sku, unit)')
+                        .eq('order_id', order.id);
+
+                    return {
+                        ...order,
+                        contractor: order.contractors as any,
+                        items: (itemsData || []).map(item => ({
+                            ...item,
+                            item: item.items as any
+                        }))
+                    };
+                })
+            );
+
+            setOrders(ordersWithItems);
         } catch (e) {
             console.error('Error fetching orders:', e);
         } finally {
@@ -101,56 +128,82 @@ export default function OrdersList() {
             </div>
 
             <div className="grid gap-4">
-                {orders.length === 0 ? (
-                    <Card className="bg-slate-900 border-slate-800">
-                        <CardContent className="flex flex-col items-center justify-center h-48 text-slate-500">
+                {loading ? (
+                    <div className="p-8 text-slate-400 text-center">Загрузка заказов...</div>
+                ) : orders.length === 0 ? (
+                    <div className="bg-slate-900 border-slate-800 rounded-lg">
+                        <div className="flex flex-col items-center justify-center h-48 text-slate-500">
                             <ShoppingCart className="w-12 h-12 mb-4 opacity-20" />
                             <p>Заказов пока нет</p>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 ) : (
                     orders.map(order => (
-                        <Card
+                        <div
                             key={order.id}
-                            className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
                             onClick={() => handleOrderClick(order.id)}
+                            className="bg-slate-900 border border-slate-800 rounded-lg p-4 hover:border-emerald-600 transition-all cursor-pointer"
                         >
-                            <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="flex items-start gap-4">
-                                    <div className={`p-3 rounded-lg ${getStatusColor(order.status)}`}>
-                                        <ShoppingCart className="w-6 h-6" />
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className={clsx(
+                                        "p-3 rounded-full",
+                                        getStatusColor(order.status)
+                                    )}>
+                                        <ShoppingCart className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="font-medium text-slate-200 text-lg">
+                                        <h3 className="font-semibold text-slate-200">
                                             {/* @ts-ignore - Supabase join typing is tricky without generated types */}
                                             {order.contractor?.name || 'Неизвестный поставщик'}
                                         </h3>
-                                        <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
-                                            <span className="flex items-center gap-1">
-                                                <Calendar className="w-3.5 h-3.5" />
-                                                {new Date(order.order_date).toLocaleDateString()}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Truck className="w-3.5 h-3.5" />
-                                                ID: {order.id.slice(0, 8)}...
-                                            </span>
-                                        </div>
+                                        <p className="text-sm text-slate-400">
+                                            📅 {new Date(order.order_date).toLocaleDateString('ru-RU')}
+                                            {' • '}🆔 {order.id.slice(0, 8)}...
+                                        </p>
                                     </div>
                                 </div>
-
-                                <div className="flex items-center justify-between md:justify-end gap-6 flex-1">
-                                    <div className={`px-3 py-1 rounded-full text-xs font-medium border border-white/5 ${getStatusColor(order.status)}`}>
+                                <div className="text-right">
+                                    <div className={clsx(
+                                        "px-3 py-1 rounded-full text-sm font-medium mb-2",
+                                        order.status === 'delivered' ? "bg-emerald-900/40 text-emerald-400" :
+                                            order.status === 'shipped' ? "bg-amber-900/40 text-amber-400" :
+                                                order.status === 'cancelled' ? "bg-red-900/40 text-red-400" :
+                                                    "bg-blue-900/40 text-blue-400"
+                                    )}>
                                         {getStatusLabel(order.status)}
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-lg font-bold text-emerald-400">
-                                            {order.total_amount.toLocaleString()} ₴
-                                        </div>
-                                        <div className="text-xs text-slate-500">Сумма заказа</div>
+                                    <p className="text-lg font-bold text-emerald-400">
+                                        {order.total_amount.toLocaleString()} ₴
+                                    </p>
+                                    <p className="text-xs text-slate-500">Сумма заказа</p>
+                                </div>
+                            </div>
+
+                            {/* Order Items List */}
+                            {order.items && order.items.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-slate-800">
+                                    <p className="text-xs text-slate-400 mb-2">Состав заказа:</p>
+                                    <div className="space-y-1">
+                                        {order.items.slice(0, 3).map(item => (
+                                            <div key={item.id} className="flex justify-between text-sm">
+                                                <span className="text-slate-300">
+                                                    {item.item?.name || 'Материал'}
+                                                </span>
+                                                <span className="text-slate-400">
+                                                    {item.quantity} {item.item?.unit || 'шт'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                        {order.items.length > 3 && (
+                                            <p className="text-xs text-slate-500 italic">
+                                                +ещё {order.items.length - 3} поз.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            )}
+                        </div>
                     ))
                 )}
             </div>

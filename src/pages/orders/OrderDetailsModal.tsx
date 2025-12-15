@@ -180,32 +180,6 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                         </div>
                     </div>
 
-                    {/* Status Change Buttons */}
-                    {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                        <div className="flex gap-2 flex-wrap">
-                            {order.status === 'ordered' && (
-                                <Button
-                                    onClick={() => handleStatusChange('shipped')}
-                                    disabled={saving}
-                                    className="bg-amber-600 hover:bg-amber-700"
-                                >
-                                    <Truck className="w-4 h-4 mr-2" />
-                                    Отправлен в путь
-                                </Button>
-                            )}
-                            {order.status === 'shipped' && !showWarehouseSelector && (
-                                <Button
-                                    onClick={() => setShowWarehouseSelector(true)}
-                                    disabled={saving}
-                                    className="bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Принять на склад
-                                </Button>
-                            )}
-                        </div>
-                    )}
-
                     {/* Warehouse Selector for Receiving Order */}
                     {showWarehouseSelector && order.status === 'shipped' && (
                         <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg">
@@ -313,6 +287,16 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                         </div>
 
                         <div className="flex gap-3">
+                            {order.status === 'ordered' && (
+                                <Button
+                                    onClick={() => handleStatusChange('shipped')}
+                                    disabled={saving}
+                                    className="bg-amber-600 hover:bg-amber-700"
+                                >
+                                    <Truck className="w-4 h-4 mr-2" />
+                                    Отправлен в путь
+                                </Button>
+                            )}
                             <Button variant="ghost" onClick={onClose}>
                                 Закрыть
                             </Button>

@@ -86,11 +86,26 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                     options={[
                         { value: 'director', label: 'Директор (только чтение)' },
+                        { value: 'warehouse', label: 'Кладовщик (свой склад)' },
                         { value: 'procurement', label: 'Менеджер по закупкам' },
                         { value: 'production_planner', label: 'Планировщик производства' },
                         { value: 'admin', label: 'Администратор' }
                     ]}
                 />
+
+                {formData.role === 'warehouse' && (
+                    <Select
+                        label="Назначенный склад"
+                        value={formData.warehouse_id || ''}
+                        onChange={(e) => setFormData({ ...formData, warehouse_id: e.target.value || null })}
+                        options={[
+                            { value: '', label: 'Выберите склад' },
+                            { value: 'wh-main', label: 'Основной склад' },
+                            { value: 'wh-production', label: 'Производственный' },
+                            { value: 'wh-finished', label: 'Готовой продукции' }
+                        ]}
+                    />
+                )}
 
                 <div className="bg-slate-800/50 p-3 rounded text-sm">
                     <div className="text-slate-400 mb-2">Права для роли "{usersService.getRoleLabel(formData.role)}":</div>

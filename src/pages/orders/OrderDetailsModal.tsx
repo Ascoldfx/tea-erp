@@ -105,19 +105,6 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
         setSaving(false);
     };
 
-    const handleClose = async () => {
-        if (!order) return;
-        if (confirm('Закрыть заказ как выполненный?')) {
-            setSaving(true);
-            const success = await ordersService.closeOrder(order.id);
-            if (success) {
-                await loadOrder();
-                onOrderUpdated?.();
-            }
-            setSaving(false);
-        }
-    };
-
     const handleCancel = async () => {
         if (!order) return;
         if (confirm('Отменить заказ?')) {

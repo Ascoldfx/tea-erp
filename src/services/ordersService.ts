@@ -30,6 +30,8 @@ export const ordersService = {
     async getOrderWithItems(orderId: string): Promise<OrderWithItems | null> {
         if (!supabase) return null;
 
+        console.log('🔍 Fetching order:', orderId);
+
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .select(`
@@ -44,9 +46,12 @@ export const ordersService = {
             .single();
 
         if (orderError) {
-            console.error('Error fetching order:', orderError);
+            console.error('❌ Error fetching order:', orderError);
+            console.error('Error details:', JSON.stringify(orderError, null, 2));
             return null;
         }
+
+        console.log('✅ Order fetched successfully:', order);
 
         const { data: items, error: itemsError } = await supabase
             .from('order_items')
@@ -61,9 +66,12 @@ export const ordersService = {
             .eq('order_id', orderId);
 
         if (itemsError) {
-            console.error('Error fetching order items:', itemsError);
+            console.error('❌ Error fetching order items:', itemsError);
+            console.error('Error details:', JSON.stringify(itemsError, null, 2));
             return null;
         }
+
+        console.log('✅ Order items fetched:', items);
 
         // Map items and set received_quantity to 0 if column doesn't exist yet
         return {

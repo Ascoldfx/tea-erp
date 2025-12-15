@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
-import { MOCK_ORDERS, MOCK_MOVEMENT_LOGS } from '../../data/mockProcurement';
+import { MOCK_ORDERS } from '../../data/mockProcurement';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
 import { Truck, History, Play, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
+import { supabase } from '../../lib/supabase';
 
 interface MaterialDetailsModalProps {
     item: (InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null;
@@ -18,10 +19,35 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
     const [activeTab, setActiveTab] = useState<'history' | 'orders'>('history');
     const [newOrderQty, setNewOrderQty] = useState<number>(0);
     const [newOrderDate, setNewOrderDate] = useState<string>('');
+    const [movementHistory, setMovementHistory] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    useEffect(() => {
+        if (item && isOpen) {
+            loadMovementHistory();
+        }
+    }, [item, isOpen]);
+
+    const loadMovementHistory = async () => {
+        if (!item || !supabase) return;
+        setLoadingHistory(true);
+
+        const { data, error } = await supabase
+            .from('stock_movements')
+            .select('*')
+            .eq('item_id', item.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error loading movement history:', error);
+        } else {
+            setMovementHistory(data || []);
+        }
+        setLoadingHistory(false);
+    };
 
     if (!item) return null;
 
-    const history = MOCK_MOVEMENT_LOGS.filter(log => log.itemId === item.id);
     const orders = MOCK_ORDERS.filter(ord => ord.itemId === item.id);
 
     const handleOrder = (e: React.FormEvent) => {
@@ -89,7 +115,9 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
 
                             <h4 className="text-sm font-medium text-slate-400 uppercase mt-6">Журнал операций</h4>
                             <div className="space-y-3">
-                                {history.length > 0 ? history.map(log => (
+                                {loadingHistory ? (
+                                    <p className="text-slate-500 text-sm text-center py-4">Загрузка...</p>
+                                ) : movementHistory.length > 0 ? movementHistory.map(log => (
                                     <div key={log.id} className="flex justify-between items-center text-sm border-b border-slate-800 pb-2 last:border-0">
                                         <div className="flex items-center gap-3">
                                             <div className={clsx("p-2 rounded-full",
@@ -98,26 +126,30 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
                                                         "bg-blue-900/40 text-blue-400"
                                             )}>
                                                 {log.type === 'in' ? <CheckCircle size={14} /> :
-                                                    log.type === 'out' ? <Play size={14} className="rotate-180" /> : // visual hack for out
+                                                    log.type === 'out' ? <Play size={14} /> :
                                                         <History size={14} />}
                                             </div>
                                             <div>
-                                                <p className="text-slate-300">
+                                                <p className="text-slate-200 font-medium">
                                                     {log.type === 'in' ? 'Поступление' :
-                                                        log.type === 'out' ? 'Списание' :
-                                                            log.type === 'transfer' ? 'Перемещение' : 'Корректировка'}
+                                                        log.type === 'out' ? 'Расход' : 'Перемещение'}
                                                 </p>
-                                                <p className="text-xs text-slate-500">
-                                                    {new Date(log.date).toLocaleDateString()} • {log.source ? `От: ${log.source}` : ''} {log.target ? `-> ${log.target}` : ''}
-                                                </p>
+                                                <p className="text-xs text-slate-500">{log.comment || 'Без комментария'}</p>
                                             </div>
                                         </div>
-                                        <p className="font-medium text-slate-200">
-                                            {log.type === 'out' ? '-' : '+'}{log.quantity}
-                                        </p>
+                                        <div className="text-right">
+                                            <p className={clsx("font-semibold",
+                                                log.type === 'in' ? "text-emerald-400" : "text-red-400"
+                                            )}>
+                                                {log.type === 'in' ? '+' : '-'}{log.quantity} {item.unit}
+                                            </p>
+                                            <p className="text-xs text-slate-500">
+                                                {log.created_at ? new Date(log.created_at).toLocaleDateString('ru-RU') : ''}
+                                            </p>
+                                        </div>
                                     </div>
                                 )) : (
-                                    <p className="text-slate-500 italic text-center py-4">История движений пуста.</p>
+                                    <p className="text-slate-500 text-sm text-center italic py-8">История движений пуста.</p>
                                 )}
                             </div>
                         </div>

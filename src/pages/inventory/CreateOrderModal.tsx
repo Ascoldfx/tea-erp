@@ -203,59 +203,60 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                             </div>
                         ))}
                     </div>
+                </div>
 
-                    {/* Financial Summary */}
-                    <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 space-y-4">
-                        <div className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-emerald-500" />
-                            Финансы заказа
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Select
-                                label="Условия оплаты"
-                                options={[
-                                    { value: 'postpayment', label: 'Отсрочка' },
-                                    { value: 'prepayment', label: 'Предоплата' },
-                                    { value: '50_50', label: '50/50 (Часть пред, часть отлож)' }
-                                ]}
-                                value={paymentTerms}
-                                onChange={e => setPaymentTerms(e.target.value as any)}
-                            />
-                            <Input
-                                label="Отсрочка (дней)"
-                                type="number"
-                                value={paymentDelay}
-                                onChange={e => setPaymentDelay(e.target.value === '' ? '' : Number(e.target.value))}
-                                disabled={paymentTerms === 'prepayment'}
-                            />
-                            <Input
-                                label="Предоплата (₴)"
-                                type="number"
-                                min="0"
-                                max={totalCost}
-                                value={prepayment}
-                                onChange={e => setPrepayment(e.target.value === '' ? '' : Number(e.target.value))}
-                                disabled={paymentTerms === 'postpayment'}
-                            />
-                        </div>
-
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                            <div className="text-sm text-slate-400">
-                                Итого: <span className="text-slate-200 font-bold">{totalCost.toLocaleString()} ₴</span>
-                            </div>
-                        </div>
+                {/* Financial Summary */}
+                <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 space-y-4">
+                    <div className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-emerald-500" />
+                        Финансы заказа
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={onClose}>
-                            Отмена
-                        </Button>
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                            <ShoppingCart className="w-4 h-4 mr-2" />
-                            Разместить заказ
-                        </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Select
+                            label="Условия оплаты"
+                            options={[
+                                { value: 'postpayment', label: 'Отсрочка' },
+                                { value: 'prepayment', label: 'Предоплата' },
+                                { value: '50_50', label: '50/50 (Часть пред, часть отлож)' }
+                            ]}
+                            value={paymentTerms}
+                            onChange={e => setPaymentTerms(e.target.value as any)}
+                        />
+                        <Input
+                            label="Отсрочка (дней)"
+                            type="number"
+                            value={paymentDelay}
+                            onChange={e => setPaymentDelay(e.target.value === '' ? '' : Number(e.target.value))}
+                            disabled={paymentTerms === 'prepayment'}
+                        />
+                        <Input
+                            label="Предоплата (₴)"
+                            type="number"
+                            min="0"
+                            max={totalCost}
+                            value={prepayment}
+                            onChange={e => setPrepayment(e.target.value === '' ? '' : Number(e.target.value))}
+                            disabled={paymentTerms === 'postpayment'}
+                        />
                     </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                        <div className="text-sm text-slate-400">
+                            Итого: <span className="text-slate-200 font-bold">{totalCost.toLocaleString()} ₴</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="ghost" onClick={onClose}>
+                        Отмена
+                    </Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Разместить заказ
+                    </Button>
+                </div>
             </form>
         </Modal>
     );

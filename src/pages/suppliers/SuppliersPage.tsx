@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus } from 'lucide-react';
+import CreateSupplierModal from './CreateSupplierModal';
+import SupplierOrdersModal from './SupplierOrdersModal';
 
 interface Contractor {
     id: string;
@@ -17,6 +19,8 @@ export default function SuppliersPage() {
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<Contractor | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -110,6 +114,10 @@ export default function SuppliersPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="text-slate-400 hover:text-slate-200"
+                                        onClick={() => {
+                                            setSelectedSupplier(contractor);
+                                            setIsOrdersModalOpen(true);
+                                        }}
                                     >
                                         История заказов
                                     </Button>
@@ -119,6 +127,25 @@ export default function SuppliersPage() {
                     ))
                 )}
             </div>
+
+            {/* Modals */}
+            <CreateSupplierModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={fetchContractors}
+            />
+
+            {selectedSupplier && (
+                <SupplierOrdersModal
+                    isOpen={isOrdersModalOpen}
+                    onClose={() => {
+                        setIsOrdersModalOpen(false);
+                        setSelectedSupplier(null);
+                    }}
+                    supplierId={selectedSupplier.id}
+                    supplierName={selectedSupplier.name}
+                />
+            )}
         </div>
     );
 }

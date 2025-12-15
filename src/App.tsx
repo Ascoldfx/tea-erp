@@ -8,6 +8,7 @@ import TechCardsList from './pages/production/TechCardsList';
 import RecipeEditor from './pages/production/RecipeEditor';
 import ProductionCalculator from './pages/production/ProductionCalculator';
 import { ContractorsList } from './pages/crm/ContractorsList';
+import ContractorsPage from './pages/contractors/ContractorsPage';
 import SuppliersPage from './pages/suppliers/SuppliersPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import { LoginPage } from './pages/auth/LoginPage';

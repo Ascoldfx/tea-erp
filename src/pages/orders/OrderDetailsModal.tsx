@@ -5,7 +5,8 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { ordersService, type OrderWithItems } from '../../services/ordersService';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { Loader2, XCircle, Truck, Package } from 'lucide-react';
+import { Loader2, XCircle, Truck, Package, Clock, CheckCircle, Warehouse } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;

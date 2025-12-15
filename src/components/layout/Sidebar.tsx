@@ -1,18 +1,8 @@
-import { NavLink } from 'react-router-dom';
-import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart } from 'lucide-react';
+```javascript
+import { NavLink, useLocation } from 'react-router-dom';
+import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
-
-const navItems = [
-    { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
-    { to: '/inventory', icon: Package, label: 'Материалы' },
-    { to: '/suppliers', icon: Truck, label: 'Поставщики' },
-    { to: '/production', icon: Factory, label: 'Производство' },
-    { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
-    { to: '/contractors', icon: Truck, label: 'Подрядчики' },
-    { to: '/catalog', icon: Book, label: 'Тех. карты' },
-    { to: '/settings', icon: Settings, label: 'Настройки' },
-];
 
 interface SidebarProps {
     isOpen?: boolean;

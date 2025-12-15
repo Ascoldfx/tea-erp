@@ -5,7 +5,7 @@
 -- Заказы на фасовку чая, переданные подрядчикам
 CREATE TABLE IF NOT EXISTS production_orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    contractor_id UUID NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
+    contractor_id TEXT NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     quantity DECIMAL(10, 2) NOT NULL CHECK (quantity > 0),
     status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS production_orders (
 CREATE TABLE IF NOT EXISTS material_transfers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     production_order_id UUID REFERENCES production_orders(id) ON DELETE CASCADE,
-    contractor_id UUID NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
+    contractor_id TEXT NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     from_warehouse_id UUID NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
     quantity DECIMAL(10, 2) NOT NULL CHECK (quantity > 0),

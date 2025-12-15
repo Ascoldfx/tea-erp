@@ -1,4 +1,3 @@
-```javascript
 import { NavLink } from 'react-router-dom';
 import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';

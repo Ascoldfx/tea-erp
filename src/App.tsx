@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import Dashboard from './pages/dashboard/Dashboard';
 import OrdersList from './pages/orders/OrdersList';
 import CatalogList from './pages/catalog/CatalogList';
 import InventoryList from './pages/inventory/InventoryList';
@@ -22,7 +21,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<InventoryList />} />
               <Route path="/orders" element={<OrdersList />} />
               <Route path="/catalog" element={<CatalogList />} />
               <Route path="/inventory" element={<InventoryList />} />

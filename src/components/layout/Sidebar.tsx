@@ -1,10 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart } from 'lucide-react';
+import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Дашборд' },
     { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
     { to: '/inventory', icon: Package, label: 'Материалы' },
     { to: '/production', icon: Factory, label: 'Производство' },

@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
-import { MOCK_ORDERS } from '../../data/mockProcurement';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { Truck, History, Play, CheckCircle } from 'lucide-react';
+import { History, Play, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 
@@ -16,9 +13,6 @@ interface MaterialDetailsModalProps {
 }
 
 export default function MaterialDetailsModal({ item, isOpen, onClose }: MaterialDetailsModalProps) {
-    const [activeTab, setActiveTab] = useState<'history' | 'orders'>('history');
-    const [newOrderQty, setNewOrderQty] = useState<number>(0);
-    const [newOrderDate, setNewOrderDate] = useState<string>('');
     const [movementHistory, setMovementHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -48,15 +42,6 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
 
     if (!item) return null;
 
-    const orders = MOCK_ORDERS.filter(ord => ord.itemId === item.id);
-
-    const handleOrder = (e: React.FormEvent) => {
-        e.preventDefault();
-        alert(`Заказ на ${newOrderQty} ${item.unit} материала "${item.name}" создан! ETA: ${newOrderDate}`);
-        setNewOrderQty(0);
-        setNewOrderDate('');
-    };
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Материал: ${item.name}`}>
             <div className="space-y-6">
@@ -66,7 +51,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
                     <span className="text-2xl font-bold">{item.totalStock} <span className="text-sm font-normal text-slate-500">{item.unit}</span></span>
                 </div>
 
-                {/* Tabs */}
+                {/* Tab Header */}
                 <div className="flex border-b border-slate-700">
                     <div className="px-4 py-2 text-sm font-medium transition-colors border-b-2 border-emerald-500 text-emerald-400">
                         Поступления и перемещения
@@ -131,42 +116,8 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
                             )}
                         </div>
                     </div>
-                    <Button type="submit" variant="primary" className="bg-emerald-600 hover:bg-emerald-700">
-                        Заказать
-                    </Button>
-                </form>
-            </div>
-
-            {/* Active Orders List */}
-            <div>
-                <h4 className="text-sm font-medium text-slate-400 uppercase mb-3">Активные заказы (В пути)</h4>
-                <div className="space-y-3">
-                    {orders.length > 0 ? orders.map(order => (
-                        <div key={order.id} className="bg-slate-900 border border-slate-800 p-4 rounded flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <Truck className="text-blue-400" size={20} />
-                                <div>
-                                    <p className="text-slate-200 font-medium">Поставщик: {order.supplierName || 'Неизвестно'}</p>
-                                    <p className="text-xs text-slate-500">ETA: {new Date(order.estimatedArrival).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="inline-flex items-center px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs font-medium mb-1">
-                                    {order.status === 'ordered' ? 'Заказано' : 'Отгружено'}
-                                </div>
-                                <p className="text-slate-200 font-bold">{order.quantity} {item.unit}</p>
-                            </div>
-                        </div>
-                    )) : (
-                        <p className="text-slate-500 italic text-center py-4">Нет активных заказов.</p>
-                    )}
                 </div>
             </div>
-        </div>
-    )
-}
-                </div >
-            </div >
-        </Modal >
+        </Modal>
     );
 }

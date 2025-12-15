@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import type { UserProfile } from '../services/usersService';
 
 export type UserRole = 'admin' | 'warehouse' | 'procurement' | 'production_planner' | 'director';
 
@@ -75,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const checkSession = async () => {
+            if (!supabase) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 
@@ -94,6 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         checkSession();
 
         // Listen for auth changes
+        if (!supabase) {
+            return;
+        }
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 const userProfile = await loadUserProfile(session.user.id);

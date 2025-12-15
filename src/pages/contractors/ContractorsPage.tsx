@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Input } from '../../components/ui/Input';
-import { Users, Phone, Mail, Package } from 'lucide-react';
+import { Users, Package } from 'lucide-react';
 
 interface Contractor {
     id: string;

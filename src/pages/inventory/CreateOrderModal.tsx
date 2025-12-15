@@ -3,10 +3,10 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { MOCK_ITEMS } from '../../data/mockInventory';
-import { MOCK_CONTRACTORS } from '../../data/mockContractors';
+import { inventoryService } from '../../services/inventoryService';
 import { supabase } from '../../lib/supabase';
 import { Plus, Trash, DollarSign, ShoppingCart } from 'lucide-react';
+import type { InventoryItem } from '../../types/inventory';
 
 interface CreateOrderModalProps {
     isOpen: boolean;
@@ -19,10 +19,24 @@ interface OrderItem {
     costPerUnit: number | string;
 }
 
+interface Contractor {
+    id: string;
+    name: string;
+    code?: string;
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+}
+
 export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
     const [contractorId, setContractorId] = useState('');
     const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0 }]);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Data from database
+    const [materials, setMaterials] = useState<InventoryItem[]>([]);
+    const [contractors, setContractors] = useState<Contractor[]>([]);
+    const [loading, setLoading] = useState(false);
 
     // Financials & Logistics
     const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'nova_poshta'>('pickup');
@@ -30,15 +44,47 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     const [paymentTerms, setPaymentTerms] = useState<'prepayment' | 'postpayment' | '50_50'>('postpayment');
     const [paymentDelay, setPaymentDelay] = useState<number | string>(0);
 
+    // Load materials and contractors when modal opens
     useEffect(() => {
-        if (contractorId) {
-            const c = MOCK_CONTRACTORS.find(c => c.id === contractorId);
-            if (c) {
-                setPaymentTerms(c.paymentTerms);
-                setPaymentDelay(c.paymentDelayDays);
-            }
+        if (isOpen) {
+            loadData();
         }
-    }, [contractorId]);
+    }, [isOpen]);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            // Load materials
+            const materialsData = await inventoryService.getItems();
+            setMaterials(materialsData);
+
+            // Load contractors
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from('contractors')
+                    .select('id, name, code, contact_person, phone, email')
+                    .order('name');
+
+                if (error) {
+                    console.error('Error loading contractors:', error);
+                } else {
+                    setContractors(data || []);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Payment terms are now manual, but we can keep this for future enhancements
+        // if (contractorId) {
+        //     const c = contractors.find(c => c.id === contractorId);
+        //     // Could load payment terms from contractor if stored in DB
+        // }
+    }, [contractorId, contractors]);
 
     const totalCost = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.costPerUnit)), 0);
 
@@ -116,11 +162,12 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                         label="Поставщик"
                         options={[
                             { value: '', label: 'Выберите поставщика...' },
-                            ...MOCK_CONTRACTORS.map(c => ({ value: c.id, label: c.name }))
+                            ...contractors.map(c => ({ value: c.id, label: c.name }))
                         ]}
                         value={contractorId}
                         onChange={e => setContractorId(e.target.value)}
                         required
+                        disabled={loading}
                     />
                     <Select
                         label="Способ доставки"
@@ -159,17 +206,18 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                         label={index === 0 ? "Материал" : undefined}
                                         options={[
                                             { value: '', label: 'Выберите материал' },
-                                            ...MOCK_ITEMS
+                                            ...materials
                                                 .filter(m =>
                                                     !searchTerm ||
-                                                    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                    m.sku.toLowerCase().includes(searchTerm.toLowerCase())
+                                                    m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                    m.sku?.toLowerCase().includes(searchTerm.toLowerCase())
                                                 )
-                                                .map(m => ({ value: m.id, label: `${m.name} (${m.sku})` }))
+                                                .map(m => ({ value: m.id, label: `${m.name || 'Без названия'} (${m.sku || 'нет артикула'})` }))
                                         ]}
                                         value={item.itemId}
                                         onChange={e => handleItemChange(index, 'itemId', e.target.value)}
                                         required
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="w-24">

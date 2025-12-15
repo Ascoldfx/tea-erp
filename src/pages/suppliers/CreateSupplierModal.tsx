@@ -29,17 +29,69 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
         setSaving(true);
 
         try {
-            const { error } = await supabase
+            // Generate unique ID
+            const id = `cnt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Generate code from name (handle Cyrillic and special chars)
+            let code = name
+                .substring(0, 20)
+                .toUpperCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^A-Z0-9_А-ЯЁ]/g, '')
+                .replace(/[А-ЯЁ]/g, (char) => {
+                    // Simple transliteration for Cyrillic
+                    const map: Record<string, string> = {
+                        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+                        'Ж': 'ZH', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+                        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+                        'Ф': 'F', 'Х': 'H', 'Ц': 'TS', 'Ч': 'CH', 'Ш': 'SH', 'Щ': 'SCH',
+                        'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'YU', 'Я': 'YA'
+                    };
+                    return map[char] || '';
+                });
+            
+            // If code is empty or too short, use fallback
+            if (!code || code.length < 3) {
+                code = `SUPPLIER_${id.slice(-8)}`;
+            }
+            
+            // Ensure code is unique by checking existing codes
+            const { data: existing } = await supabase
+                .from('contractors')
+                .select('code')
+                .eq('code', code)
+                .limit(1);
+            
+            if (existing && existing.length > 0) {
+                code = `${code}_${Date.now().toString().slice(-6)}`;
+            }
+
+            console.log('Creating supplier with:', { id, name, code, contactPerson, phone, email });
+
+            const { data, error } = await supabase
                 .from('contractors')
                 .insert({
+                    id,
                     name,
-                    code: name.substring(0, 10).toUpperCase().replace(/\s/g, '_'),
+                    code,
                     contact_person: contactPerson || null,
                     phone: phone || null,
                     email: email || null,
-                });
+                })
+                .select()
+                .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+                throw new Error(error.message || 'Ошибка при создании поставщика');
+            }
+
+            console.log('Supplier created successfully:', data);
 
             alert('Поставщик успешно добавлен!');
             setName('');
@@ -48,9 +100,24 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
             setEmail('');
             onSuccess();
             onClose();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating supplier:', error);
-            alert('Ошибка при создании поставщика');
+            let errorMessage = 'Ошибка при создании поставщика.';
+            
+            if (error?.message) {
+                errorMessage = error.message;
+            } else if (error?.details) {
+                errorMessage = error.details;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            // Add hint if available
+            if (error?.hint) {
+                errorMessage += `\n\nПодсказка: ${error.hint}`;
+            }
+            
+            alert(`Ошибка при создании поставщика:\n\n${errorMessage}\n\nПроверьте консоль браузера (F12) для деталей.`);
         } finally {
             setSaving(false);
         }

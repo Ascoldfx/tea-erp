@@ -56,7 +56,6 @@ export const ordersService = {
                 item_id,
                 quantity,
                 price_per_unit,
-                received_quantity,
                 items (name, sku, unit)
             `)
             .eq('order_id', orderId);
@@ -66,11 +65,13 @@ export const ordersService = {
             return null;
         }
 
+        // Map items and set received_quantity to 0 if column doesn't exist yet
         return {
             ...order,
             contractor: order.contractors as any,
             items: items.map(item => ({
                 ...item,
+                received_quantity: (item as any).received_quantity || 0,
                 item: item.items as any
             }))
         };

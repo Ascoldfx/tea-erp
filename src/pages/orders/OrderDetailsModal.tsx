@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { ordersService, type OrderWithItems } from '../../services/ordersService';
-import { Loader2, Package, CheckCircle, XCircle, Truck, Clock } from 'lucide-react';
+import { Loader2, Package, CheckCircle, XCircle, Truck, Clock, Warehouse } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface OrderDetailsModalProps {
@@ -18,6 +19,8 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number | string>>({});
+    const [selectedWarehouse, setSelectedWarehouse] = useState('wh-main');
+    const [showWarehouseSelector, setShowWarehouseSelector] = useState(false);
 
     useEffect(() => {
         if (isOpen && orderId) {
@@ -42,11 +45,42 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
 
     const handleStatusChange = async (newStatus: string) => {
         if (!order) return;
+
+        // If changing to delivered, show warehouse selector
+        if (newStatus === 'delivered') {
+            setShowWarehouseSelector(true);
+            return;
+        }
+
         setSaving(true);
         const success = await ordersService.updateOrderStatus(order.id, newStatus);
         if (success) {
             await loadOrder();
             onOrderUpdated?.();
+        }
+        setSaving(false);
+    };
+
+    const handleReceiveOrder = async () => {
+        if (!order) return;
+        setSaving(true);
+
+        // First save received quantities
+        const updates = order.items.map(item => ({
+            id: item.id,
+            received_quantity: Number(receivedQuantities[item.id] || 0)
+        }));
+        await ordersService.updateReceivedQuantities(updates);
+
+        // Then receive order (updates stock + creates movements)
+        const success = await ordersService.receiveOrder(order.id, selectedWarehouse);
+        if (success) {
+            alert('Заказ принят! Остатки обновлены.');
+            setShowWarehouseSelector(false);
+            await loadOrder();
+            onOrderUpdated?.();
+        } else {
+            alert('Ошибка при приёме заказа');
         }
         setSaving(false);
     };
@@ -161,16 +195,55 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     Отправлен в путь
                                 </Button>
                             )}
-                            {order.status === 'shipped' && (
+                            {order.status === 'shipped' && !showWarehouseSelector && (
                                 <Button
-                                    onClick={() => handleStatusChange('delivered')}
+                                    onClick={() => setShowWarehouseSelector(true)}
                                     disabled={saving}
                                     className="bg-emerald-600 hover:bg-emerald-700"
                                 >
                                     <CheckCircle className="w-4 h-4 mr-2" />
-                                    Доставлен
+                                    Принять на склад
                                 </Button>
                             )}
+                        </div>
+                    )}
+
+                    {/* Warehouse Selector for Receiving Order */}
+                    {showWarehouseSelector && order.status === 'shipped' && (
+                        <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Warehouse className="w-5 h-5 text-blue-400" />
+                                <h4 className="font-medium text-blue-300">Выберите склад для приёма</h4>
+                            </div>
+                            <div className="flex gap-3 items-end">
+                                <div className="flex-1">
+                                    <Select
+                                        label="Склад назначения"
+                                        value={selectedWarehouse}
+                                        onChange={(e) => setSelectedWarehouse(e.target.value)}
+                                        options={[
+                                            { value: 'wh-main', label: 'Главный склад' },
+                                            { value: 'wh-prod-1', label: 'Склад Подрядчика' },
+                                            { value: 'wh-contractor', label: 'Цех (ИМА С23 #1)' }
+                                        ]}
+                                    />
+                                </div>
+                                <Button
+                                    onClick={handleReceiveOrder}
+                                    disabled={saving}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    Принять заказ
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowWarehouseSelector(false)}
+                                    disabled={saving}
+                                >
+                                    Отмена
+                                </Button>
+                            </div>
                         </div>
                     )}
 

@@ -96,6 +96,87 @@ export const ordersService = {
         };
     },
 
+    async receiveOrder(orderId: string, warehouseId: string = 'wh-main'): Promise<boolean> {
+        if (!supabase) return false;
+
+        try {
+            console.log('📦 Receiving order:', orderId, 'to warehouse:', warehouseId);
+
+            // 1. Get order details
+            const orderData = await this.getOrderWithItems(orderId);
+            if (!orderData) {
+                console.error('Order not found');
+                return false;
+            }
+
+            // 2. Update status to delivered
+            const { error: statusError } = await supabase
+                .from('orders')
+                .update({ status: 'delivered' })
+                .eq('id', orderId);
+
+            if (statusError) throw statusError;
+
+            // 3. Update stock levels for each item
+            for (const item of orderData.items) {
+                const quantityToAdd = item.received_quantity || item.quantity;
+
+                // Check if stock level exists
+                const { data: existingStock } = await supabase
+                    .from('stock_levels')
+                    .select('quantity')
+                    .eq('warehouse_id', warehouseId)
+                    .eq('item_id', item.item_id)
+                    .single();
+
+                if (existingStock) {
+                    // Update existing stock
+                    const { error: updateError } = await supabase
+                        .from('stock_levels')
+                        .update({
+                            quantity: existingStock.quantity + quantityToAdd
+                        })
+                        .eq('warehouse_id', warehouseId)
+                        .eq('item_id', item.item_id);
+
+                    if (updateError) throw updateError;
+                } else {
+                    // Create new stock level
+                    const { error: insertError } = await supabase
+                        .from('stock_levels')
+                        .insert({
+                            warehouse_id: warehouseId,
+                            item_id: item.item_id,
+                            quantity: quantityToAdd
+                        });
+
+                    if (insertError) throw insertError;
+                }
+
+                // 4. Create stock movement entry (history)
+                const { error: movementError } = await supabase
+                    .from('stock_movements')
+                    .insert({
+                        item_id: item.item_id,
+                        quantity: quantityToAdd,
+                        type: 'in',
+                        target_warehouse_id: warehouseId,
+                        comment: `Поступление по заказу ${orderId.slice(0, 8)}`
+                    });
+
+                if (movementError) {
+                    console.warn('Could not create stock movement:', movementError);
+                }
+            }
+
+            console.log('✅ Order received successfully');
+            return true;
+        } catch (e) {
+            console.error('Error receiving order:', e);
+            return false;
+        }
+    },
+
     async updateOrderStatus(orderId: string, status: string): Promise<boolean> {
         if (!supabase) return false;
 

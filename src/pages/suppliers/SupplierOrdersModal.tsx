@@ -30,7 +30,10 @@ export default function SupplierOrdersModal({ isOpen, onClose, supplierId, suppl
     }, [isOpen, supplierId]);
 
     const fetchOrders = async () => {
-        if (!supabase) return;
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
 
         try {

@@ -89,7 +89,7 @@ export default function OrdersList() {
         return map[status] || status;
     };
 
-    if (loading) return <div className="p-8 text-slate-400">Loading orders...</div>;
+    if (loading) return <div className="p-8 text-slate-400">Загрузка заказов...</div>;
 
     return (
         <div className="space-y-6">

@@ -10,6 +10,7 @@ import ProductionCalculator from './pages/production/ProductionCalculator';
 import { ContractorsList } from './pages/crm/ContractorsList';
 import ContractorsPage from './pages/contractors/ContractorsPage';
 import SuppliersPage from './pages/suppliers/SuppliersPage';
+import UsersPage from './pages/users/UsersPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { AuthProvider } from './context/AuthContext';
@@ -33,7 +34,9 @@ function App() {
               <Route path="/production/recipes" element={<TechCardsList />} />
               <Route path="/production/recipes/new" element={<RecipeEditor />} />
               <Route path="/production/recipes/:id" element={<RecipeEditor />} />
-              <Route path="/contractors" element={<ContractorsList />} />
+              <Route path="/crm/contractors" element={<ContractorsList />} />
+              <Route path="/contractors" element={<ContractorsPage />} />
+              <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

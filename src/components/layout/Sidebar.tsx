@@ -1,8 +1,20 @@
 ```javascript
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users, BarChart3 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
+
+const navItems = [
+    { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
+    { to: '/inventory', icon: Package, label: 'Материалы' },
+    { to: '/suppliers', icon: Truck, label: 'Поставщики' },
+    { to: '/production', icon: Factory, label: 'Производство' },
+    { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
+    { to: '/contractors', icon: Users, label: 'Подрядчики' },
+    { to: '/catalog', icon: Book, label: 'Тех. карты' },
+    { to: '/users', icon: Users, label: 'Пользователи', requireAdmin: true },
+    { to: '/settings', icon: Settings, label: 'Настройки' },
+];
 
 interface SidebarProps {
     isOpen?: boolean;
@@ -15,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     // Filter nav items based on permissions/role
     const filteredNavItems = navItems.filter(item => {
+        if (item.requireAdmin) return user?.role === 'admin';
         if (item.label === 'Настройки') return hasPermission('manage_users');
         if (item.label === 'Подрядчики') return user?.role !== 'warehouse';
         // Director sees everything else mostly (read only)

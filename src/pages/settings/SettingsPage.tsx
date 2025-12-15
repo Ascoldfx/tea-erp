@@ -9,7 +9,7 @@ import { seedService } from '../../services/seedService';
 import { clsx } from 'clsx';
 
 export default function SettingsPage() {
-    const { user, login } = useAuth();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'general' | 'users' | 'dev'>('users');
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<UserRole>('warehouse');
@@ -43,7 +43,7 @@ export default function SettingsPage() {
         { id: 1, name: 'Anton (Admin)', role: 'admin', email: 'anton@tea.com' },
         { id: 2, name: 'Склад', role: 'warehouse', email: 'warehouse@tea.com' },
         { id: 3, name: 'Олег (Закупки)', role: 'procurement', email: 'oleg@tea.com' },
-        { id: 4, name: 'Мария (Планирование)', role: 'planner', email: 'maria@tea.com' },
+        { id: 4, name: 'Мария (Планирование)', role: 'production_planner', email: 'maria@tea.com' },
         { id: 5, name: 'Иван Петрович (Директор)', role: 'director', email: 'ivan@tea.com' },
     ];
 
@@ -111,7 +111,7 @@ export default function SettingsPage() {
                                             { value: 'admin', label: 'Администратор (Полный доступ)' },
                                             { value: 'warehouse', label: 'Склад (Только приемка)' },
                                             { value: 'procurement', label: 'Закупки (Материалы)' },
-                                            { value: 'planner', label: 'Планировщик (Производство)' },
+                                            { value: 'production_planner', label: 'Планировщик (Производство)' },
                                             { value: 'director', label: 'Директор (Просмотр)' }
                                         ]}
                                         value={inviteRole}
@@ -225,20 +225,24 @@ export default function SettingsPage() {
             {activeTab === 'dev' && (
                 <Card className="border-amber-500/50">
                     <CardHeader>
-                        <CardTitle className="text-amber-400">Инструменты разработчика (Role Switcher)</CardTitle>
+                        <CardTitle className="text-amber-400">Инструменты разработчика</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-slate-400 mb-4">
                             Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
                         </p>
+                        <p className="text-sm text-amber-400 mb-4">
+                            ⚠️ Role switcher отключен. Используйте реальную аутентификацию через страницу входа.
+                        </p>
                         <div className="flex flex-wrap gap-2">
-                            {(['admin', 'warehouse', 'procurement', 'planner', 'director'] as UserRole[]).map(role => (
+                            {(['admin', 'warehouse', 'procurement', 'production_planner', 'director'] as UserRole[]).map(role => (
                                 <Button
                                     key={role}
-                                    variant={user?.role === role ? 'primary' : 'outline'}
-                                    onClick={() => login(role)}
+                                    variant="outline"
+                                    disabled
+                                    className="opacity-50"
                                 >
-                                    Login as {role}
+                                    {role} (требует реального пользователя)
                                 </Button>
                             ))}
                         </div>

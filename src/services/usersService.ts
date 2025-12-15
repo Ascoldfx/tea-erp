@@ -55,27 +55,35 @@ class UsersService {
     async createUser(userData: CreateUserData): Promise<{ user: any; profile: UserProfile }> {
         if (!supabase) throw new Error('Supabase not initialized');
 
-        // Create user in auth.users
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email: userData.email,
-            password: userData.password,
-            email_confirm: true,
-            user_metadata: {
+        // Get current session for authorization
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+
+        // Call Edge Function to create user
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+            },
+            body: JSON.stringify({
+                email: userData.email,
+                password: userData.password,
                 full_name: userData.full_name,
-                role: userData.role
-            }
+                role: userData.role,
+                warehouse_id: userData.warehouse_id || null
+            })
         });
 
-        if (authError) throw authError;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create user');
+        }
 
-        // Profile will be created automatically by trigger
-        // Wait a bit and fetch it
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const profile = await this.getUserById(authData.user.id);
-        if (!profile) throw new Error('Profile not created');
-
-        return { user: authData.user, profile };
+        const result = await response.json();
+        return { user: result.user, profile: result.profile };
     }
 
     async updateUser(id: string, updates: UpdateUserData): Promise<UserProfile> {
@@ -103,11 +111,29 @@ class UsersService {
     async resetPassword(userId: string, newPassword: string): Promise<void> {
         if (!supabase) throw new Error('Supabase not initialized');
 
-        const { error } = await supabase.auth.admin.updateUserById(userId, {
-            password: newPassword
+        // Get current session for authorization
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+
+        // Call Edge Function to reset password
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+            },
+            body: JSON.stringify({
+                userId,
+                newPassword
+            })
         });
 
-        if (error) throw error;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to reset password');
+        }
     }
 
     getRoleLabel(role: string): string {

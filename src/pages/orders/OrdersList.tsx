@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Card, CardContent } from '../../components/ui/Card';
 import { ShoppingCart, Calendar, Truck } from 'lucide-react';
+import OrderDetailsModal from './OrderDetailsModal';
 
 interface Order {
     id: string;
@@ -14,6 +15,8 @@ interface Order {
 export default function OrdersList() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchOrders();
@@ -61,6 +64,20 @@ export default function OrdersList() {
         }
     };
 
+    const handleOrderClick = (orderId: string) => {
+        setSelectedOrderId(orderId);
+        setIsDetailsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsDetailsModalOpen(false);
+        setSelectedOrderId(null);
+    };
+
+    const handleOrderUpdated = () => {
+        fetchOrders(); // Refresh the list
+    };
+
     const getStatusLabel = (status: string) => {
         const map: Record<string, string> = {
             draft: 'Черновик',
@@ -93,7 +110,11 @@ export default function OrdersList() {
                     </Card>
                 ) : (
                     orders.map(order => (
-                        <Card key={order.id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors">
+                        <Card
+                            key={order.id}
+                            className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+                            onClick={() => handleOrderClick(order.id)}
+                        >
                             <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-start gap-4">
                                     <div className={`p-3 rounded-lg ${getStatusColor(order.status)}`}>
@@ -133,6 +154,16 @@ export default function OrdersList() {
                     ))
                 )}
             </div>
+
+            {/* Order Details Modal */}
+            {selectedOrderId && (
+                <OrderDetailsModal
+                    isOpen={isDetailsModalOpen}
+                    onClose={handleModalClose}
+                    orderId={selectedOrderId}
+                    onOrderUpdated={handleOrderUpdated}
+                />
+            )}
         </div>
     );
 }

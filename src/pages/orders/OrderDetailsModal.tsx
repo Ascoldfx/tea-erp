@@ -1,0 +1,279 @@
+import { useState, useEffect } from 'react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { ordersService, type OrderWithItems } from '../../services/ordersService';
+import { Loader2, Package, CheckCircle, XCircle, Truck, Clock } from 'lucide-react';
+import { clsx } from 'clsx';
+
+interface OrderDetailsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    orderId: string;
+    onOrderUpdated?: () => void;
+}
+
+export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpdated }: OrderDetailsModalProps) {
+    const [order, setOrder] = useState<OrderWithItems | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number | string>>({});
+
+    useEffect(() => {
+        if (isOpen && orderId) {
+            loadOrder();
+        }
+    }, [isOpen, orderId]);
+
+    const loadOrder = async () => {
+        setLoading(true);
+        const data = await ordersService.getOrderWithItems(orderId);
+        if (data) {
+            setOrder(data);
+            // Initialize received quantities
+            const quantities: Record<string, number | string> = {};
+            data.items.forEach(item => {
+                quantities[item.id] = item.received_quantity || 0;
+            });
+            setReceivedQuantities(quantities);
+        }
+        setLoading(false);
+    };
+
+    const handleStatusChange = async (newStatus: string) => {
+        if (!order) return;
+        setSaving(true);
+        const success = await ordersService.updateOrderStatus(order.id, newStatus);
+        if (success) {
+            await loadOrder();
+            onOrderUpdated?.();
+        }
+        setSaving(false);
+    };
+
+    const handleSaveReceivedQuantities = async () => {
+        if (!order) return;
+        setSaving(true);
+
+        const updates = order.items.map(item => ({
+            id: item.id,
+            received_quantity: Number(receivedQuantities[item.id] || 0)
+        }));
+
+        const success = await ordersService.updateReceivedQuantities(updates);
+        if (success) {
+            alert('Фактическое количество сохранено');
+            await loadOrder();
+            onOrderUpdated?.();
+        } else {
+            alert('Ошибка при сохранении');
+        }
+        setSaving(false);
+    };
+
+    const handleClose = async () => {
+        if (!order) return;
+        if (confirm('Закрыть заказ как выполненный?')) {
+            setSaving(true);
+            const success = await ordersService.closeOrder(order.id);
+            if (success) {
+                await loadOrder();
+                onOrderUpdated?.();
+            }
+            setSaving(false);
+        }
+    };
+
+    const handleCancel = async () => {
+        if (!order) return;
+        if (confirm('Отменить заказ?')) {
+            setSaving(true);
+            const success = await ordersService.cancelOrder(order.id);
+            if (success) {
+                await loadOrder();
+                onOrderUpdated?.();
+            }
+            setSaving(false);
+        }
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'ordered': return <Clock className="w-5 h-5" />;
+            case 'shipped': return <Truck className="w-5 h-5" />;
+            case 'delivered': return <CheckCircle className="w-5 h-5" />;
+            case 'cancelled': return <XCircle className="w-5 h-5" />;
+            default: return <Package className="w-5 h-5" />;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'ordered': return 'text-blue-400 bg-blue-900/30';
+            case 'shipped': return 'text-amber-400 bg-amber-900/30';
+            case 'delivered': return 'text-emerald-400 bg-emerald-900/30';
+            case 'cancelled': return 'text-red-400 bg-red-900/30';
+            default: return 'text-slate-400 bg-slate-800';
+        }
+    };
+
+    const canEditQuantities = order?.status === 'delivered' || order?.status === 'shipped';
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Детали заказа">
+            {loading ? (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                </div>
+            ) : order ? (
+                <div className="space-y-6">
+                    {/* Header Info */}
+                    <div className="bg-slate-900 p-4 rounded-lg border border-slate-800">
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 className="text-lg font-medium text-slate-200">
+                                    {order.contractor?.name || 'Неизвестный поставщик'}
+                                </h3>
+                                <p className="text-sm text-slate-400">
+                                    Дата заказа: {new Date(order.order_date).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <div className={clsx('px-3 py-2 rounded-lg flex items-center gap-2', getStatusColor(order.status))}>
+                                {getStatusIcon(order.status)}
+                                <span className="font-medium">{order.status.toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div className="text-2xl font-bold text-emerald-400">
+                            {order.total_amount.toLocaleString()} ₴
+                        </div>
+                    </div>
+
+                    {/* Status Change Buttons */}
+                    {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                        <div className="flex gap-2 flex-wrap">
+                            {order.status === 'ordered' && (
+                                <Button
+                                    onClick={() => handleStatusChange('shipped')}
+                                    disabled={saving}
+                                    className="bg-amber-600 hover:bg-amber-700"
+                                >
+                                    <Truck className="w-4 h-4 mr-2" />
+                                    Отправлен в путь
+                                </Button>
+                            )}
+                            {order.status === 'shipped' && (
+                                <Button
+                                    onClick={() => handleStatusChange('delivered')}
+                                    disabled={saving}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Доставлен
+                                </Button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Order Items */}
+                    <div>
+                        <h4 className="text-sm font-medium text-slate-300 mb-3">Состав заказа</h4>
+                        <div className="space-y-2">
+                            {order.items.map(item => (
+                                <div key={item.id} className="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex-1">
+                                            <div className="font-medium text-slate-200">
+                                                {item.item?.name || 'Unknown Item'}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {item.item?.sku} • {item.price_per_unit} ₴/{item.item?.unit}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-slate-300">
+                                                Заказано: <span className="font-bold">{item.quantity}</span> {item.item?.unit}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {canEditQuantities && (
+                                        <div className="mt-2 pt-2 border-t border-slate-700">
+                                            <Input
+                                                label="Фактически получено"
+                                                type="number"
+                                                min="0"
+                                                value={receivedQuantities[item.id]}
+                                                onChange={e => setReceivedQuantities({
+                                                    ...receivedQuantities,
+                                                    [item.id]: e.target.value === '' ? '' : Number(e.target.value)
+                                                })}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {order.status === 'delivered' && !canEditQuantities && (
+                                        <div className="mt-2 pt-2 border-t border-slate-700 text-sm">
+                                            <span className="text-slate-400">Получено:</span>{' '}
+                                            <span className="text-emerald-400 font-bold">
+                                                {item.received_quantity} {item.item?.unit}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-between gap-3 pt-4 border-t border-slate-800">
+                        <div className="flex gap-2">
+                            {order.status !== 'cancelled' && order.status !== 'delivered' && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleCancel}
+                                    disabled={saving}
+                                    className="text-red-400 hover:text-red-300"
+                                >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Отменить заказ
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button variant="ghost" onClick={onClose}>
+                                Закрыть
+                            </Button>
+
+                            {canEditQuantities && (
+                                <Button
+                                    onClick={handleSaveReceivedQuantities}
+                                    disabled={saving}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    Сохранить количество
+                                </Button>
+                            )}
+
+                            {order.status === 'delivered' && (
+                                <Button
+                                    onClick={handleClose}
+                                    disabled={saving}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Закрыть заказ
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center py-12 text-slate-400">
+                    Заказ не найден
+                </div>
+            )}
+        </Modal>
+    );
+}

@@ -171,9 +171,20 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     Дата заказа: {new Date(order.order_date).toLocaleDateString()}
                                 </p>
                             </div>
-                            <div className={clsx('px-3 py-2 rounded-lg flex items-center gap-2', getStatusColor(order.status))}>
-                                {getStatusIcon(order.status)}
-                                <span className="font-medium">{getStatusLabel(order.status)}</span>
+                            <div className="flex items-center gap-2">
+                                {/* Quantity Mismatch Warning */}
+                                {order.items.some(item => {
+                                    const receivedQty = item.received_quantity || 0;
+                                    return receivedQty > 0 && receivedQty !== item.quantity;
+                                }) && (
+                                    <div className="px-2 py-1 bg-amber-900/40 text-amber-400 rounded text-xs font-medium border border-amber-800">
+                                        ⚠️ Расхождение
+                                    </div>
+                                )}
+                                <div className={clsx('px-3 py-2 rounded-lg flex items-center gap-2', getStatusColor(order.status))}>
+                                    {getStatusIcon(order.status)}
+                                    <span className="font-medium">{getStatusLabel(order.status)}</span>
+                                </div>
                             </div>
                         </div>
                         <div className="text-2xl font-bold text-emerald-400">
@@ -225,9 +236,9 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                         <h4 className="text-sm font-medium text-slate-300 mb-3">Состав заказа</h4>
                         <div className="space-y-2">
                             {order.items.map(item => {
-                                const displayQty = order.status === 'delivered' && item.received_quantity > 0
-                                    ? item.received_quantity
-                                    : item.quantity;
+                                const hasReceivedQty = item.received_quantity > 0;
+                                const qtyDiffers = hasReceivedQty && item.received_quantity !== item.quantity;
+                                const receivedQty = item.received_quantity || 0;
 
                                 return (
                                     <div key={item.id} className="bg-slate-900 p-3 rounded-lg border border-slate-800">
@@ -241,11 +252,19 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-slate-300">
-                                                    {order.status === 'delivered' && item.received_quantity > 0 ? (
-                                                        <>Получено: <span className="font-bold text-emerald-400">{displayQty}</span> {item.item?.unit || 'шт'}</>
-                                                    ) : (
-                                                        <>Заказано: <span className="font-bold">{displayQty}</span> {item.item?.unit || 'шт'}</>
+                                                <div className="text-slate-300 space-y-1">
+                                                    <div>
+                                                        Заказано: <span className="font-bold">{item.quantity}</span> {item.item?.unit || 'шт'}
+                                                    </div>
+                                                    {hasReceivedQty && (
+                                                        <div className={qtyDiffers ? "text-amber-400" : "text-emerald-400"}>
+                                                            Получено: <span className="font-bold">{receivedQty}</span> {item.item?.unit || 'шт'}
+                                                            {qtyDiffers && (
+                                                                <span className="ml-2 text-xs">
+                                                                    ({receivedQty > item.quantity ? '+' : ''}{receivedQty - item.quantity})
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

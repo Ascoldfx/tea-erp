@@ -54,10 +54,10 @@ export const ordersService = {
 
         console.log('✅ Order fetched successfully:', order);
 
-        // Fetch order items WITHOUT joining items table
+        // Fetch order items WITH received_quantity
         const { data: orderItems, error: itemsError } = await supabase
             .from('order_items')
-            .select('id, order_id, item_id, quantity, price_per_unit')
+            .select('id, order_id, item_id, quantity, price_per_unit, received_quantity')
             .eq('order_id', orderId);
 
         if (itemsError) {

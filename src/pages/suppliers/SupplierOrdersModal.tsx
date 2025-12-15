@@ -48,6 +48,8 @@ export default function SupplierOrdersModal({ isOpen, onClose, supplierId, suppl
             // Get item counts for each order
             const ordersWithCounts = await Promise.all(
                 (data || []).map(async (order) => {
+                    if (!supabase) return { ...order, items_count: 0 };
+
                     const { count } = await supabase
                         .from('order_items')
                         .select('*', { count: 'exact', head: true })

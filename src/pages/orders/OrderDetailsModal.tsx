@@ -151,6 +151,17 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
         }
     };
 
+    const getStatusLabel = (status: string) => {
+        const map: Record<string, string> = {
+            draft: 'Черновик',
+            ordered: 'Заказано',
+            shipped: 'В пути',
+            delivered: 'Доставлено',
+            cancelled: 'Отменено'
+        };
+        return map[status] || status;
+    };
+
     const canEditQuantities = order?.status === 'delivered' || order?.status === 'shipped';
 
     return (
@@ -174,7 +185,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                             </div>
                             <div className={clsx('px-3 py-2 rounded-lg flex items-center gap-2', getStatusColor(order.status))}>
                                 {getStatusIcon(order.status)}
-                                <span className="font-medium">{order.status.toUpperCase()}</span>
+                                <span className="font-medium">{getStatusLabel(order.status)}</span>
                             </div>
                         </div>
                         <div className="text-2xl font-bold text-emerald-400">
@@ -251,49 +262,50 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                     <div>
                         <h4 className="text-sm font-medium text-slate-300 mb-3">Состав заказа</h4>
                         <div className="space-y-2">
-                            {order.items.map(item => (
-                                <div key={item.id} className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex-1">
-                                            <div className="font-medium text-slate-200">
-                                                {item.item?.name || 'Unknown Item'}
+                            {order.items.map(item => {
+                                const displayQty = order.status === 'delivered' && item.received_quantity > 0
+                                    ? item.received_quantity
+                                    : item.quantity;
+
+                                return (
+                                    <div key={item.id} className="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex-1">
+                                                <div className="font-medium text-slate-200">
+                                                    {item.item?.name || 'Unknown Item'}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                    {item.item?.sku} • {item.price_per_unit} ₴/{item.item?.unit || 'шт'}
+                                                </div>
                                             </div>
-                                            <div className="text-xs text-slate-500">
-                                                {item.item?.sku} • {item.price_per_unit} ₴/{item.item?.unit}
+                                            <div className="text-right">
+                                                <div className="text-slate-300">
+                                                    {order.status === 'delivered' && item.received_quantity > 0 ? (
+                                                        <>Получено: <span className="font-bold text-emerald-400">{displayQty}</span> {item.item?.unit || 'шт'}</>
+                                                    ) : (
+                                                        <>Заказано: <span className="font-bold">{displayQty}</span> {item.item?.unit || 'шт'}</>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-slate-300">
-                                                Заказано: <span className="font-bold">{item.quantity}</span> {item.item?.unit}
+
+                                        {canEditQuantities && (
+                                            <div className="mt-2 pt-2 border-t border-slate-700">
+                                                <Input
+                                                    label="Фактически получено"
+                                                    type="number"
+                                                    min="0"
+                                                    value={receivedQuantities[item.id]}
+                                                    onChange={e => setReceivedQuantities({
+                                                        ...receivedQuantities,
+                                                        [item.id]: e.target.value === '' ? '' : Number(e.target.value)
+                                                    })}
+                                                />
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
-
-                                    {canEditQuantities && (
-                                        <div className="mt-2 pt-2 border-t border-slate-700">
-                                            <Input
-                                                label="Фактически получено"
-                                                type="number"
-                                                min="0"
-                                                value={receivedQuantities[item.id]}
-                                                onChange={e => setReceivedQuantities({
-                                                    ...receivedQuantities,
-                                                    [item.id]: e.target.value === '' ? '' : Number(e.target.value)
-                                                })}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {order.status === 'delivered' && !canEditQuantities && (
-                                        <div className="mt-2 pt-2 border-t border-slate-700 text-sm">
-                                            <span className="text-slate-400">Получено:</span>{' '}
-                                            <span className="text-emerald-400 font-bold">
-                                                {item.received_quantity} {item.item?.unit}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -326,17 +338,6 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                 >
                                     {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     Сохранить количество
-                                </Button>
-                            )}
-
-                            {order.status === 'delivered' && (
-                                <Button
-                                    onClick={handleClose}
-                                    disabled={saving}
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Закрыть заказ
                                 </Button>
                             )}
                         </div>

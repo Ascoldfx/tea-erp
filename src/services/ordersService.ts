@@ -32,6 +32,7 @@ export const ordersService = {
 
         console.log('🔍 Fetching order:', orderId);
 
+        // Fetch order with contractor
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .select(`
@@ -53,16 +54,10 @@ export const ordersService = {
 
         console.log('✅ Order fetched successfully:', order);
 
-        const { data: items, error: itemsError } = await supabase
+        // Fetch order items WITHOUT joining items table
+        const { data: orderItems, error: itemsError } = await supabase
             .from('order_items')
-            .select(`
-                id,
-                order_id,
-                item_id,
-                quantity,
-                price_per_unit,
-                items (name, sku, unit)
-            `)
+            .select('id, order_id, item_id, quantity, price_per_unit')
             .eq('order_id', orderId);
 
         if (itemsError) {
@@ -71,17 +66,33 @@ export const ordersService = {
             return null;
         }
 
-        console.log('✅ Order items fetched:', items);
+        console.log('✅ Order items fetched:', orderItems);
 
-        // Map items and set received_quantity to 0 if column doesn't exist yet
+        // Fetch item details separately
+        const itemIds = orderItems.map(i => i.item_id);
+        const { data: itemsData, error: itemsDataError } = await supabase
+            .from('items')
+            .select('id, name, sku, unit')
+            .in('id', itemIds);
+
+        if (itemsDataError) {
+            console.error('❌ Error fetching items data:', itemsDataError);
+            return null;
+        }
+
+        console.log('✅ Items data fetched:', itemsData);
+
+        // Manually join the data
+        const items = orderItems.map(orderItem => ({
+            ...orderItem,
+            received_quantity: (orderItem as any).received_quantity || 0,
+            item: itemsData.find(item => item.id === orderItem.item_id)
+        }));
+
         return {
             ...order,
             contractor: order.contractors as any,
-            items: items.map(item => ({
-                ...item,
-                received_quantity: (item as any).received_quantity || 0,
-                item: item.items as any
-            }))
+            items
         };
     },
 

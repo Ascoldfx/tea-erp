@@ -4,7 +4,8 @@ export interface UserProfile {
     id: string;
     email: string;
     full_name: string | null;
-    role: 'admin' | 'procurement' | 'production_planner' | 'director';
+    role: 'admin' | 'procurement' | 'production_planner' | 'warehouse' | 'director';
+    warehouse_id: string | null;
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -14,12 +15,14 @@ export interface CreateUserData {
     email: string;
     password: string;
     full_name: string;
-    role: 'admin' | 'procurement' | 'production_planner' | 'director';
+    role: 'admin' | 'procurement' | 'production_planner' | 'warehouse' | 'director';
+    warehouse_id?: string | null;
 }
 
 export interface UpdateUserData {
     full_name?: string;
-    role?: 'admin' | 'procurement' | 'production_planner' | 'director';
+    role?: 'admin' | 'procurement' | 'production_planner' | 'warehouse' | 'director';
+    warehouse_id?: string | null;
     is_active?: boolean;
 }
 
@@ -112,6 +115,7 @@ class UsersService {
             admin: 'Администратор',
             procurement: 'Менеджер по закупкам',
             production_planner: 'Планировщик производства',
+            warehouse: 'Кладовщик',
             director: 'Директор'
         };
         return labels[role] || role;
@@ -135,6 +139,12 @@ class UsersService {
                 'Управление подрядчиками',
                 'Просмотр заказов в работе',
                 'Передача материалов подрядчикам'
+            ],
+            warehouse: [
+                'Приём товаров на свой склад',
+                'Подтверждение фактического количества',
+                'Просмотр материалов на своём складе',
+                'Перемещение между складами'
             ],
             director: [
                 'Просмотр статусов',

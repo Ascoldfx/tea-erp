@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
-    role TEXT NOT NULL DEFAULT 'director' CHECK (role IN ('admin', 'procurement', 'production_planner', 'director')),
+    role TEXT NOT NULL DEFAULT 'director' CHECK (role IN ('admin', 'procurement', 'production_planner', 'warehouse', 'director')),
+    warehouse_id TEXT REFERENCES warehouses(id) ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -107,5 +108,6 @@ CREATE POLICY "Admins can delete profiles"
 
 -- Comments for documentation
 COMMENT ON TABLE profiles IS 'Профили пользователей с ролями и правами доступа';
-COMMENT ON COLUMN profiles.role IS 'admin - администратор, procurement - менеджер по закупкам, production_planner - планировщик производства, director - директор (только чтение)';
+COMMENT ON COLUMN profiles.role IS 'admin - администратор, procurement - менеджер по закупкам, production_planner - планировщик производства, warehouse - кладовщик, director - директор (только чтение)';
+COMMENT ON COLUMN profiles.warehouse_id IS 'Склад, за который отвечает кладовщик (только для роли warehouse)';
 COMMENT ON COLUMN profiles.is_active IS 'Активен ли пользователь (для soft delete)';

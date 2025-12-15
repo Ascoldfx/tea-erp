@@ -33,8 +33,9 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                 className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
-            <div className="relative w-full max-w-2xl transform rounded-xl bg-slate-900 border border-slate-800 p-6 text-left shadow-2xl transition-all">
-                <div className="flex items-center justify-between mb-5">
+            <div className="relative w-full max-w-2xl max-h-[90vh] transform rounded-xl bg-slate-900 border border-slate-800 shadow-2xl transition-all flex flex-col">
+                {/* Fixed Header */}
+                <div className="flex items-center justify-between p-6 pb-5 border-b border-slate-800 flex-shrink-0">
                     <h3 className="text-lg font-semibold leading-6 text-slate-100">
                         {title}
                     </h3>
@@ -45,7 +46,10 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                         <X className="h-5 w-5 text-slate-400" />
                     </button>
                 </div>
-                {children}
+                {/* Scrollable Content */}
+                <div className="overflow-y-auto flex-1 p-6 pt-5">
+                    {children}
+                </div>
             </div>
         </div>
     );

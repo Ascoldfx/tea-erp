@@ -41,12 +41,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!supabase) return null;
 
         try {
-            const { data: profile, error } = await supabase
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise<null>((resolve) => {
+                setTimeout(() => resolve(null), 5000); // 5 second timeout
+            });
+
+            const profilePromise = supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .eq('is_active', true)
                 .single();
+
+            const { data: profile, error } = await Promise.race([
+                profilePromise,
+                timeoutPromise.then(() => ({ data: null, error: { message: 'Timeout' } }))
+            ]) as any;
 
             if (error || !profile) {
                 console.error('Error loading profile:', error);
@@ -80,7 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                // Add timeout for session check
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Session check timeout')), 5000);
+                });
+
+                const { data: { session } } = await Promise.race([
+                    sessionPromise,
+                    timeoutPromise
+                ]) as any;
                 
                 if (session?.user) {
                     const userProfile = await loadUserProfile(session.user.id);
@@ -90,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             } catch (error) {
                 console.error('Error checking session:', error);
+                // Always set loading to false even on error
             } finally {
                 setIsLoading(false);
             }

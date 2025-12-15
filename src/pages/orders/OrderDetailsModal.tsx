@@ -3,11 +3,9 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import type { OrderWithItems } from '../../types/order';
-import { updateOrderStatus, updateReceivedQuantity, receiveOrder } from '../../services/ordersService';
+import { ordersService, type OrderWithItems } from '../../services/ordersService';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { Loader2, Package, CheckCircle, XCircle, Truck, Clock, Warehouse } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Loader2, XCircle, Truck, Package } from 'lucide-react';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;

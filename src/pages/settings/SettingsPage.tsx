@@ -6,6 +6,7 @@ import { Select } from '../../components/ui/Select';
 import { FileSpreadsheet, Users, UserPlus, Database } from 'lucide-react';
 import { useAuth, type UserRole } from '../../context/AuthContext';
 import { seedService } from '../../services/seedService';
+import ExcelImportModal from '../inventory/ExcelImportModal';
 import { clsx } from 'clsx';
 
 export default function SettingsPage() {
@@ -13,13 +14,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<'general' | 'users' | 'dev'>('users');
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<UserRole>('warehouse');
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            alert(`File "${file.name}" selected. Import logic to be implemented.`);
-        }
-    };
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     const handleInvite = (e: React.FormEvent) => {
         e.preventDefault();
@@ -183,17 +178,16 @@ export default function SettingsPage() {
                                 <p className="text-sm text-slate-400">
                                     Загрузите .xlsx файл для массового обновления справочника материалов и остатков.
                                 </p>
-                                <div className="flex gap-4 items-center">
-                                    <Input
-                                        type="file"
-                                        accept=".xlsx, .xls"
-                                        onChange={handleFileUpload}
-                                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-900/40 file:text-emerald-400 hover:file:bg-emerald-900/60"
-                                    />
-                                    <Button variant="outline">
-                                        Загрузить
-                                    </Button>
-                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Поддерживаются большие файлы, несколько вкладок и формулы. Будет использована первая вкладка или можно выбрать нужную.
+                                </p>
+                                <Button 
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                    Импортировать из Excel
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -249,6 +243,12 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Excel Import Modal */}
+            <ExcelImportModal 
+                isOpen={isImportModalOpen} 
+                onClose={() => setIsImportModalOpen(false)} 
+            />
         </div>
     );
 }

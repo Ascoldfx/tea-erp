@@ -88,36 +88,96 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 raw: false // Get formatted values (calculated formulas)
             });
 
-            // Flexible column mapping (supports both English and Russian headers)
+            if (!data || data.length === 0) {
+                setError('Файл пуст или не содержит данных. Проверьте, что выбрана правильная вкладка.');
+                setLoading(false);
+                return;
+            }
+
+            // Get all column names from first row (case-insensitive, trim spaces)
+            const firstRow = data[0] as any;
+            const columnNames = Object.keys(firstRow).map(k => k.trim());
+            
+            // Helper function to find column by multiple possible names (case-insensitive, trim)
+            const findColumn = (row: any, possibleNames: string[]): string => {
+                for (const name of possibleNames) {
+                    // Try exact match first
+                    if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+                        return String(row[name]).trim();
+                    }
+                    // Try case-insensitive match
+                    for (const key in row) {
+                        if (key.trim().toLowerCase() === name.toLowerCase()) {
+                            const value = row[key];
+                            if (value !== undefined && value !== null && value !== '') {
+                                return String(value).trim();
+                            }
+                        }
+                    }
+                }
+                return '';
+            };
+
+            // Flexible column mapping (supports both English and Russian headers, case-insensitive)
             const items: ParsedItem[] = data.map((row: any) => {
-                // Try multiple column name variations
-                const code = row['Code'] || row['Код'] || row['SKU'] || row['Артикул'] || row['Арт.'] || '';
-                const name = row['Name'] || row['Наименование'] || row['Название'] || row['Товар'] || 'Unknown';
-                const unit = row['Unit'] || row['Ед. изм.'] || row['Единица'] || row['Ед'] || 'шт';
-                const category = row['Category'] || row['Категория'] || row['Группа'] || 'tea_bulk';
+                // Try multiple column name variations (case-insensitive)
+                const code = findColumn(row, [
+                    'Code', 'Код', 'SKU', 'Артикул', 'Арт.', 'Арт', 'Код товара', 
+                    'КодТовара', 'Код_товара', 'Артикул товара', 'АртикулТовара'
+                ]);
+                
+                const name = findColumn(row, [
+                    'Name', 'Наименование', 'Название', 'Товар', 'Назва', 'Наименование товара',
+                    'НаименованиеТовара', 'Название товара', 'НазваниеТовара', 'Товар', 'Продукт'
+                ]);
+                
+                const unit = findColumn(row, [
+                    'Unit', 'Ед. изм.', 'Единица', 'Ед', 'Ед.изм', 'Единица измерения',
+                    'ЕдиницаИзмерения', 'Ед. измерения', 'ЕдИзмерения'
+                ]) || 'шт';
+                
+                const category = findColumn(row, [
+                    'Category', 'Категория', 'Группа', 'Категорія', 'Група',
+                    'Категория товара', 'КатегорияТовара', 'Группа товара'
+                ]) || 'tea_bulk';
                 
                 // Try multiple stock column variations
-                const stockMain = Number(
-                    row['Stock Main'] || row['Склад'] || row['Остаток'] || 
-                    row['Остаток на складе'] || row['Склад Главный'] || 0
-                );
-                const stockProd = Number(
-                    row['Stock Prod'] || row['Цех'] || row['Производство'] || 
-                    row['Склад Цех'] || 0
-                );
+                const stockMainStr = findColumn(row, [
+                    'Stock Main', 'Склад', 'Остаток', 'Остаток на складе', 'Склад Главный',
+                    'ОстатокСклад', 'Остаток_склад', 'СкладГлавный', 'Склад_главный',
+                    'Остаток на главном складе', 'ОстатокНаГлавномСкладе', 'Stock', 'Остатки'
+                ]);
+                const stockMain = Number(stockMainStr) || 0;
+                
+                const stockProdStr = findColumn(row, [
+                    'Stock Prod', 'Цех', 'Производство', 'Склад Цех', 'ЦехСклад',
+                    'СкладЦех', 'Склад_цех', 'Остаток в цехе', 'ОстатокВЦехе',
+                    'Production', 'Производство', 'Производственный склад'
+                ]);
+                const stockProd = Number(stockProdStr) || 0;
 
                 return {
-                    code: String(code).trim(),
-                    name: String(name).trim(),
-                    unit: String(unit).trim(),
-                    category: String(category).trim(),
+                    code: code,
+                    name: name || 'Unknown',
+                    unit: unit,
+                    category: category,
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
                 };
             }).filter(i => i.name !== 'Unknown' && i.name !== '' && i.code !== '');
 
             if (items.length === 0) {
-                setError('Не удалось найти данные. Проверьте заголовки (Код, Наименование, Ед. изм., Остаток)');
+                // Show found columns for debugging
+                const foundColumns = columnNames.join(', ');
+                setError(
+                    `Не удалось найти данные. Найдены колонки: ${foundColumns}\n\n` +
+                    `Ожидаются колонки с названиями:\n` +
+                    `- Код / Code / SKU / Артикул (обязательно)\n` +
+                    `- Наименование / Name / Название / Товар (обязательно)\n` +
+                    `- Ед. изм. / Unit / Единица (опционально)\n` +
+                    `- Склад / Stock Main / Остаток (опционально)\n\n` +
+                    `Проверьте, что названия колонок совпадают (регистр не важен).`
+                );
                 setLoading(false);
                 return;
             }

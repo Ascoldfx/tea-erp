@@ -372,36 +372,61 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue;
                     }
                     
-                    // Check for 1С - это ОБЩИЙ остаток (берем первое найденное значение, не суммируем)
-                    if (header.includes('1с') || header.includes('1 с')) {
-                        if (numValue > 0 && stockMain === 0) {
-                            stockMain = numValue; // Общий остаток (берем первое значение)
+                    // Check for Коцюбинське - это основной склад (может быть отдельная колонка)
+                    if (header.includes('коцюбинське') || header.includes('коцюбинское') || header.includes('kotsyubinske')) {
+                        if (numValue > 0) {
+                            // Если это колонка "залишки на 1 число, коцюбинське" - это остаток на основном складе
+                            // Но для картонной упаковки общий остаток берется из колонки "1С"
+                            // Поэтому пока не используем это значение для stockMain, оставим для 1С
+                        }
+                    }
+                    
+                    // Check for 1С - это ОБЩИЙ остаток для картонной упаковки (берем максимальное значение)
+                    if (header.includes('1с') || header.includes('1 с') || header.includes('1c')) {
+                        if (numValue > 0) {
+                            // Берем максимальное значение, если встречается несколько раз
+                            stockMain = Math.max(stockMain, numValue);
                         }
                     }
                     
                     // Check for ТС (может быть названо "Май" или "ТС") - отдельный склад
-                    if ((header.includes('май') || header.includes('тс') || header.includes('ts')) && !header.includes('1с')) {
+                    // Важно: проверяем что это не колонка "1С" и не "коцюбинське"
+                    if ((header.includes('май') || header.includes('тс') || header.includes('ts')) && 
+                        !header.includes('1с') && !header.includes('1 с') && !header.includes('1c') &&
+                        !header.includes('коцюбинське') && !header.includes('коцюбинское')) {
                         if (numValue > 0) {
-                            stockMai = numValue;
+                            // Берем максимальное значение, если встречается несколько раз
+                            stockMai = Math.max(stockMai, numValue);
                         }
                     }
                     
                     // Check for Фито - отдельный склад
-                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito')) && !header.includes('1с')) {
+                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito')) && 
+                        !header.includes('1с') && !header.includes('1 с') && !header.includes('1c')) {
                         if (numValue > 0) {
-                            stockFito = numValue;
+                            // Берем максимальное значение, если встречается несколько раз
+                            stockFito = Math.max(stockFito, numValue);
                         }
                     }
                 }
                 
                 // Fallback: try to find by exact column names
+                // Для картонной упаковки колонка "1С" - это общий остаток
                 if (stockMain === 0) {
                     const stockMainStr = findColumn(row, [
                         'Залишки на 1 число, 1С', 'Зал. на 1 число, 1С', 'Зал на 1 число 1С',
-                        'залишки на 1 число, 1с', 'зал. на 1 число, 1с',
-                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе'
+                        'залишки на 1 число, 1с', 'зал. на 1 число, 1с', 'залишки на 1 число, 1С',
+                        'залишки на 1 число, 1 с', 'залишки на 1 число, 1С',
+                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе',
+                        // Также проверяем колонку "коцюбинське" как fallback для основного склада
+                        // Но только если нет колонки "1С" (для картонной упаковки приоритет у "1С")
+                        'залишки на 1 число, коцюбинське', 'зал. на 1 число, коцюбинське',
+                        'Залишки на 1 число, Коцюбинське', 'Зал. на 1 число, Коцюбинське'
                     ]);
-                    stockMain = Number(stockMainStr) || 0;
+                    const foundValue = Number(stockMainStr) || 0;
+                    if (foundValue > 0) {
+                        stockMain = foundValue;
+                    }
                 }
                 
                 if (stockMai === 0) {
@@ -417,7 +442,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (stockFito === 0) {
                     const stockFitoStr = findColumn(row, [
                         'залишки на 1 число Фито', 'зал. на 1 число Фито', 'залишки на 1 число фито',
-                        'Залишки на 1 число Фито', 'Зал. на 1 число Фито', 'залишки на 1 число Φίτο'
+                        'Залишки на 1 число Фито', 'Зал. на 1 число Фито', 'залишки на 1 число Φίτο',
+                        // Также может быть написано "Фото" вместо "Фито"
+                        'залишки на 1 число Фото', 'зал. на 1 число Фото', 'залишки на 1 число фото',
+                        'Залишки на 1 число Фото', 'Зал. на 1 число Фото',
+                        'залишки на 1 число, Фото', 'зал. на 1 число, Фото'
                     ]);
                     stockFito = Number(stockFitoStr) || 0;
                 }

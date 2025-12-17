@@ -69,18 +69,42 @@ CREATE POLICY "Authenticated users can delete suppliers"
 
 -- Step 5: Move all contractors to suppliers (except Фито and ТС)
 -- These will be suppliers (those who supply goods/materials)
-INSERT INTO suppliers (id, name, code, contact_person, phone, email, address, created_at, updated_at)
-SELECT id, name, code, contact_person, phone, email, address, created_at, updated_at
-FROM contractors
-WHERE id NOT IN ('wh-fito', 'wh-ts')
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    code = EXCLUDED.code,
-    contact_person = EXCLUDED.contact_person,
-    phone = EXCLUDED.phone,
-    email = EXCLUDED.email,
-    address = EXCLUDED.address,
-    updated_at = EXCLUDED.updated_at;
+-- Check if address column exists in contractors table
+DO $$
+BEGIN
+    -- Check if address column exists in contractors
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contractors' AND column_name = 'address'
+    ) THEN
+        -- Insert with address
+        INSERT INTO suppliers (id, name, code, contact_person, phone, email, address, created_at, updated_at)
+        SELECT id, name, code, contact_person, phone, email, address, created_at, updated_at
+        FROM contractors
+        WHERE id NOT IN ('wh-fito', 'wh-ts')
+        ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            code = EXCLUDED.code,
+            contact_person = EXCLUDED.contact_person,
+            phone = EXCLUDED.phone,
+            email = EXCLUDED.email,
+            address = EXCLUDED.address,
+            updated_at = EXCLUDED.updated_at;
+    ELSE
+        -- Insert without address
+        INSERT INTO suppliers (id, name, code, contact_person, phone, email, created_at, updated_at)
+        SELECT id, name, code, contact_person, phone, email, created_at, updated_at
+        FROM contractors
+        WHERE id NOT IN ('wh-fito', 'wh-ts')
+        ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            code = EXCLUDED.code,
+            contact_person = EXCLUDED.contact_person,
+            phone = EXCLUDED.phone,
+            email = EXCLUDED.email,
+            updated_at = EXCLUDED.updated_at;
+    END IF;
+END $$;
 
 -- Step 6: Update orders table to use supplier_id instead of contractor_id
 -- Note: Orders are for materials from suppliers, not contractors

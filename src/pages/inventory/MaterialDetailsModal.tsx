@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { History, Play, CheckCircle } from 'lucide-react';
+import { History, Play, CheckCircle, Copy, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface MaterialDetailsModalProps {
     item: (InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null;
@@ -13,8 +14,10 @@ interface MaterialDetailsModalProps {
 }
 
 export default function MaterialDetailsModal({ item, isOpen, onClose }: MaterialDetailsModalProps) {
+    const { t } = useLanguage();
     const [movementHistory, setMovementHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         if (item && isOpen) {
@@ -40,15 +43,52 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
         setLoadingHistory(false);
     };
 
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
     if (!item) return null;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Материал: ${item.name}`}>
             <div className="space-y-6">
+                {/* Артикул для копирования */}
+                <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <span className="text-slate-400 text-xs block mb-1">{t('materials.article') || 'Артикул'}</span>
+                            <span className="text-lg font-mono font-semibold text-slate-200">{item.sku}</span>
+                        </div>
+                        <button
+                            onClick={() => copyToClipboard(item.sku)}
+                            className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-slate-100"
+                            title={t('materials.copyArticle') || 'Скопировать артикул'}
+                        >
+                            {copied ? (
+                                <>
+                                    <Check className="w-4 h-4 text-emerald-400" />
+                                    <span className="text-xs text-emerald-400">{t('materials.copied') || 'Скопировано'}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="w-4 h-4" />
+                                    <span className="text-xs">{t('materials.copyArticle') || 'Копировать'}</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
                 {/* Header Stats */}
                 <div className="bg-slate-800 p-4 rounded-lg text-slate-200">
                     <span className="text-slate-400 text-sm block">Общий остаток</span>
-                    <span className="text-2xl font-bold">{item.totalStock} <span className="text-sm font-normal text-slate-500">{item.unit}</span></span>
+                    <span className="text-2xl font-bold">{item.totalStock} <span className="text-sm font-normal text-slate-500">{item.unit === 'pcs' ? 'шт' : item.unit}</span></span>
                 </div>
 
                 {/* Tab Header */}

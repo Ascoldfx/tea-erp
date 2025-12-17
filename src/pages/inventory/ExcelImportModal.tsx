@@ -179,20 +179,28 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             
             // Map column indices to month dates (if month is found in row above headers)
             // Месяц указывается СТРОГО над столбцом (в той же колонке)
+            // Это работает для:
+            // 1. "план витрат" - план расходов на месяц
+            // 2. "залишки на 1 число" - остатки на 1 число месяца
             const columnToMonthMap = new Map<number, string>();
             for (let colIndex = 0; colIndex < Math.max(headers.length, monthRow.length); colIndex++) {
                 const monthCell = monthRow[colIndex] ? String(monthRow[colIndex]).trim() : '';
                 const headerCell = headers[colIndex] ? String(headers[colIndex]).trim() : '';
                 const headerLower = headerCell.toLowerCase();
                 
-                // Check if this column has "план витрат" in header
-                if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
+                // Check if this column has "план витрат" or "залишки на 1 число" in header
+                const isPlannedConsumption = headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'));
+                const isStockColumn = (headerLower.includes('залишки') || headerLower.includes('зал')) && 
+                                     (headerLower.includes('1') || headerLower.includes('число'));
+                
+                if (isPlannedConsumption || isStockColumn) {
                     // Check if month is in the cell above (STRICTLY same column, not adjacent)
                     if (monthCell) {
                         const monthDate = parseMonthToDate(monthCell);
                         if (monthDate) {
                             columnToMonthMap.set(colIndex, monthDate);
-                            console.log(`[Excel Import] Found month "${monthCell}" STRICTLY above "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
+                            const columnType = isPlannedConsumption ? 'план витрат' : 'залишки на 1 число';
+                            console.log(`[Excel Import] Found month "${monthCell}" STRICTLY above "${columnType}" column ${colIndex}, mapped to date: ${monthDate}`);
                         }
                     }
                 }

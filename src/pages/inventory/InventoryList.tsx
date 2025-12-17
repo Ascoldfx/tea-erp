@@ -141,11 +141,11 @@ export default function InventoryList() {
 
         const locations = displayStock.map(s => {
             const wh = warehouses.find(w => w.id === s.warehouseId);
-            // Determine type based on warehouse type field or fallback to ID pattern
+            // Determine type based on warehouse type field or fallback to ID/name pattern
             let type: 'main' | 'prod' | 'contractor' | 'supplier' = 'main';
             if (wh?.type === 'supplier' || wh?.type === 'contractor') {
                 type = wh.type === 'supplier' ? 'supplier' : 'contractor';
-            } else if (wh?.id.includes('prod')) {
+            } else if (wh?.id === 'wh-ceh' || wh?.name === 'Цех' || wh?.id.includes('ceh')) {
                 type = 'prod';
             } else if (wh?.id.includes('contractor') || wh?.id.includes('supplier')) {
                 type = wh.id.includes('supplier') ? 'supplier' : 'contractor';

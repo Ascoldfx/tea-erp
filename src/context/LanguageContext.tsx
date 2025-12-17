@@ -263,6 +263,7 @@ const translations: Record<Language, Record<string, string>> = {
         'materials.filter.crates': 'Гофроящики',
         'materials.filter.labels': 'Ярлики',
         'materials.filter.stickers': 'Стікери',
+        'materials.filter.envelopes': 'Конверти',
         'materials.filter.other': 'Інше',
         'materials.group.teaBulk': 'Чайна сировина',
         'materials.group.flavor': 'Ароматизатори',

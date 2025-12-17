@@ -133,6 +133,12 @@ export default function LogisticsCalendar() {
         e.preventDefault();
         if (!selectedDay || !newProduction.recipeId || newProduction.quantity <= 0) return;
         
+        // Validate contractor selection if location is contractor
+        if (newProduction.location === 'contractor' && !newProduction.contractorId) {
+            alert(t('calendar.selectContractor') || 'Выберите подрядчика');
+            return;
+        }
+        
         const dateStr = selectedDay.toISOString().split('T')[0];
         const production: DayProduction = {
             date: dateStr,
@@ -143,6 +149,19 @@ export default function LogisticsCalendar() {
         };
         
         setDayProductions([...dayProductions, production]);
+        setNewProduction({
+            recipeId: '',
+            quantity: 0,
+            location: 'internal',
+            contractorId: ''
+        });
+        
+        // Don't close modal automatically - let user decide if they want to add more or close
+    };
+    
+    const handleCloseModal = () => {
+        setIsDayModalOpen(false);
+        setSelectedDay(null);
         setNewProduction({
             recipeId: '',
             quantity: 0,
@@ -325,10 +344,7 @@ export default function LogisticsCalendar() {
             {selectedDay && (
                 <Modal
                     isOpen={isDayModalOpen}
-                    onClose={() => {
-                        setIsDayModalOpen(false);
-                        setSelectedDay(null);
-                    }}
+                    onClose={handleCloseModal}
                     title={selectedDay.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
                         weekday: 'long', 
                         year: 'numeric', 
@@ -452,12 +468,9 @@ export default function LogisticsCalendar() {
                                     <Button 
                                         type="button" 
                                         variant="ghost" 
-                                        onClick={() => {
-                                            setIsDayModalOpen(false);
-                                            setSelectedDay(null);
-                                        }}
+                                        onClick={handleCloseModal}
                                     >
-                                        {t('common.cancel') || 'Отмена'}
+                                        {t('common.close') || 'Закрыть'}
                                     </Button>
                                     <Button type="submit">
                                         {t('calendar.add') || 'Добавить'}

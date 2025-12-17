@@ -16,6 +16,7 @@ const translations: Record<Language, Record<string, string>> = {
         // Common
         'common.save': 'Сохранить',
         'common.cancel': 'Отмена',
+        'common.close': 'Закрыть',
         'common.delete': 'Удалить',
         'common.edit': 'Редактировать',
         'common.add': 'Добавить',
@@ -74,6 +75,7 @@ const translations: Record<Language, Record<string, string>> = {
         'calendar.selectContractor': 'Выберите подрядчика...',
         'calendar.materialsAvailability': 'Наличие материалов',
         'calendar.add': 'Добавить',
+        'calendar.addMoreOrClose': 'Добавьте еще позиции или закройте окно',
         
         // Production
         'production.title': 'Производство',
@@ -244,7 +246,6 @@ const translations: Record<Language, Record<string, string>> = {
         
         // Common - additional
         'common.back': 'Назад',
-        'common.close': 'Закрыть',
         'common.send': 'Отправить',
         'common.create': 'Создать',
         'common.saveChanges': 'Сохранить изменения',
@@ -261,6 +262,7 @@ const translations: Record<Language, Record<string, string>> = {
         // Common
         'common.save': 'Зберегти',
         'common.cancel': 'Скасувати',
+        'common.close': 'Закрити',
         'common.delete': 'Видалити',
         'common.edit': 'Редагувати',
         'common.add': 'Додати',
@@ -319,6 +321,7 @@ const translations: Record<Language, Record<string, string>> = {
         'calendar.selectContractor': 'Виберіть підрядника...',
         'calendar.materialsAvailability': 'Наявність матеріалів',
         'calendar.add': 'Додати',
+        'calendar.addMoreOrClose': 'Додайте ще позиції або закрийте вікно',
         
         // Production
         'production.title': 'Виробництво',
@@ -489,7 +492,6 @@ const translations: Record<Language, Record<string, string>> = {
         
         // Common - additional
         'common.back': 'Назад',
-        'common.close': 'Закрити',
         'common.send': 'Відправити',
         'common.create': 'Створити',
         'common.saveChanges': 'Зберегти зміни',

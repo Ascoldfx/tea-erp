@@ -43,6 +43,35 @@ export default function InventoryList() {
         quantity: 0
     });
 
+    // Get all unique categories from items (including dynamic ones)
+    const allCategories = useMemo(() => {
+        const categories = [...new Set(items.map(item => item.category))];
+        return categories.sort();
+    }, [items]);
+
+    // Standard categories that have translations
+    const standardCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_crate', 'label', 'sticker', 'envelope', 'packaging_cardboard', 'other'];
+    
+    // Dynamic categories (not in standard list)
+    const dynamicCategories = useMemo(() => {
+        return allCategories.filter(cat => !standardCategories.includes(cat as any));
+    }, [allCategories]);
+
+    // Helper function to format category name for display
+    const formatCategoryName = (category: string): string => {
+        // Try to get translation first
+        const translationKey = `materials.filter.${category}`;
+        const translated = t(translationKey);
+        if (translated !== translationKey) {
+            return translated;
+        }
+        
+        // If no translation, format the category name
+        return category
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+    };
+
     const inventoryCombined = useMemo(() => {
         const mapped = items.map(item => {
             // Get ALL stock levels for this item (for the Details Modal)
@@ -227,99 +256,56 @@ export default function InventoryList() {
             </div>
 
             {/* Category Filter */}
-            <div className="flex gap-2 pb-4 items-center">
-                <Filter className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-400 mr-2">{t('materials.filter.allGroups').replace('Все группы', 'Группа:') || 'Група:'}</span>
+            <div className="flex gap-2 pb-4 items-center overflow-x-auto">
+                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span className="text-sm text-slate-400 mr-2 flex-shrink-0">{t('materials.filter.group')}:</span>
+                
+                {/* All Groups Button */}
                 <button
                     onClick={() => setSelectedCategory('all')}
                     className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0",
                         selectedCategory === 'all' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
                     {t('materials.filter.allGroups')}
                 </button>
-                <button
-                    onClick={() => setSelectedCategory('tea_bulk')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'tea_bulk' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.teaBulk')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('flavor')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'flavor' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.flavor')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('packaging_consumable')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'packaging_consumable' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.packaging')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('soft_packaging')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'soft_packaging' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.softPackaging')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('packaging_crate')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'packaging_crate' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.crates')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('label')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'label' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.labels')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('sticker')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'sticker' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.stickers')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('envelope')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'envelope' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.envelopes')}
-                </button>
-                <button
-                    onClick={() => setSelectedCategory('other')}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'other' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.other')}
-                </button>
+                
+                {/* Standard Category Buttons */}
+                {standardCategories.map(category => {
+                    const translationKey = `materials.filter.${category}`;
+                    const label = t(translationKey);
+                    return (
+                        <button
+                            key={category}
+                            onClick={() => setSelectedCategory(category)}
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0",
+                                selectedCategory === category ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                            )}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+                
+                {/* Dynamic Category Buttons (from Excel imports) */}
+                {dynamicCategories.map(category => {
+                    const label = formatCategoryName(category);
+                    return (
+                        <button
+                            key={category}
+                            onClick={() => setSelectedCategory(category)}
+                            className={clsx(
+                                "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0 border border-purple-500/50",
+                                selectedCategory === category ? "bg-purple-600 text-white border-purple-500" : "bg-slate-800 text-purple-300 border-purple-700 hover:border-purple-500"
+                            )}
+                            title={t('materials.filter.dynamicCategory') || `Динамическая категория: ${category}`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* List Groups */}
@@ -328,24 +314,26 @@ export default function InventoryList() {
                 let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
-                    // Show all groups when "all" is selected
-                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'envelope', 'other'];
+                    // Show all groups when "all" is selected (including dynamic categories)
+                    groupsToShow = allCategories as any[];
                 } else {
-                    // Show only the selected category group
-                    groupsToShow = [selectedCategory as InventoryCategory];
+                    // Show only the selected category group (can be standard or dynamic)
+                    groupsToShow = [selectedCategory as any];
                 }
 
                 return groupsToShow.map(group => {
-                    const groupTitle = 
-                        group === 'tea_bulk' ? t('materials.group.teaBulk') : 
-                        group === 'flavor' ? t('materials.group.flavor') : 
-                        group === 'packaging_consumable' ? t('materials.group.packaging') :
-                        group === 'soft_packaging' ? t('materials.group.softPackaging') :
-                        group === 'packaging_box' ? (t('materials.group.packaging') + ' (коробки)') :
-                        group === 'packaging_crate' ? t('materials.group.crates') :
-                        group === 'label' ? t('materials.group.labels') :
-                        group === 'sticker' ? t('materials.group.stickers') :
-                        t('materials.group.other');
+                    // Get group title - try translation first, then format dynamic category
+                    let groupTitle: string;
+                    const translationKey = `materials.group.${group}`;
+                    const translated = t(translationKey);
+                    
+                    if (translated !== translationKey) {
+                        // Standard category with translation
+                        groupTitle = translated;
+                    } else {
+                        // Dynamic category - format the name
+                        groupTitle = formatCategoryName(group);
+                    }
                     
                     const itemsInGroup = inventoryCombined.filter(item => {
                         // Exact match for the group category

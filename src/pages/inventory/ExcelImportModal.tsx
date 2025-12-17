@@ -281,14 +281,29 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                          (groupValue.includes('чай') && !groupValue.includes('упаковк'))) {
                     category = 'tea_bulk';
                 }
-                // 11. Если значение существует, но не совпадает, попробуем использовать как есть (точное совпадение)
+                // 11. Если значение существует, но не совпадает с известными категориями
+                // Сохраняем его как динамическую категорию (нормализованную)
                 else {
-                    const validCategories = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'envelope', 'other'];
+                    const validCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard', 'other'];
                     if (validCategories.includes(groupValue)) {
                         category = groupValue as any;
                     } else {
-                        // If unknown category, default to 'other'
-                        category = 'other';
+                        // If unknown category, normalize and use it as dynamic category
+                        // Normalize: lowercase, trim, replace spaces with underscores, remove special chars
+                        const normalizedGroup = groupValue
+                            .toLowerCase()
+                            .trim()
+                            .replace(/\s+/g, '_')
+                            .replace(/[^a-z0-9_а-яёіїє]/g, '')
+                            .substring(0, 50); // Limit length
+                        
+                        if (normalizedGroup && normalizedGroup.length > 0) {
+                            category = normalizedGroup;
+                            console.log(`[Category Debug] Using dynamic category: "${normalizedGroup}" from groupValue: "${groupValue}"`);
+                        } else {
+                            // Fallback to 'other' if normalization failed
+                            category = 'other';
+                        }
                     }
                 }
                 

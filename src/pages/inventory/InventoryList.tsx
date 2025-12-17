@@ -19,7 +19,7 @@ import type { InventoryCategory } from '../../types/inventory';
 
 export default function InventoryList() {
     const { user } = useAuth();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     // Use Hook to fetch data (Real DB or Mock Fallback)
     const { items, warehouses, stock, loading, refresh } = useInventory();
 
@@ -64,10 +64,32 @@ export default function InventoryList() {
             return translated;
         }
         
-        // If no translation, format the category name
+        // Map common English category names to Russian/Ukrainian
+        const categoryMap: Record<string, string> = {
+            'envelope': language === 'uk' ? 'Конверти' : 'Конверты',
+            'label': language === 'uk' ? 'Ярлики' : 'Ярлыки',
+            'packaging_consumable': language === 'uk' ? 'Плівка' : 'Пленки',
+            'packaging_crate': language === 'uk' ? 'Гофроящики' : 'Гофроящики',
+            'soft_packaging': language === 'uk' ? 'М\'яка упаковка' : 'Мягкая упаковка',
+            'flavor': language === 'uk' ? 'Ароматизатори' : 'Ароматизаторы',
+            'tea_bulk': language === 'uk' ? 'Чайна сировина' : 'Чайное сырье',
+            'sticker': language === 'uk' ? 'Стікери' : 'Стикеры',
+            'other': language === 'uk' ? 'Інше' : 'Прочее',
+            'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка',
+            'packaging_box': language === 'uk' ? 'Коробки та пачки' : 'Коробки и пачки'
+        };
+        
+        // Check if we have a mapping for this category
+        if (categoryMap[category]) {
+            return categoryMap[category];
+        }
+        
+        // If no translation or mapping, format the category name nicely
+        // Replace underscores with spaces and capitalize words
         return category
             .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+            .trim();
     };
 
     const inventoryCombined = useMemo(() => {
@@ -254,7 +276,7 @@ export default function InventoryList() {
             </div>
 
             {/* Category Filter - Only Dynamic Categories from Database */}
-            <div className="flex gap-2 pb-4 items-center overflow-x-auto">
+            <div className="flex flex-wrap gap-2 pb-4 items-center">
                 <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span className="text-sm text-slate-400 mr-2 flex-shrink-0">{t('materials.filter.group')}:</span>
                 

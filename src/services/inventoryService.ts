@@ -227,12 +227,23 @@ export const inventoryService = {
         // If same item appears multiple times, sum the quantities
         const stockMap = new Map<string, { item_id: string; warehouse_id: string; quantity: number }>();
         
+        // Get item categories to check if it's cardboard packaging
+        const itemCategories = new Map<string, string>();
+        for (const item of items) {
+            const code = item.code?.trim();
+            if (!code) continue;
+            const itemId = skuToIdMap.get(code) || code;
+            itemCategories.set(itemId, item.category || 'other');
+        }
+        
         for (const item of items) {
             const code = item.code?.trim();
             if (!code) continue;
 
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
+            const category = itemCategories.get(itemId) || item.category || 'other';
+            const isCardboard = category === 'packaging_cardboard';
 
             // Main warehouse stock (Коцюбинське / 1С) - для картонной упаковки это общий остаток
             // Если материал встречается несколько раз, берем последнее значение (не суммируем)
@@ -247,26 +258,57 @@ export const inventoryService = {
                 });
             }
 
-            // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
-            const maiKey = `${itemId}_wh-ts`;
-            const maiQty = Number(item.stockMai) || 0;
-            if (maiQty > 0) {
-                stockMap.set(maiKey, {
-                    item_id: itemId,
-                    warehouse_id: 'wh-ts',
-                    quantity: maiQty
-                });
-            }
+            // Для картонной упаковки: "1С" - это общий остаток, не дублируем на других складах
+            // ТС и Фито - это остатки на складах подрядчиков, сохраняем только если они отличаются от общего остатка
+            if (isCardboard) {
+                // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
+                // Сохраняем только если значение отличается от общего остатка "1С"
+                const maiKey = `${itemId}_wh-ts`;
+                const maiQty = Number(item.stockMai) || 0;
+                if (maiQty > 0 && maiQty !== mainQty) {
+                    // Сохраняем только если остаток на ТС отличается от общего остатка
+                    stockMap.set(maiKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-ts',
+                        quantity: maiQty
+                    });
+                }
+                
+                // Фито warehouse stock - отдельный склад
+                // Сохраняем только если значение отличается от общего остатка "1С"
+                const fitoKey = `${itemId}_wh-fito`;
+                const fitoQty = Number(item.stockFito) || 0;
+                if (fitoQty > 0 && fitoQty !== mainQty) {
+                    // Сохраняем только если остаток на Фито отличается от общего остатка
+                    stockMap.set(fitoKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-fito',
+                        quantity: fitoQty
+                    });
+                }
+            } else {
+                // Для других категорий сохраняем все остатки как обычно
+                // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
+                const maiKey = `${itemId}_wh-ts`;
+                const maiQty = Number(item.stockMai) || 0;
+                if (maiQty > 0) {
+                    stockMap.set(maiKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-ts',
+                        quantity: maiQty
+                    });
+                }
 
-            // Фито warehouse stock - отдельный склад
-            const fitoKey = `${itemId}_wh-fito`;
-            const fitoQty = Number(item.stockFito) || 0;
-            if (fitoQty > 0) {
-                stockMap.set(fitoKey, {
-                    item_id: itemId,
-                    warehouse_id: 'wh-fito',
-                    quantity: fitoQty
-                });
+                // Фито warehouse stock - отдельный склад
+                const fitoKey = `${itemId}_wh-fito`;
+                const fitoQty = Number(item.stockFito) || 0;
+                if (fitoQty > 0) {
+                    stockMap.set(fitoKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-fito',
+                        quantity: fitoQty
+                    });
+                }
             }
         }
         

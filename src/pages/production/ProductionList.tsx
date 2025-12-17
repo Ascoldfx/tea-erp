@@ -131,14 +131,6 @@ export default function ProductionList() {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <Button 
-                        variant="outline" 
-                        onClick={() => navigate('/production/planning')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                    >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        {t('production.planning') || 'Планирование'}
-                    </Button>
                     <Button variant="outline" onClick={() => navigate('/calculator')}>
                         <Calculator className="w-4 h-4 mr-2" />
                         {t('production.calculator') || 'Калькулятор'}
@@ -157,11 +149,11 @@ export default function ProductionList() {
                 <Link
                     to="/production/planning"
                     className={clsx(
-                        "px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2",
-                        "border-transparent text-slate-400 hover:text-slate-200"
+                        "px-6 py-3 text-base font-semibold transition-colors border-b-3 flex items-center gap-2",
+                        "border-blue-500 text-blue-400 bg-blue-500/10 rounded-t-lg"
                     )}
                 >
-                    <Clock size={16} />
+                    <Clock size={18} />
                     {t('production.planning') || 'Планирование'}
                 </Link>
                 <button

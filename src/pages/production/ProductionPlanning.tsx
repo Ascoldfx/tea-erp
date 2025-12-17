@@ -84,6 +84,7 @@ export default function ProductionPlanning() {
 
     // Calculate planned consumption for selected month
     // Note: We compare by year and month directly, not by date strings
+    // This ensures accurate filtering of planned consumption data
 
     // Filter items by category
     const filteredItems = useMemo(() => {

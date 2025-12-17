@@ -177,7 +177,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Name', 'Наименование', 'Название', 'Товар', 'Назва', 'Наименование товара',
                     'НаименованиеТовара', 'Название товара', 'НазваниеТовара', 'Товар', 'Продукт',
                     'Назва', 'Назва товара', 'НазваТовара' // Ukrainian
-                ]);
+                ])?.trim();
+                
+                // Skip items where name is just "0" or empty
+                if (!name || name === '' || name === '0' || name.trim() === '0') {
+                    return null; // Will be filtered out
+                }
                 
                 const unit = findColumn(row, [
                     'Unit', 'Ед. изм.', 'Единица', 'Ед', 'Ед.изм', 'Единица измерения',
@@ -193,42 +198,47 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]).toLowerCase().trim();
                 
                 // Map group values to categories
-                let category = 'tea_bulk'; // default
+                // Priority order matters - check more specific first
+                let category = 'other'; // default to 'other' instead of 'tea_bulk'
                 
+                // If no group value, try to infer from name
+                const nameLower = name ? String(name).toLowerCase() : '';
+                
+                // Ароматизаторы (проверяем первым, так как это отдельная группа)
+                if (groupValue.includes('ароматизатор') || groupValue === 'flavor' || groupValue.includes('flavor') || nameLower.includes('ароматизатор')) {
+                    category = 'flavor';
+                }
                 // Ярлыки (отдельная категория)
-                if (groupValue.includes('ярлик') || groupValue === 'ярлик') {
+                else if (groupValue.includes('ярлик') || groupValue === 'ярлик' || groupValue === 'label' || nameLower.includes('ярлик')) {
                     category = 'label';
                 }
                 // Этикетки/стикеры/наклейки (отдельная категория)
-                else if (groupValue.includes('этикетк') || groupValue.includes('стикер') || groupValue.includes('наклейк') || groupValue === 'sticker') {
+                else if (groupValue.includes('этикетк') || groupValue.includes('стикер') || groupValue.includes('наклейк') || groupValue === 'sticker' || groupValue.includes('sticker') || 
+                         nameLower.includes('стикер') || nameLower.includes('этикетк') || nameLower.includes('наклейк')) {
                     category = 'sticker';
                 }
-                // Мягкая упаковка (м/у) - отдельная категория
-                else if (groupValue.includes('м\'яка упаковка') || groupValue.includes('мягкая упаковка') || groupValue.includes('м/у') || groupValue === 'м/у') {
-                    category = 'soft_packaging';
-                }
-                // Упаковка (общая) - отдельная категория
-                else if (groupValue.includes('упаковк') && !groupValue.includes('м\'яка') && !groupValue.includes('мягкая') && !groupValue.includes('м/у')) {
-                    category = 'packaging_consumable';
-                }
-                // Ароматизаторы
-                else if (groupValue.includes('ароматизатор') || groupValue === 'flavor') {
-                    category = 'flavor';
-                }
-                // Гофроящики
-                else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('ящик')) {
+                // Гофроящики (проверяем перед общей упаковкой)
+                else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('ящик') || groupValue.includes('гофроящик') || 
+                         nameLower.includes('гофро') || nameLower.includes('ящик')) {
                     category = 'packaging_crate';
                 }
-                // Пленка, пакет, бумага, нитки (если не мягкая упаковка)
-                else if (groupValue.includes('пленк') || groupValue.includes('пакет') || groupValue.includes('папір') || groupValue.includes('нитки')) {
-                    category = 'packaging_consumable';
+                // Мягкая упаковка (м/у) - отдельная категория
+                else if (groupValue.includes('м\'яка упаковка') || groupValue.includes('мягкая упаковка') || groupValue.includes('м/у') || groupValue === 'м/у' || groupValue.includes('soft_packaging')) {
+                    category = 'soft_packaging';
                 }
-                // Пачки, коробки
-                else if (groupValue.includes('пачка') || groupValue.includes('коробк')) {
+                // Пачки, коробки (проверяем перед общей упаковкой)
+                else if (groupValue.includes('пачка') || groupValue.includes('коробк') || groupValue.includes('packaging_box') || 
+                         nameLower.includes('пачка') || nameLower.includes('коробк')) {
                     category = 'packaging_box';
                 }
+                // Упаковка (общая) - отдельная категория (пленка, пакет, бумага, нитки)
+                else if (groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') || groupValue.includes('папір') || groupValue.includes('нитки') || groupValue.includes('packaging_consumable') ||
+                         nameLower.includes('пленк') || nameLower.includes('пакет') || nameLower.includes('папір') || nameLower.includes('нитки')) {
+                    category = 'packaging_consumable';
+                }
                 // Сырье, цедра, травы, чай
-                else if (groupValue.includes('сировин') || groupValue.includes('цедра') || groupValue.includes('трав') || groupValue.includes('чай')) {
+                else if (groupValue.includes('сировин') || groupValue.includes('цедра') || groupValue.includes('трав') || groupValue.includes('чай') || groupValue.includes('tea_bulk') ||
+                         nameLower.includes('цедра') || nameLower.includes('трав') || nameLower.includes('чай')) {
                     category = 'tea_bulk';
                 }
                 // Если значение существует, но не совпадает, попробуем использовать как есть
@@ -236,6 +246,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const validCategories = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'other'];
                     if (validCategories.includes(groupValue)) {
                         category = groupValue as any;
+                    } else {
+                        // If unknown category, default to 'other'
+                        category = 'other';
                     }
                 }
                 
@@ -267,13 +280,22 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 return {
                     code: code,
-                    name: name || 'Unknown',
+                    name: name,
                     unit: unit,
                     category: category,
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
                 };
-            }).filter(i => i.name !== 'Unknown' && i.name !== '' && i.code !== '');
+            }).filter(i => {
+                // Skip items with empty or invalid names
+                if (!i.name || i.name.trim() === '' || i.name === 'Unknown') return false;
+                // Skip items where name is just "0" or starts with "0" as placeholder
+                const nameTrimmed = i.name.trim();
+                if (nameTrimmed === '0' || nameTrimmed === '0 ') return false;
+                // Skip items without code
+                if (!i.code || i.code.trim() === '') return false;
+                return true;
+            });
 
             if (items.length === 0) {
                 // Show found columns for debugging

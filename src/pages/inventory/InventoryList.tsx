@@ -34,7 +34,7 @@ export default function InventoryList() {
 
     // Filtering
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all' | 'packaging'>('all');
+    const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all'>('all');
 
     const [transferData, setTransferData] = useState({
         sourceWarehouseId: '',
@@ -66,9 +66,8 @@ export default function InventoryList() {
             
             // Filter by category
             if (selectedCategory === 'all') return true;
-            if (selectedCategory === 'packaging') {
-                return ['packaging_consumable', 'packaging_box', 'packaging_crate', 'label'].includes(item.category);
-            }
+            
+            // Exact match for specific categories
             return item.category === selectedCategory;
         });
     }, [selectedWarehouseId, selectedCategory, items, stock]);
@@ -287,11 +286,10 @@ export default function InventoryList() {
                 let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
+                    // Show all groups when "all" is selected
                     groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'other'];
-                } else if (selectedCategory === 'packaging') {
-                    // Legacy support - show all packaging types
-                    groupsToShow = ['packaging_consumable', 'soft_packaging', 'packaging_box'];
                 } else {
+                    // Show only the selected category group
                     groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'];
                 }
 
@@ -308,6 +306,7 @@ export default function InventoryList() {
                         t('materials.group.other');
                     
                     const itemsInGroup = inventoryCombined.filter(item => {
+                        // Exact match for the group category
                         return item.category === group;
                     });
 

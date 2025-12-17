@@ -169,13 +169,13 @@ export const inventoryService = {
         
         // Debug: verify categories were saved correctly by fetching from DB
         const itemIds = dbItems.map(item => item.id);
-        const { data: savedItems, error: fetchError } = await supabase
+        const { data: savedItems, error: categoryFetchError } = await supabase
             .from('items')
             .select('id, sku, name, category')
             .in('id', itemIds);
 
-        if (fetchError) {
-            console.error('Error fetching saved items for category verification:', fetchError);
+        if (categoryFetchError) {
+            console.error('Error fetching saved items for category verification:', categoryFetchError);
         } else if (savedItems && savedItems.length > 0) {
             const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: any) => {
                 acc[item.category] = (acc[item.category] || 0) + 1;

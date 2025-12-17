@@ -82,21 +82,64 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 return;
             }
 
-            // Convert to JSON - handle large files efficiently
-            const data = XLSX.utils.sheet_to_json(ws, {
-                defval: '', // Default value for empty cells
-                raw: false // Get formatted values (calculated formulas)
-            });
+            // First, try to find header row by reading as array of arrays
+            const rawData = XLSX.utils.sheet_to_json(ws, {
+                defval: '',
+                raw: false,
+                header: 1 // Get as array of arrays
+            }) as any[][];
 
-            if (!data || data.length === 0) {
+            if (!rawData || rawData.length === 0) {
                 setError('Файл пуст или не содержит данных. Проверьте, что выбрана правильная вкладка.');
                 setLoading(false);
                 return;
             }
 
-            // Get all column names from first row (case-insensitive, trim spaces)
-            const firstRow = data[0] as any;
-            const columnNames = Object.keys(firstRow).map(k => k.trim());
+            // Find header row - look for row containing key words like "Артикул", "Назва", "Код", etc.
+            let headerRowIndex = 0;
+            const headerKeywords = ['артикул', 'назва', 'название', 'наименование', 'код', 'code', 'sku', 'name'];
+            
+            for (let i = 0; i < Math.min(10, rawData.length); i++) {
+                const row = rawData[i];
+                if (!row) continue;
+                
+                const rowText = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
+                const hasHeader = headerKeywords.some(keyword => rowText.includes(keyword));
+                
+                if (hasHeader) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            // Extract headers from found row
+            const headerRow = rawData[headerRowIndex] || [];
+            const headers = headerRow.map((h: any) => String(h || '').trim());
+            
+            // Skip header row and empty rows, convert to objects
+            const dataRows = rawData.slice(headerRowIndex + 1).filter(row => {
+                // Skip completely empty rows
+                return row && row.some(cell => String(cell || '').trim() !== '');
+            });
+
+            // Convert to array of objects using found headers
+            const data = dataRows.map(row => {
+                const obj: any = {};
+                headers.forEach((header, index) => {
+                    const key = header || `__EMPTY_${index}`;
+                    obj[key] = row[index] || '';
+                });
+                return obj;
+            });
+
+            if (data.length === 0) {
+                setError('Не найдено строк с данными. Проверьте формат файла.');
+                setLoading(false);
+                return;
+            }
+
+            // Get all column names (for error messages)
+            const columnNames = headers.filter(h => h && !h.startsWith('__EMPTY'));
             
             // Helper function to find column by multiple possible names (case-insensitive, trim)
             const findColumn = (row: any, possibleNames: string[]): string => {
@@ -184,7 +227,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             if (items.length === 0) {
                 // Show found columns for debugging
-                const foundColumns = columnNames.join(', ');
+                const foundColumns = columnNames.length > 0 
+                    ? columnNames.join(', ') 
+                    : headers.filter((h: string) => h && !h.startsWith('__EMPTY')).join(', ') || 'не найдены';
+                
                 setError(
                     `Не удалось найти данные. Найдены колонки: ${foundColumns}\n\n` +
                     `Ожидаются колонки с названиями:\n` +
@@ -193,7 +239,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     `- Ед. изм. / Unit / Единица (опционально)\n` +
                     `- Склад / Stock Main / Остаток / Зал. на 1 число, 1С / залишки на 1 число, 1С (опционально)\n` +
                     `- Цех / Stock Prod / зал. на 1 число ТС (опционально)\n\n` +
-                    `Проверьте, что названия колонок совпадают (регистр не важен).`
+                    `Проверьте:\n` +
+                    `1. Что первая строка содержит заголовки колонок\n` +
+                    `2. Что названия колонок совпадают (регистр не важен)\n` +
+                    `3. Что в файле есть данные (не только заголовки)`
                 );
                 setLoading(false);
                 return;

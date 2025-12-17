@@ -198,6 +198,33 @@ export default function InventoryList() {
         setTransferData({ sourceWarehouseId: '', targetWarehouseId: '', itemId: '', quantity: 0 });
     };
 
+    // Function to shorten material names in the list
+    const shortenMaterialName = (name: string): string => {
+        let shortened = name;
+        // Remove common packaging prefixes
+        const prefixesToRemove = [
+            'Упаковка для чая ',
+            'Упаковка для чаю ',
+            'Картонна упаковка на чай ',
+            'Упаковка на чай ',
+            'Картонная упаковка на чай ',
+            'Упаковка для чая',
+            'Упаковка для чаю',
+            'Картонна упаковка на чай',
+            'Упаковка на чай',
+            'Картонная упаковка на чай'
+        ];
+        
+        for (const prefix of prefixesToRemove) {
+            if (shortened.startsWith(prefix)) {
+                shortened = shortened.substring(prefix.length);
+                break;
+            }
+        }
+        
+        return shortened.trim();
+    };
+
     const handleItemClick = (item: typeof inventoryCombined[0]) => {
         setSelectedItem(item);
         setIsDetailsModalOpen(true);
@@ -416,25 +443,25 @@ export default function InventoryList() {
                                                 >
                                                     <td 
                                                         className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
+                                                        onDoubleClick={() => handleItemClick(item)}
                                                     >
                                                         {item.sku}
                                                     </td>
                                                     <td 
                                                         className="px-6 py-4 whitespace-nowrap font-medium text-slate-200 group-hover:text-emerald-400 transition-colors cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
+                                                        onDoubleClick={() => handleItemClick(item)}
                                                     >
-                                                        {item.name}
+                                                        {shortenMaterialName(item.name)}
                                                     </td>
                                                     <td 
                                                         className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
+                                                        onDoubleClick={() => handleItemClick(item)}
                                                     >
                                                         {renderLocationBadges(item.stockLevels, item)}
                                                     </td>
                                                     <td 
                                                         className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
+                                                        onDoubleClick={() => handleItemClick(item)}
                                                     >
                                                         {item.totalStock} {item.unit === 'pcs' ? 'шт' : item.unit}
                                                     </td>

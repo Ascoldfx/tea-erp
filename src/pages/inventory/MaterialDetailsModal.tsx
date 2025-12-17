@@ -56,29 +56,29 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
     if (!item) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Материал: ${item.name}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={item.name}>
             <div className="space-y-6">
                 {/* Артикул для копирования */}
-                <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
                     <div className="flex items-center justify-between">
                         <div>
                             <span className="text-slate-400 text-xs block mb-1">{t('materials.article') || 'Артикул'}</span>
-                            <span className="text-lg font-mono font-semibold text-slate-200">{item.sku}</span>
+                            <span className="text-sm font-mono font-semibold text-slate-200">{item.sku}</span>
                         </div>
                         <button
                             onClick={() => copyToClipboard(item.sku)}
-                            className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-slate-100"
-                            title={t('materials.copyArticle') || 'Скопировать артикул'}
+                            className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-slate-100 text-xs"
+                            title={t('materials.copy') || 'Копировать'}
                         >
                             {copied ? (
                                 <>
-                                    <Check className="w-4 h-4 text-emerald-400" />
-                                    <span className="text-xs text-emerald-400">{t('materials.copied') || 'Скопировано'}</span>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span className="text-emerald-400">{t('materials.copied') || 'Скопировано'}</span>
                                 </>
                             ) : (
                                 <>
-                                    <Copy className="w-4 h-4" />
-                                    <span className="text-xs">{t('materials.copyArticle') || 'Копировать'}</span>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>{t('materials.copy') || 'Копировать'}</span>
                                 </>
                             )}
                         </button>

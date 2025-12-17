@@ -19,6 +19,10 @@ interface ParsedItem {
     category: string;
     stockMain: number;
     stockProd: number;
+    plannedConsumption?: Array<{
+        date: string; // YYYY-MM-DD
+        quantity: number;
+    }>;
 }
 
 interface ParsedSupplier {
@@ -168,6 +172,18 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 return '';
             };
 
+            // Find date columns (e.g., "01.12.2023", "01.12.2025")
+            const datePattern = /\d{2}\.\d{2}\.\d{4}/;
+            const dateColumnIndices: number[] = [];
+            headers.forEach((header, index) => {
+                if (datePattern.test(String(header || ''))) {
+                    dateColumnIndices.push(index);
+                }
+            });
+
+            // Track last category for empty group cells
+            let lastCategory = 'other';
+
             // Flexible column mapping (supports both English and Russian headers, case-insensitive)
             const items: ParsedItem[] = data.map((row: any) => {
                 // Try multiple column name variations (case-insensitive)
@@ -197,12 +213,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]) || 'шт';
                 
                 // Get category from "Група" column, map common values
+                // If empty, use last category (inherit from previous row)
                 const groupValueRaw = findColumn(row, [
                     'Category', 'Категория', 'Группа', 'Категорія', 'Група',
                     'Категория товара', 'КатегорияТовара', 'Группа товара',
                     'Категорія товара', 'КатегоріяТовара' // Ukrainian
                 ]);
-                const groupValue = groupValueRaw ? String(groupValueRaw).toLowerCase().trim() : '';
+                let groupValue = groupValueRaw ? String(groupValueRaw).toLowerCase().trim() : '';
+                
+                // If group is empty, use last category
+                if (!groupValue || groupValue === '') {
+                    groupValue = lastCategory;
+                } else {
+                    // Update last category for next rows
+                    lastCategory = groupValue;
+                }
                 
                 // Also check name for category hints if group value is empty
                 const nameLower = name ? String(name).toLowerCase() : '';
@@ -246,10 +271,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                          groupValue.startsWith('конверт') || groupValue.includes(' конверт') || nameLower.includes('конверт')) {
                     category = 'envelope';
                 }
-                // 5. Картонная упаковка (коробки) - отдельная категория (проверяем ПЕРЕД общей упаковкой)
-                else if (groupValue.includes('картон') || groupValue.includes('картонн') || 
-                         groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
-                         (groupValue.includes('коробк') && !groupValue.includes('гофро'))) {
+                // 5. Картонная упаковка - отдельная категория (проверяем ПЕРЕД общей упаковкой)
+                else if (groupValue === 'картон' || groupValue.includes('картон') || groupValue.includes('картонн') ||
+                         groupValue === 'packaging_cardboard') {
+                    category = 'packaging_cardboard';
+                }
+                // 5a. Коробки и пачки (если не картон)
+                else if (groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
+                         (groupValue.includes('коробк') && !groupValue.includes('гофро') && !groupValue.includes('картон'))) {
                     category = 'packaging_box';
                 }
                 // 6. Гофроящики - отдельная категория (проверяем ПЕРЕД общей упаковкой)
@@ -307,39 +336,102 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
                 
-                // Try multiple stock column variations (main warehouse)
-                const stockMainStr = findColumn(row, [
-                    'Stock Main', 'Склад', 'Остаток', 'Остаток на складе', 'Склад Главный',
-                    'ОстатокСклад', 'Остаток_склад', 'СкладГлавный', 'Склад_главный',
-                    'Остаток на главном складе', 'ОстатокНаГлавномСкладе', 'Stock', 'Остатки',
-                    // Ukrainian variants from user's file
-                    'Зал. на 1 число, 1С', 'Зал на 1 число 1С', 'Зал. на 1 число 1С',
-                    'зал. на 1 число, 1С', 'зал на 1 число 1С', 'зал. на 1 число 1С',
-                    'Залишки на 1 число, 1С', 'залишки на 1 число, 1С', 'залишки на 1 число 1С',
-                    'Залишки на 1 число 1С', 'Зал. на 1 число', 'зал. на 1 число',
-                    'Остаток 1С', 'остаток 1С', 'Залишок 1С', 'залишок 1С'
-                ]);
-                const stockMain = Number(stockMainStr) || 0;
+                // Find stock columns - look for columns with "Залишки на 1 число, 1С" or similar patterns
+                // Try to find the first actual stock value (not planned consumption)
+                let stockMain = 0;
+                let stockProd = 0;
                 
-                // Try multiple stock column variations (production/workshop)
-                const stockProdStr = findColumn(row, [
-                    'Stock Prod', 'Цех', 'Производство', 'Склад Цех', 'ЦехСклад',
-                    'СкладЦех', 'Склад_цех', 'Остаток в цехе', 'ОстатокВЦехе',
-                    'Production', 'Производство', 'Производственный склад',
-                    // Ukrainian variants from user's file
-                    'зал. на 1 число ТС', 'Зал. на 1 число ТС', 'зал на 1 число ТС',
-                    'Зал на 1 число ТС', 'зал. на 1 число ТС', 'Остаток ТС', 'остаток ТС',
-                    'Залишок ТС', 'залишок ТС', 'Цех', 'цех'
-                ]);
-                const stockProd = Number(stockProdStr) || 0;
+                // Look for stock columns - prioritize columns that contain "залишки" or "остаток" but not "план"
+                for (let i = 0; i < headers.length; i++) {
+                    const header = String(headers[i] || '').toLowerCase().trim();
+                    const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                    const numValue = Number(value) || 0;
+                    
+                    // Skip if this is a planned consumption column
+                    if (header.includes('план') || header.includes('витрат') || header.includes('расход')) {
+                        continue;
+                    }
+                    
+                    // Check if this is a stock column for main warehouse (1С)
+                    if ((header.includes('залишки') || header.includes('зал') || header.includes('остаток')) &&
+                        (header.includes('1с') || header.includes('1 с') || header.includes('склад'))) {
+                        if (stockMain === 0 && numValue > 0) {
+                            stockMain = numValue;
+                        }
+                    }
+                    
+                    // Check if this is a stock column for production (ТС)
+                    if ((header.includes('залишки') || header.includes('зал') || header.includes('остаток')) &&
+                        (header.includes('тс') || header.includes('т с') || header.includes('цех'))) {
+                        if (stockProd === 0 && numValue > 0) {
+                            stockProd = numValue;
+                        }
+                    }
+                }
+                
+                // Fallback to old method if not found
+                if (stockMain === 0) {
+                    const stockMainStr = findColumn(row, [
+                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе', 'Склад Главный',
+                        'ОстатокСклад', 'Остаток_склад', 'СкладГлавный', 'Склад_главный',
+                        'Остаток на главном складе', 'ОстатокНаГлавномСкладе', 'Stock', 'Остатки',
+                        'Зал. на 1 число, 1С', 'Зал на 1 число 1С', 'Залишки на 1 число, 1С'
+                    ]);
+                    stockMain = Number(stockMainStr) || 0;
+                }
+                
+                if (stockProd === 0) {
+                    const stockProdStr = findColumn(row, [
+                        'Stock Prod', 'Цех', 'Производство', 'Склад Цех', 'ЦехСклад',
+                        'СкладЦех', 'Склад_цех', 'Остаток в цехе', 'ОстатокВЦехе',
+                        'Production', 'зал. на 1 число ТС', 'Зал. на 1 число ТС', 'Остаток ТС'
+                    ]);
+                    stockProd = Number(stockProdStr) || 0;
+                }
 
-                const result = {
+                // Find planned consumption columns - look for columns with "план витрат" or "план расхода"
+                const plannedConsumption: Array<{ date: string; quantity: number }> = [];
+                
+                // Look for date columns and their corresponding planned consumption columns
+                dateColumnIndices.forEach(dateColIndex => {
+                    const dateHeader = String(headers[dateColIndex] || '').trim();
+                    // Extract date from header (format: DD.MM.YYYY)
+                    const dateMatch = dateHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                    if (dateMatch) {
+                        const [, day, month, year] = dateMatch;
+                        const dateStr = `${year}-${month}-${day}`;
+                        
+                        // Look for planned consumption column near this date column
+                        // Usually it's in the same date group (next columns after date)
+                        for (let offset = 1; offset <= 5; offset++) {
+                            const colIndex = dateColIndex + offset;
+                            if (colIndex >= headers.length) break;
+                            
+                            const colHeader = String(headers[colIndex] || '').toLowerCase().trim();
+                            const colValue = row[headers[colIndex]] || row[`__EMPTY_${colIndex}`];
+                            const quantity = Number(colValue) || 0;
+                            
+                            // Check if this is a planned consumption column
+                            if ((colHeader.includes('план') && colHeader.includes('витрат')) ||
+                                (colHeader.includes('план') && colHeader.includes('расход')) ||
+                                colHeader.includes('план витрат')) {
+                                if (quantity > 0) {
+                                    plannedConsumption.push({ date: dateStr, quantity });
+                                    break; // Found planned consumption for this date
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const result: ParsedItem = {
                     code: code,
                     name: name,
                     unit: unit,
                     category: category,
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
+                    plannedConsumption: plannedConsumption.length > 0 ? plannedConsumption : undefined,
                 };
                 
                 // Debug logging for flavor and sticker categories

@@ -259,6 +259,50 @@ export const inventoryService = {
             console.log('Остатки успешно обновлены');
         }
 
+        // 6. Import planned consumption
+        const plannedConsumptionInserts: Array<{
+            item_id: string;
+            planned_date: string;
+            quantity: number;
+            notes?: string;
+        }> = [];
+
+        for (const item of items) {
+            const code = item.code?.trim();
+            if (!code) continue;
+
+            const itemId = skuToIdMap.get(code) || code;
+            
+            if (item.plannedConsumption && item.plannedConsumption.length > 0) {
+                item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
+                    plannedConsumptionInserts.push({
+                        item_id: itemId,
+                        planned_date: pc.date,
+                        quantity: pc.quantity,
+                        notes: `Импортировано из Excel`
+                    });
+                });
+            }
+        }
+
+        if (plannedConsumptionInserts.length > 0) {
+            console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей...`);
+            const { error: plannedError } = await supabase
+                .from('planned_consumption')
+                .upsert(plannedConsumptionInserts, { 
+                    onConflict: 'item_id,planned_date',
+                    ignoreDuplicates: false
+                });
+
+            if (plannedError) {
+                console.error('Error upserting planned consumption:', plannedError);
+                // Don't throw - planned consumption is optional
+                console.warn('Плановые расходы не были импортированы, но материалы и остатки сохранены');
+            } else {
+                console.log(`Плановые расходы успешно импортированы (${plannedConsumptionInserts.length} записей)`);
+            }
+        }
+
         console.log('Импорт завершен успешно!');
     },
 

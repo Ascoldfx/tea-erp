@@ -94,9 +94,9 @@ export const seedService = {
         console.log('Seeding Movements...');
         try {
             await supabase.from('stock_movements').upsert([
-                { item_id: 'tea-001', quantity: 100, type: 'in', target_warehouse_id: 'wh-main', comment: 'Initial Stock' },
-                { item_id: 'tea-002', quantity: 50, type: 'in', target_warehouse_id: 'wh-main', comment: 'Initial Stock' },
-                { item_id: 'tea-001', quantity: 10, type: 'out', source_warehouse_id: 'wh-main', comment: 'Production Use' }
+                { item_id: 'tea-001', quantity: 100, type: 'in', target_warehouse_id: 'wh-kotsyubinske', comment: 'Initial Stock' },
+                { item_id: 'tea-002', quantity: 50, type: 'in', target_warehouse_id: 'wh-kotsyubinske', comment: 'Initial Stock' },
+                { item_id: 'tea-001', quantity: 10, type: 'out', source_warehouse_id: 'wh-kotsyubinske', comment: 'Production Use' }
             ]);
         } catch (e) {
             console.warn('Skipping Stock Movements - table might be missing', e);

@@ -206,9 +206,10 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                         value={selectedWarehouse}
                                         onChange={(e) => setSelectedWarehouse(e.target.value)}
                                         options={[
-                                            { value: 'wh-main', label: 'Главный склад' },
-                                            { value: 'wh-prod-1', label: 'Склад Подрядчика' },
-                                            { value: 'wh-contractor', label: 'Цех (ИМА С23 #1)' }
+                                            { value: 'wh-kotsyubinske', label: 'Коцюбинське' },
+                                            { value: 'wh-ceh', label: 'Цех' },
+                                            { value: 'wh-ts', label: 'ТС' },
+                                            { value: 'wh-fito', label: 'Фито' }
                                         ]}
                                     />
                                 </div>

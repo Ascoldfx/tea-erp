@@ -173,11 +173,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Артикул товара', 'АртикулТовара'
                 ]);
                 
-                const name = findColumn(row, [
+                const nameRaw = findColumn(row, [
                     'Name', 'Наименование', 'Название', 'Товар', 'Назва', 'Наименование товара',
                     'НаименованиеТовара', 'Название товара', 'НазваниеТовара', 'Товар', 'Продукт',
                     'Назва', 'Назва товара', 'НазваТовара' // Ukrainian
-                ])?.trim();
+                ]);
+                const name = nameRaw ? String(nameRaw).trim() : '';
                 
                 // Skip items where name is just "0" or empty
                 if (!name || name === '' || name === '0' || name.trim() === '0') {
@@ -191,11 +192,15 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]) || 'шт';
                 
                 // Get category from "Група" column, map common values
-                const groupValue = findColumn(row, [
+                const groupValueRaw = findColumn(row, [
                     'Category', 'Категория', 'Группа', 'Категорія', 'Група',
                     'Категория товара', 'КатегорияТовара', 'Группа товара',
                     'Категорія товара', 'КатегоріяТовара' // Ukrainian
-                ]).toLowerCase().trim();
+                ]);
+                const groupValue = groupValueRaw ? String(groupValueRaw).toLowerCase().trim() : '';
+                
+                // Also check name for category hints if group value is empty
+                const nameLower = name ? String(name).toLowerCase() : '';
                 
                 // Map group values to categories
                 // Priority order matters - check more specific first
@@ -286,7 +291,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
                 };
-            }).filter(i => {
+            }).filter((i): i is ParsedItem => {
+                // Skip null items (from early return)
+                if (!i) return false;
                 // Skip items with empty or invalid names
                 if (!i.name || i.name.trim() === '' || i.name === 'Unknown') return false;
                 // Skip items where name is just "0" or starts with "0" as placeholder

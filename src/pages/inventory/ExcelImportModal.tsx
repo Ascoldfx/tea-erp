@@ -467,6 +467,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 
                 // Look for stock columns - iterate through headers directly
                 // This is more reliable than findColumn for merged headers
+                // Остатки на 1 число месяца - месяц указан строго над столбцом
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
@@ -481,6 +482,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Skip if not a stock column
                     if (!headerLower.includes('залишки') && !headerLower.includes('зал') && !headerLower.includes('остаток')) {
                         continue;
+                    }
+                    
+                    // Check if there's a month above this stock column (from columnToMonthMap)
+                    // This helps identify which month the stock is for
+                    const monthForStock = columnToMonthMap.get(i);
+                    if (monthForStock) {
+                        console.log(`[Excel Import] Stock column ${i} (${header}) has month ${monthForStock} above it`);
                     }
                     
                     // Check for 1С - это ОБЩИЙ остаток для картонной упаковки

@@ -244,19 +244,29 @@ export const inventoryService = {
         );
 
         // Prepare suppliers for upsert
-        const dbSuppliers = uniqueSuppliers.map(supplier => {
+        // Use Maps to ensure uniqueness of IDs and codes within the batch
+        const usedIds = new Map<string, number>();
+        const usedCodes = new Map<string, number>();
+        
+        const dbSuppliers = uniqueSuppliers.map((supplier, index) => {
             const name = supplier.name.trim();
             const nameLower = name.toLowerCase();
             
-            // Generate ID from name
-            let id = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
-            // Ensure uniqueness
-            if (existingNames.has(nameLower)) {
-                id = `${id}-${Date.now().toString().slice(-6)}`;
+            // Generate base ID from name
+            let baseId = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
+            let id = baseId;
+            
+            // Ensure ID uniqueness within the batch
+            if (usedIds.has(id)) {
+                const count = usedIds.get(id)! + 1;
+                usedIds.set(id, count);
+                id = `${baseId}-${count}`;
+            } else {
+                usedIds.set(id, 1);
             }
 
             // Generate code from name
-            let code = name
+            let baseCode = name
                 .substring(0, 20)
                 .toUpperCase()
                 .replace(/\s+/g, '_')
@@ -272,8 +282,19 @@ export const inventoryService = {
                     return map[char] || '';
                 });
 
-            if (!code || code.length < 3) {
-                code = `SUP_${id.slice(-8)}`;
+            if (!baseCode || baseCode.length < 3) {
+                baseCode = `SUP_${id.slice(-8)}`;
+            }
+            
+            let code = baseCode;
+            
+            // Ensure code uniqueness within the batch
+            if (usedCodes.has(code)) {
+                const count = usedCodes.get(code)! + 1;
+                usedCodes.set(code, count);
+                code = `${baseCode}_${count}`;
+            } else {
+                usedCodes.set(code, 1);
             }
 
             return {
@@ -286,10 +307,24 @@ export const inventoryService = {
             };
         });
 
+        // Remove duplicates by ID (final safety check)
+        const finalSuppliersMap = new Map<string, typeof dbSuppliers[0]>();
+        dbSuppliers.forEach(supplier => {
+            if (!finalSuppliersMap.has(supplier.id)) {
+                finalSuppliersMap.set(supplier.id, supplier);
+            } else {
+                console.warn(`Duplicate ID detected and removed: ${supplier.id} (${supplier.name})`);
+            }
+        });
+        
+        const finalSuppliers = Array.from(finalSuppliersMap.values());
+        
+        console.log(`Подготовлено ${finalSuppliers.length} уникальных поставщиков для импорта (из ${dbSuppliers.length} после обработки)`);
+
         // Upsert suppliers
         const { error: suppliersError, data: insertedSuppliers } = await supabase
             .from('contractors')
-            .upsert(dbSuppliers, { onConflict: 'id' })
+            .upsert(finalSuppliers, { onConflict: 'id' })
             .select();
 
         if (suppliersError) {

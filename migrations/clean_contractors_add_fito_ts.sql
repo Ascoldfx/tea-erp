@@ -3,8 +3,19 @@
 
 -- Step 1: Delete all existing contractors
 -- First, delete related data (production orders, material transfers)
-DELETE FROM material_transfers WHERE contractor_id IN (SELECT id FROM contractors);
-DELETE FROM production_orders WHERE contractor_id IN (SELECT id FROM contractors);
+-- Note: These tables might not exist yet, so we use DO block to handle gracefully
+DO $$
+BEGIN
+    -- Delete material transfers if table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'material_transfers') THEN
+        DELETE FROM material_transfers WHERE contractor_id IN (SELECT id FROM contractors);
+    END IF;
+    
+    -- Delete production orders if table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'production_orders') THEN
+        DELETE FROM production_orders WHERE contractor_id IN (SELECT id FROM contractors);
+    END IF;
+END $$;
 
 -- Delete all contractors
 DELETE FROM contractors;

@@ -189,7 +189,7 @@ export default function ProductionList() {
                                         onClick={() => setViewDate(new Date())}
                                         className="px-3 py-1 text-sm bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
                                     >
-                                        {t('production.today') || 'Сегодня'}
+                                        {t('production.currentMonth') || 'Актуальный месяц'}
                                     </button>
                                     <button
                                         onClick={() => navigateMonth('next')}

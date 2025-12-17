@@ -7,6 +7,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 
+// Production Planning Component
+// Handles material consumption planning, stock levels, and required orders
+
 export default function ProductionPlanning() {
     const { t, language } = useLanguage();
     const { items, stock, plannedConsumption, loading, refresh } = useInventory();

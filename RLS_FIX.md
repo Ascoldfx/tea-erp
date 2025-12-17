@@ -86,3 +86,4 @@ SELECT is_admin('ваш_user_id');
 SELECT * FROM pg_policies WHERE tablename = 'profiles';
 ```
 
+

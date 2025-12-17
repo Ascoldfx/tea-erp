@@ -5,6 +5,7 @@ import { Upload, FileSpreadsheet, Check, AlertTriangle, Loader2 } from 'lucide-r
 import * as XLSX from 'xlsx';
 import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ExcelImportModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ interface ParsedItem {
 }
 
 export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
+    const { t } = useLanguage();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'success'>('upload');
     const [parsedData, setParsedData] = useState<ParsedItem[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -336,18 +338,18 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel">
+        <Modal isOpen={isOpen} onClose={handleClose} title={t('excel.title')}>
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">
                         <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 rounded-xl p-10 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
                             <FileSpreadsheet className="w-12 h-12 text-emerald-500 mb-4" />
-                            <h3 className="text-lg font-medium text-slate-200 mb-2">Загрузите файл Excel</h3>
+                            <h3 className="text-lg font-medium text-slate-200 mb-2">{t('excel.uploadFile')}</h3>
                             <p className="text-sm text-slate-400 text-center mb-6 max-w-md">
-                                Файл может быть большим и содержать несколько вкладок. Поддерживаются формулы - будут использованы вычисленные значения.
+                                {t('excel.uploadDescription')}
                             </p>
                             <p className="text-xs text-slate-500 text-center mb-4 max-w-md">
-                                Ожидаемые колонки: Код/Code, Наименование/Name, Категория/Category, Ед. изм./Unit, Склад/Stock
+                                {t('excel.expectedColumns')}
                             </p>
                             <input
                                 type="file"
@@ -364,12 +366,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Обработка...
+                                        {t('excel.processing')}
                                     </>
                                 ) : (
                                     <>
                                         <Upload className="w-4 h-4 mr-2" />
-                                        Выбрать файл
+                                        {t('excel.selectFile')}
                                     </>
                                 )}
                             </label>
@@ -379,7 +381,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         {sheetNames.length > 1 && !selectedSheet && (
                             <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                                 <h4 className="text-sm font-medium text-slate-300 mb-3">
-                                    Выберите вкладку для импорта ({sheetNames.length} найдено):
+                                    {t('excel.selectSheet')} ({sheetNames.length} {t('excel.sheetsFound')}):
                                 </h4>
                                 <div className="space-y-2">
                                     {sheetNames.map((sheet) => (
@@ -437,18 +439,18 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         )}
                         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                             <h4 className="text-sm font-medium text-slate-300 mb-3 flex justify-between items-center">
-                                <span>Найдено позиций: {parsedData.length}</span>
-                                <span className="text-xs text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded">Предпросмотр (первые 5)</span>
+                                <span>{t('excel.itemsFound')} {parsedData.length}</span>
+                                <span className="text-xs text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded">{t('excel.preview')}</span>
                             </h4>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
                                         <tr>
-                                            <th className="px-3 py-2">Код</th>
-                                            <th className="px-3 py-2">Наименование</th>
-                                            <th className="px-3 py-2">Категория</th>
-                                            <th className="px-3 py-2 text-right">Склад</th>
-                                            <th className="px-3 py-2 text-right">Цех</th>
+                                            <th className="px-3 py-2">{t('excel.previewCode')}</th>
+                                            <th className="px-3 py-2">{t('excel.previewName')}</th>
+                                            <th className="px-3 py-2">{t('excel.previewCategory')}</th>
+                                            <th className="px-3 py-2 text-right">{t('excel.previewWarehouse')}</th>
+                                            <th className="px-3 py-2 text-right">{t('excel.previewProduction')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700">
@@ -466,10 +468,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">
-                            <Button variant="ghost" onClick={() => setStep('upload')}>Назад</Button>
+                            <Button variant="ghost" onClick={() => setStep('upload')}>{t('excel.back')}</Button>
                             <Button onClick={handleImport} className="bg-emerald-600 hover:bg-emerald-700">
                                 <Upload className="w-4 h-4 mr-2" />
-                                Импортировать в базу
+                                {t('excel.import')}
                             </Button>
                         </div>
                     </div>
@@ -478,9 +480,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 {step === 'importing' && (
                     <div className="flex flex-col items-center justify-center py-12">
                         <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
-                        <h3 className="text-lg font-medium text-slate-200">Импорт данных...</h3>
-                        <p className="text-slate-400 mt-2">Сохраняем {parsedData.length} позиций и обновляем остатки...</p>
-                        <p className="text-xs text-slate-500 mt-4">Это может занять несколько секунд</p>
+                        <h3 className="text-lg font-medium text-slate-200">{t('excel.importing')}</h3>
+                        <p className="text-slate-400 mt-2">{t('excel.importingDesc')}</p>
+                        <p className="text-xs text-slate-500 mt-4">{t('excel.importingTime')}</p>
                     </div>
                 )}
 
@@ -489,12 +491,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         <div className="w-16 h-16 bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
                             <Check className="w-8 h-8 text-emerald-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Готово!</h3>
+                        <h3 className="text-xl font-bold text-white mb-2">{t('excel.success')}</h3>
                         <p className="text-slate-400 text-center mb-6">
-                            Успешно импортировано {parsedData.length} позиций.
+                            {t('excel.successDesc')} {parsedData.length} {t('excel.successItems')}
                         </p>
                         <Button onClick={handleClose} className="bg-slate-700 hover:bg-slate-600 min-w-[120px]">
-                            Закрыть
+                            {t('excel.close')}
                         </Button>
                     </div>
                 )}

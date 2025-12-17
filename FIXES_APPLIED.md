@@ -63,3 +63,4 @@ DO UPDATE SET role = 'admin', full_name = COALESCE(profiles.full_name, 'Анто
 - Все операции с пользователями теперь требуют активной сессии
 - Admin API больше не используется напрямую на фронтенде (безопасно)
 
+

@@ -108,7 +108,7 @@ export default function SuppliersPage() {
     };
 
     if (loading) {
-        return <div className="p-8 text-slate-400">Загрузка поставщиков...</div>;
+        return <div className="p-8 text-slate-400">{t('suppliers.loading')}</div>;
     }
 
     return (
@@ -173,7 +173,7 @@ export default function SuppliersPage() {
                                                 size="sm"
                                                 className="text-blue-400 hover:text-blue-300"
                                                 onClick={() => handleEdit(contractor)}
-                                                title="Редактировать"
+                                                title={t('suppliers.edit')}
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </Button>
@@ -182,7 +182,7 @@ export default function SuppliersPage() {
                                                 size="sm"
                                                 className="text-red-400 hover:text-red-300"
                                                 onClick={() => setSupplierToDelete(contractor)}
-                                                title="Удалить"
+                                                title={t('common.delete')}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
@@ -259,7 +259,7 @@ export default function SuppliersPage() {
                             onClick={() => setSupplierToDelete(null)}
                             disabled={isDeleting}
                         >
-                            Отмена
+                            {t('common.cancel')}
                         </Button>
                         <Button 
                             type="button"
@@ -270,12 +270,12 @@ export default function SuppliersPage() {
                             {isDeleting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Удаление...
+                                    {t('common.loading')}
                                 </>
                             ) : (
                                 <>
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Удалить
+                                    {t('common.delete')}
                                 </>
                             )}
                         </Button>

@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CreateSupplierModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface CreateSupplierModalProps {
 }
 
 export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: CreateSupplierModalProps) {
+    const { t } = useLanguage();
     const [name, setName] = useState('');
     const [contactPerson, setContactPerson] = useState('');
     const [phone, setPhone] = useState('');
@@ -124,10 +126,10 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Добавить поставщика">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('suppliers.createTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                    label="Название компании *"
+                    label={t('suppliers.companyName') + ' *'}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -135,14 +137,14 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
                 />
 
                 <Input
-                    label="Контактное лицо"
+                    label={t('suppliers.contactPerson')}
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="Иван Иванов"
                 />
 
                 <Input
-                    label="Телефон"
+                    label={t('suppliers.phone')}
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -150,7 +152,7 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
                 />
 
                 <Input
-                    label="Email"
+                    label={t('suppliers.email')}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -159,11 +161,11 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
 
                 <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-                        Отмена
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Создать
+                        {t('common.create')}
                     </Button>
                 </div>
             </form>

@@ -66,3 +66,4 @@ git push origin main
 - Нет ошибок "Invalid API key"
 - При входе появляется сессия в Local Storage
 
+

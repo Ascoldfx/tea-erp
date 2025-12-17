@@ -5,8 +5,10 @@ import { Users, Plus, Shield, UserCheck, UserX } from 'lucide-react';
 import { usersService, type UserProfile } from '../../services/usersService';
 import CreateUserModal from './CreateUserModal';
 import EditUserModal from './EditUserModal';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function UsersPage() {
+    const { t } = useLanguage();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -79,12 +81,12 @@ export default function UsersPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-100">Пользователи</h1>
-                    <p className="text-slate-400 mt-1">Управление пользователями и ролями</p>
+                    <h1 className="text-3xl font-bold text-slate-100">{t('users.title')}</h1>
+                    <p className="text-slate-400 mt-1">{t('users.subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="w-4 h-4 mr-2" />
-                    Создать пользователя
+                    {t('users.create')}
                 </Button>
             </div>
 
@@ -92,7 +94,7 @@ export default function UsersPage() {
             <div className="flex gap-4">
                 <div className="flex-1">
                     <Input
-                        placeholder="Поиск по email, имени или роли..."
+                        placeholder={t('users.search')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -102,11 +104,11 @@ export default function UsersPage() {
             {/* Users List */}
             <div className="grid gap-4">
                 {loading ? (
-                    <div className="text-center py-12 text-slate-400">Загрузка...</div>
+                    <div className="text-center py-12 text-slate-400">{t('users.loading')}</div>
                 ) : filteredUsers.length === 0 ? (
                     <div className="text-center py-12 text-slate-500">
                         <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>Нет пользователей</p>
+                        <p>{t('users.notFound')}</p>
                     </div>
                 ) : (
                     filteredUsers.map(user => (
@@ -160,7 +162,7 @@ export default function UsersPage() {
                                         onClick={() => handleEditUser(user)}
                                         className="border-slate-600 text-slate-300 hover:text-white"
                                     >
-                                        Редактировать
+                                        {t('users.edit')}
                                     </Button>
                                     <Button
                                         variant="ghost"

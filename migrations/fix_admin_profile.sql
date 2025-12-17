@@ -30,3 +30,4 @@ SELECT id, email, full_name, role, is_active
 FROM profiles 
 WHERE email = 'ascoldfx@gmail.com';
 
+

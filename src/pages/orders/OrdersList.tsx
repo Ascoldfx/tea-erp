@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { ShoppingCart } from 'lucide-react';
 import { clsx } from 'clsx';
 import OrderDetailsModal from './OrderDetailsModal';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface OrderItem {
     id: string;
@@ -116,20 +117,22 @@ export default function OrdersList() {
         return map[status] || status;
     };
 
-    if (loading) return <div className="p-8 text-slate-400">Загрузка заказов...</div>;
+    const { t } = useLanguage();
+
+    if (loading) return <div className="p-8 text-slate-400">{t('orders.loading')}</div>;
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-100">Заказы поставщикам</h1>
-                    <p className="text-slate-400">История и статус текущих заказов</p>
+                    <h1 className="text-2xl font-bold text-slate-100">{t('orders.suppliers')}</h1>
+                    <p className="text-slate-400">{t('orders.subtitle')}</p>
                 </div>
             </div>
 
             <div className="grid gap-4">
                 {loading ? (
-                    <div className="p-8 text-slate-400 text-center">Загрузка заказов...</div>
+                    <div className="p-8 text-slate-400 text-center">{t('orders.loading')}</div>
                 ) : orders.length === 0 ? (
                     <div className="bg-slate-900 border-slate-800 rounded-lg">
                         <div className="flex flex-col items-center justify-center h-48 text-slate-500">

@@ -20,3 +20,4 @@ DELETE FROM items;
 -- Verify deletion
 SELECT COUNT(*) as remaining_items FROM items;
 
+

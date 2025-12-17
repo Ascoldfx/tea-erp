@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Contractor {
     id: string;
@@ -22,6 +23,7 @@ interface EditSupplierModalProps {
 }
 
 export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier }: EditSupplierModalProps) {
+    const { t } = useLanguage();
     const [name, setName] = useState('');
     const [contactPerson, setContactPerson] = useState('');
     const [phone, setPhone] = useState('');
@@ -101,10 +103,10 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
     if (!supplier) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Редактировать поставщика">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('suppliers.editTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                    label="Название компании *"
+                    label={t('suppliers.companyName') + ' *'}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -112,14 +114,14 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
                 />
 
                 <Input
-                    label="Контактное лицо"
+                    label={t('suppliers.contactPerson')}
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="Иван Иванов"
                 />
 
                 <Input
-                    label="Телефон"
+                    label={t('suppliers.phone')}
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -127,7 +129,7 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
                 />
 
                 <Input
-                    label="Email"
+                    label={t('suppliers.email')}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -136,11 +138,11 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
 
                 <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-                        Отмена
+                        {t('common.cancel')}
                     </Button>
                     <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700">
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Сохранить изменения
+                        {t('common.saveChanges')}
                     </Button>
                 </div>
             </form>

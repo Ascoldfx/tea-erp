@@ -138,3 +138,4 @@ WHERE u.email = 'ascoldfx@gmail.com';
 2. Сразу после создания выполните SQL для назначения роли
 3. Попробуйте войти с новыми credentials
 
+

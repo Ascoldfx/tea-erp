@@ -75,3 +75,4 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 4. Ошибка `ERR_NAME_NOT_RESOLVED` должна исчезнуть
 5. Вход должен работать
 
+

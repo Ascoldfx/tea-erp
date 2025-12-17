@@ -87,14 +87,14 @@ export default function SettingsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <UserPlus className="text-blue-500" />
-                                Пригласить пользователя
+                                {t('settings.inviteUser')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleInvite} className="flex gap-4 items-end">
                                 <div className="flex-1">
                                     <Input
-                                        label="Email Google аккаунта"
+                                        label={t('users.emailLabel')}
                                         placeholder="user@gmail.com"
                                         value={inviteEmail}
                                         onChange={(e) => setInviteEmail(e.target.value)}
@@ -103,20 +103,20 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="w-64">
                                     <Select
-                                        label="Роль"
+                                        label={t('users.role')}
                                         options={[
-                                            { value: 'admin', label: 'Администратор (Полный доступ)' },
-                                            { value: 'warehouse', label: 'Склад (Только приемка)' },
-                                            { value: 'procurement', label: 'Закупки (Материалы)' },
-                                            { value: 'production_planner', label: 'Планировщик (Производство)' },
-                                            { value: 'director', label: 'Директор (Просмотр)' }
+                                            { value: 'admin', label: t('users.role.admin') },
+                                            { value: 'warehouse', label: t('users.role.warehouse') },
+                                            { value: 'procurement', label: t('users.role.procurement') },
+                                            { value: 'production_planner', label: t('users.role.production_planner') },
+                                            { value: 'director', label: t('users.role.director') }
                                         ]}
                                         value={inviteRole}
                                         onChange={(e) => setInviteRole(e.target.value as UserRole)}
                                     />
                                 </div>
                                 <Button type="submit">
-                                    Отправить
+                                    {t('users.send')}
                                 </Button>
                             </form>
                         </CardContent>
@@ -126,7 +126,7 @@ export default function SettingsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Users className="text-slate-400" />
-                                Список пользователей
+                                {t('settings.usersList')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -134,10 +134,10 @@ export default function SettingsPage() {
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase">
                                         <tr>
-                                            <th className="px-6 py-3">Пользователь</th>
+                                            <th className="px-6 py-3">{t('users.user')}</th>
                                             <th className="px-6 py-3">Email</th>
-                                            <th className="px-6 py-3">Роль</th>
-                                            <th className="px-6 py-3 text-right">Статус</th>
+                                            <th className="px-6 py-3">{t('users.role')}</th>
+                                            <th className="px-6 py-3 text-right">{t('users.status')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -155,7 +155,7 @@ export default function SettingsPage() {
                                                         {u.role}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-emerald-400 text-xs">Активен</td>
+                                                <td className="px-6 py-4 text-right text-emerald-400 text-xs">{t('users.status.active')}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -253,19 +253,19 @@ export default function SettingsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Database className="text-blue-500" />
-                                Управление данными (Демо)
+                                {t('settings.dataManagement')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="font-medium text-slate-200">Генерация тестовых данных</p>
+                                    <p className="font-medium text-slate-200">{t('settings.generateTestData')}</p>
                                     <p className="text-sm text-slate-400">
-                                        Создать начальные материалы, склады и остатки для тестирования.
+                                        {t('settings.generateTestDataDesc')}
                                     </p>
                                 </div>
                                 <Button onClick={handleSeedData} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                    Сгенерировать данные
+                                    {t('settings.generateButton')}
                                 </Button>
                             </div>
                         </CardContent>
@@ -276,14 +276,14 @@ export default function SettingsPage() {
             {activeTab === 'dev' && (
                 <Card className="border-amber-500/50">
                     <CardHeader>
-                        <CardTitle className="text-amber-400">Инструменты разработчика</CardTitle>
+                        <CardTitle className="text-amber-400">{t('settings.devTools')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-slate-400 mb-4">
-                            Текущая роль: <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
+                            {t('settings.currentRole')} <span className="text-slate-100 font-bold uppercase">{user?.role}</span>
                         </p>
                         <p className="text-sm text-amber-400 mb-4">
-                            ⚠️ Role switcher отключен. Используйте реальную аутентификацию через страницу входа.
+                            {t('settings.roleSwitcherDisabled')}
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {(['admin', 'warehouse', 'procurement', 'production_planner', 'director'] as UserRole[]).map(role => (
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                                     disabled
                                     className="opacity-50"
                                 >
-                                    {role} (требует реального пользователя)
+                                    {role} ({t('settings.requiresRealUser')})
                                 </Button>
                             ))}
                         </div>

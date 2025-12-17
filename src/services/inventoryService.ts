@@ -19,7 +19,20 @@ export const inventoryService = {
 
         const { data, error } = await supabase.from('warehouses').select('*');
         if (error) return MOCK_WAREHOUSES;
-        return data as Warehouse[];
+        
+        // Ensure wh-ts warehouse is always named "ТС" instead of "Май"
+        const warehouses = (data as Warehouse[]).map(w => {
+            if (w.id === 'wh-ts') {
+                return {
+                    ...w,
+                    name: 'ТС',
+                    location: 'ТС'
+                };
+            }
+            return w;
+        });
+        
+        return warehouses;
     },
 
     async getStockLevels(): Promise<StockLevel[]> {

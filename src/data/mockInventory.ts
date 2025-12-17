@@ -3,7 +3,7 @@ import type { Warehouse, InventoryItem, StockLevel } from '../types/inventory';
 export const MOCK_WAREHOUSES: Warehouse[] = [
     { id: 'wh-kotsyubinske', name: 'Коцюбинське', location: 'Коцюбинське', description: 'Склад в Коцюбинське' },
     { id: 'wh-ceh', name: 'Цех', location: 'Цех', description: 'Производственный цех' },
-    { id: 'wh-ts', name: 'ТС', location: 'ТС', description: 'Торговый склад' },
+    { id: 'wh-ts', name: 'ТС', location: 'ТС', description: 'Подрядчик по фасовке' },
     { id: 'wh-fito', name: 'Фито', location: 'Фито', description: 'Склад Фито' },
 ];
 

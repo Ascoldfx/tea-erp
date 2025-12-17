@@ -147,6 +147,72 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const headerRow = rawData[headerRowIndex] || [];
             const headers = headerRow.map((h: any) => String(h || '').trim());
             
+            // Check row ABOVE headers for month names (common Excel structure: month row, then "план витрат" row)
+            const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
+            const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
+            
+            // Helper function to parse month name to date string
+            const parseMonthToDate = (monthName: string, year?: number): string | null => {
+                const monthLower = String(monthName || '').toLowerCase().trim();
+                const monthMap: Record<string, number> = {
+                    'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
+                    'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
+                    'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
+                    'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
+                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
+                    'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
+                    'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
+                    'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
+                    'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
+                    'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
+                    'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
+                    'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
+                };
+                
+                if (monthMap[monthLower]) {
+                    const month = monthMap[monthLower];
+                    const finalYear = year || new Date().getFullYear();
+                    return `${finalYear}-${String(month).padStart(2, '0')}-01`;
+                }
+                return null;
+            };
+            
+            // Map column indices to month dates (if month is found in row above headers)
+            const columnToMonthMap = new Map<number, string>();
+            for (let colIndex = 0; colIndex < Math.max(headers.length, monthRow.length); colIndex++) {
+                const monthCell = monthRow[colIndex] ? String(monthRow[colIndex]).trim() : '';
+                const headerCell = headers[colIndex] ? String(headers[colIndex]).trim() : '';
+                const headerLower = headerCell.toLowerCase();
+                
+                // Check if this column has "план витрат" in header
+                if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
+                    // Check if month is in the cell above (same column)
+                    if (monthCell) {
+                        const monthDate = parseMonthToDate(monthCell);
+                        if (monthDate) {
+                            columnToMonthMap.set(colIndex, monthDate);
+                            console.log(`[Excel Import] Found month "${monthCell}" above "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
+                        }
+                    }
+                    
+                    // Also check if month is in adjacent cells in the month row
+                    for (let offset = -2; offset <= 2; offset++) {
+                        const checkColIndex = colIndex + offset;
+                        if (checkColIndex >= 0 && checkColIndex < monthRow.length) {
+                            const adjacentMonthCell = String(monthRow[checkColIndex] || '').trim();
+                            if (adjacentMonthCell) {
+                                const monthDate = parseMonthToDate(adjacentMonthCell);
+                                if (monthDate) {
+                                    columnToMonthMap.set(colIndex, monthDate);
+                                    console.log(`[Excel Import] Found month "${adjacentMonthCell}" in adjacent cell (col ${checkColIndex}) for "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Skip header row and empty rows, convert to objects
             const dataRows = rawData.slice(headerRowIndex + 1).filter(row => {
                 // Skip completely empty rows
@@ -554,35 +620,45 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         
                         let foundDate = false;
                         
-                        // Look backwards for month name or date (most common case: месяц, план витрат)
-                        for (let offset = 1; offset <= 3; offset++) {
-                            const prevColIndex = i - offset;
-                            if (prevColIndex < 0) break;
-                            
-                            const prevHeader = String(headers[prevColIndex] || '').trim();
-                            
-                            // Check for month name
-                            const monthDate = parseMonthToDate(prevHeader);
-                            if (monthDate) {
-                                // Парсим все значения, включая 0
-                                plannedConsumption.push({ date: monthDate, quantity });
-                                foundDate = true;
-                                break;
-                            }
-                            
-                            // Check for date pattern (DD.MM.YYYY)
-                            const dateMatch = prevHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-                            if (dateMatch) {
-                                const [, , month, year] = dateMatch;
-                                const dateStr = `${year}-${month}-01`;
-                                // Парсим все значения, включая 0
-                                plannedConsumption.push({ date: dateStr, quantity });
-                                foundDate = true;
-                                break;
+                        // PRIORITY 1: Check if we already mapped this column to a month (from row above headers)
+                        if (columnToMonthMap.has(i)) {
+                            const monthDate = columnToMonthMap.get(i)!;
+                            plannedConsumption.push({ date: monthDate, quantity });
+                            foundDate = true;
+                            console.log(`[Excel Import] Using pre-mapped month for column ${i} (${header}): ${monthDate}, quantity: ${quantity}`);
+                        }
+                        
+                        // PRIORITY 2: Look backwards for month name or date in same header row
+                        if (!foundDate) {
+                            for (let offset = 1; offset <= 3; offset++) {
+                                const prevColIndex = i - offset;
+                                if (prevColIndex < 0) break;
+                                
+                                const prevHeader = String(headers[prevColIndex] || '').trim();
+                                
+                                // Check for month name
+                                const monthDate = parseMonthToDate(prevHeader);
+                                if (monthDate) {
+                                    plannedConsumption.push({ date: monthDate, quantity });
+                                    foundDate = true;
+                                    console.log(`[Excel Import] Found month in previous column ${prevColIndex} (${prevHeader}): ${monthDate}, quantity: ${quantity}`);
+                                    break;
+                                }
+                                
+                                // Check for date pattern (DD.MM.YYYY)
+                                const dateMatch = prevHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                                if (dateMatch) {
+                                    const [, , month, year] = dateMatch;
+                                    const dateStr = `${year}-${month}-01`;
+                                    plannedConsumption.push({ date: dateStr, quantity });
+                                    foundDate = true;
+                                    console.log(`[Excel Import] Found date in previous column ${prevColIndex} (${prevHeader}): ${dateStr}, quantity: ${quantity}`);
+                                    break;
+                                }
                             }
                         }
                         
-                        // If no date found backwards, look forwards
+                        // PRIORITY 3: If no date found backwards, look forwards
                         if (!foundDate) {
                             for (let offset = 1; offset <= 3; offset++) {
                                 const nextColIndex = i + offset;
@@ -593,9 +669,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 // Check for month name
                                 const monthDate = parseMonthToDate(nextHeader);
                                 if (monthDate) {
-                                    // Парсим все значения, включая 0
                                     plannedConsumption.push({ date: monthDate, quantity });
                                     foundDate = true;
+                                    console.log(`[Excel Import] Found month in next column ${nextColIndex} (${nextHeader}): ${monthDate}, quantity: ${quantity}`);
                                     break;
                                 }
                                 
@@ -604,20 +680,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 if (dateMatch) {
                                     const [, , month, year] = dateMatch;
                                     const dateStr = `${year}-${month}-01`;
-                                    // Парсим все значения, включая 0
                                     plannedConsumption.push({ date: dateStr, quantity });
                                     foundDate = true;
+                                    console.log(`[Excel Import] Found date in next column ${nextColIndex} (${nextHeader}): ${dateStr}, quantity: ${quantity}`);
                                     break;
                                 }
                             }
                         }
                         
-                        // If still no date found, but we have a planned consumption column,
+                        // PRIORITY 4: If still no date found, but we have a planned consumption column,
                         // use current month as fallback
                         if (!foundDate) {
                             const now = new Date();
                             const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
                             plannedConsumption.push({ date: dateStr, quantity });
+                            console.log(`[Excel Import] No month found for column ${i} (${header}), using current month fallback: ${dateStr}, quantity: ${quantity}`);
                         }
                     }
                 }

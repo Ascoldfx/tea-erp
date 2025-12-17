@@ -227,18 +227,6 @@ export const inventoryService = {
 
         console.log(`Найдено ${uniqueSuppliers.length} уникальных поставщиков (из ${suppliers.length})`);
 
-        // Get existing suppliers to avoid duplicates
-        const supplierNames = uniqueSuppliers.map(s => s.name.trim());
-        const { data: existingSuppliers, error: fetchError } = await supabase
-            .from('contractors')
-            .select('name')
-            .in('name', supplierNames);
-
-        if (fetchError) {
-            console.error('Error fetching existing suppliers:', fetchError);
-            // Continue anyway - we'll try to insert and let upsert handle conflicts
-        }
-
         // Prepare suppliers for upsert
         // Use Maps to ensure uniqueness of IDs and codes within the batch
         const usedIds = new Map<string, number>();

@@ -152,30 +152,53 @@ export const inventoryService = {
         // 3. Upsert items (onConflict: 'id' means update if exists, insert if not)
         // IMPORTANT: Always update category to ensure correct grouping
         // Supabase upsert updates ALL fields by default, so category will be updated
-        const { error: itemsError, data: insertedItems } = await supabase
+        // IMPORTANT: Do not use .select() after upsert to avoid potential field errors
+        const { error: itemsError } = await supabase
             .from('items')
             .upsert(dbItems, { 
                 onConflict: 'id',
                 ignoreDuplicates: false
-            })
-            .select();
+            });
 
         if (itemsError) {
             console.error('Error upserting items:', itemsError);
             throw new Error(`Ошибка при сохранении материалов: ${itemsError.message}`);
         }
 
-        console.log(`Успешно сохранено/обновлено ${insertedItems?.length || dbItems.length} материалов`);
+        console.log(`Успешно сохранено/обновлено ${dbItems.length} материалов`);
         
-        // Debug: verify categories were saved correctly
-        if (insertedItems && insertedItems.length > 0) {
-            const savedCategoryCounts = insertedItems.reduce((acc: Record<string, number>, item: any) => {
+        // Debug: verify categories were saved correctly by fetching from DB
+        const itemIds = dbItems.map(item => item.id);
+        const { data: savedItems, error: fetchError } = await supabase
+            .from('items')
+            .select('id, sku, name, category')
+            .in('id', itemIds);
+
+        if (fetchError) {
+            console.error('Error fetching saved items for category verification:', fetchError);
+        } else if (savedItems && savedItems.length > 0) {
+            const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: any) => {
                 acc[item.category] = (acc[item.category] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);
-            console.log('[Category Debug] Saved category distribution:', savedCategoryCounts);
+            console.log('[Category Debug] Saved category distribution (from DB):', savedCategoryCounts);
+            
+            // Log flavor items specifically
             if (savedCategoryCounts['flavor']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['flavor']} items with flavor category`);
+                const flavorItems = savedItems.filter((item: any) => item.category === 'flavor');
+                flavorItems.forEach((item: any) => {
+                    console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
+                });
+            }
+            
+            // Log sticker items specifically
+            if (savedCategoryCounts['sticker']) {
+                console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['sticker']} items with sticker category`);
+                const stickerItems = savedItems.filter((item: any) => item.category === 'sticker');
+                stickerItems.forEach((item: any) => {
+                    console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
+                });
             }
         }
 

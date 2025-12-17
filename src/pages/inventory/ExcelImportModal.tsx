@@ -324,8 +324,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
                 };
                 
-                // Debug logging for flavor category
+                // Debug logging for flavor and sticker categories
                 if (category === 'flavor') {
+                    console.log(`[Category Debug] Parsed item "${name}" (code: ${code}) -> category: ${category}, groupValue: "${groupValue}"`);
+                }
+                if (category === 'sticker') {
                     console.log(`[Category Debug] Parsed item "${name}" (code: ${code}) -> category: ${category}, groupValue: "${groupValue}"`);
                 }
                 

@@ -16,7 +16,6 @@ export default function ProductionPlanning() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
     // Force refresh when component mounts or when refreshKey changes
@@ -167,14 +166,6 @@ export default function ProductionPlanning() {
                 </div>
             </div>
 
-            {error && (
-                <Card className="bg-red-900/20 border-red-500">
-                    <CardContent className="pt-6">
-                        <p className="text-red-400">{error}</p>
-                    </CardContent>
-                </Card>
-            )}
-
             {/* Filters */}
             <Card>
                 <CardContent className="pt-6">
@@ -309,7 +300,7 @@ export default function ProductionPlanning() {
                                         return (
                                             <tr key={data.item.id} className="hover:bg-slate-800/50">
                                                 <td className="px-4 py-3 font-mono text-xs text-slate-400">
-                                                    {data.item.code || data.item.sku || '-'}
+                                                    {data.item.sku || '-'}
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-200">
                                                     {data.item.name}

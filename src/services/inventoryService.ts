@@ -239,16 +239,12 @@ export const inventoryService = {
             // Continue anyway - we'll try to insert and let upsert handle conflicts
         }
 
-        const existingNames = new Set(
-            (existingSuppliers || []).map(s => s.name?.trim().toLowerCase())
-        );
-
         // Prepare suppliers for upsert
         // Use Maps to ensure uniqueness of IDs and codes within the batch
         const usedIds = new Map<string, number>();
         const usedCodes = new Map<string, number>();
         
-        const dbSuppliers = uniqueSuppliers.map((supplier, index) => {
+        const dbSuppliers = uniqueSuppliers.map((supplier) => {
             const name = supplier.name.trim();
             const nameLower = name.toLowerCase();
             

@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Package, Plus } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import CreateSupplierModal from './CreateSupplierModal';
 import SupplierOrdersModal from './SupplierOrdersModal';
+import EditSupplierModal from './EditSupplierModal';
+import { Modal } from '../../components/ui/Modal';
+import { useAuth } from '../../context/AuthContext';
 
 interface Contractor {
     id: string;
@@ -16,11 +19,16 @@ interface Contractor {
 }
 
 export default function SuppliersPage() {
+    const { user } = useAuth();
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState<Contractor | null>(null);
+    const [supplierToEdit, setSupplierToEdit] = useState<Contractor | null>(null);
+    const [supplierToDelete, setSupplierToDelete] = useState<Contractor | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -50,6 +58,52 @@ export default function SuppliersPage() {
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleEdit = (contractor: Contractor) => {
+        setSupplierToEdit(contractor);
+        setIsEditModalOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (!supplierToDelete || !supabase) return;
+
+        setIsDeleting(true);
+        try {
+            // Check if supplier has any orders
+            const { data: orders, error: ordersError } = await supabase
+                .from('orders')
+                .select('id')
+                .eq('contractor_id', supplierToDelete.id)
+                .limit(1);
+
+            if (ordersError) {
+                console.error('Error checking orders:', ordersError);
+            }
+
+            if (orders && orders.length > 0) {
+                alert('Нельзя удалить поставщика, у которого есть заказы. Сначала удалите или измените заказы.');
+                setIsDeleting(false);
+                setSupplierToDelete(null);
+                return;
+            }
+
+            const { error } = await supabase
+                .from('contractors')
+                .delete()
+                .eq('id', supplierToDelete.id);
+
+            if (error) throw error;
+
+            alert('Поставщик успешно удален!');
+            fetchContractors();
+            setSupplierToDelete(null);
+        } catch (error: any) {
+            console.error('Error deleting supplier:', error);
+            alert(`Ошибка при удалении поставщика: ${error?.message || 'Неизвестная ошибка'}`);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (loading) {
         return <div className="p-8 text-slate-400">Загрузка поставщиков...</div>;
@@ -110,6 +164,28 @@ export default function SuppliersPage() {
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
+                                    {(user?.role === 'admin' || user?.role === 'procurement') && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-blue-400 hover:text-blue-300"
+                                                onClick={() => handleEdit(contractor)}
+                                                title="Редактировать"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-red-400 hover:text-red-300"
+                                                onClick={() => setSupplierToDelete(contractor)}
+                                                title="Удалить"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </>
+                                    )}
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -146,6 +222,64 @@ export default function SuppliersPage() {
                     supplierName={selectedSupplier.name}
                 />
             )}
+
+            <EditSupplierModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setSupplierToEdit(null);
+                }}
+                onSuccess={() => {
+                    fetchContractors();
+                    setIsEditModalOpen(false);
+                    setSupplierToEdit(null);
+                }}
+                supplier={supplierToEdit}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={!!supplierToDelete}
+                onClose={() => setSupplierToDelete(null)}
+                title="Подтверждение удаления"
+            >
+                <div className="space-y-4">
+                    <p className="text-slate-300">
+                        Вы уверены, что хотите удалить поставщика <strong className="text-slate-100">{supplierToDelete?.name}</strong>?
+                    </p>
+                    <p className="text-sm text-red-400">
+                        ⚠️ Это действие нельзя отменить. Поставщик с существующими заказами не может быть удален.
+                    </p>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => setSupplierToDelete(null)}
+                            disabled={isDeleting}
+                        >
+                            Отмена
+                        </Button>
+                        <Button 
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Удаление...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Удалить
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

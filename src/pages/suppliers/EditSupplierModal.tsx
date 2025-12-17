@@ -1,0 +1,150 @@
+import { useState, useEffect } from 'react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { supabase } from '../../lib/supabase';
+import { Loader2 } from 'lucide-react';
+
+interface Contractor {
+    id: string;
+    name: string;
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+    code?: string;
+}
+
+interface EditSupplierModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    supplier: Contractor | null;
+}
+
+export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier }: EditSupplierModalProps) {
+    const [name, setName] = useState('');
+    const [contactPerson, setContactPerson] = useState('');
+    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    // Load supplier data when modal opens
+    useEffect(() => {
+        if (supplier && isOpen) {
+            setName(supplier.name || '');
+            setContactPerson(supplier.contact_person || '');
+            setPhone(supplier.phone || '');
+            setEmail(supplier.email || '');
+        }
+    }, [supplier, isOpen]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!supabase || !supplier) {
+            alert('Ошибка: нет соединения с базой данных или поставщик не выбран');
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            const { data, error } = await supabase
+                .from('contractors')
+                .update({
+                    name,
+                    contact_person: contactPerson || null,
+                    phone: phone || null,
+                    email: email || null,
+                })
+                .eq('id', supplier.id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Supabase error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+                throw new Error(error.message || 'Ошибка при обновлении поставщика');
+            }
+
+            console.log('Supplier updated successfully:', data);
+
+            alert('Информация о поставщике успешно обновлена!');
+            onSuccess();
+            onClose();
+        } catch (error: any) {
+            console.error('Error updating supplier:', error);
+            let errorMessage = 'Ошибка при обновлении поставщика.';
+            
+            if (error?.message) {
+                errorMessage = error.message;
+            } else if (error?.details) {
+                errorMessage = error.details;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            if (error?.hint) {
+                errorMessage += `\n\nПодсказка: ${error.hint}`;
+            }
+            
+            alert(`Ошибка при обновлении поставщика:\n\n${errorMessage}\n\nПроверьте консоль браузера (F12) для деталей.`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!supplier) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Редактировать поставщика">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                    label="Название компании *"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    placeholder="ООО Поставщик"
+                />
+
+                <Input
+                    label="Контактное лицо"
+                    value={contactPerson}
+                    onChange={(e) => setContactPerson(e.target.value)}
+                    placeholder="Иван Иванов"
+                />
+
+                <Input
+                    label="Телефон"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+380..."
+                />
+
+                <Input
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="contact@supplier.com"
+                />
+
+                <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+                        Отмена
+                    </Button>
+                    <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Сохранить изменения
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+}
+

@@ -58,15 +58,15 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             const materialsData = await inventoryService.getItems();
             setMaterials(materialsData);
 
-            // Load contractors
+            // Load suppliers (for material orders)
             if (supabase) {
                 const { data, error } = await supabase
-                    .from('contractors')
+                    .from('suppliers')
                     .select('id, name, code, contact_person, phone, email')
                     .order('name');
 
                 if (error) {
-                    console.error('Error loading contractors:', error);
+                    console.error('Error loading suppliers:', error);
                 } else {
                     setContractors(data || []);
                 }

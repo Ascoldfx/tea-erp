@@ -59,7 +59,7 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
             
             // Ensure code is unique by checking existing codes
             const { data: existing } = await supabase
-                .from('contractors')
+                .from('suppliers')
                 .select('code')
                 .eq('code', code)
                 .limit(1);
@@ -71,7 +71,7 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
             console.log('Creating supplier with:', { id, name, code, contactPerson, phone, email });
 
             const { data, error } = await supabase
-                .from('contractors')
+                .from('suppliers')
                 .insert({
                     id,
                     name,

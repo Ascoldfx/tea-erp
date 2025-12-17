@@ -52,7 +52,7 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
 
         try {
             const { error } = await supabase
-                .from('contractors')
+                .from('suppliers')
                 .update({
                     name,
                     contact_person: contactPerson || null,

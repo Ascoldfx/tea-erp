@@ -43,14 +43,14 @@ export default function SuppliersPage() {
 
         try {
             const { data, error } = await supabase
-                .from('contractors')
+                .from('suppliers')
                 .select('*')
                 .order('name', { ascending: true });
 
             if (error) throw error;
             setContractors(data || []);
         } catch (e) {
-            console.error('Error fetching contractors:', e);
+            console.error('Error fetching suppliers:', e);
         } finally {
             setLoading(false);
         }
@@ -90,7 +90,7 @@ export default function SuppliersPage() {
             }
 
             const { error } = await supabase
-                .from('contractors')
+                .from('suppliers')
                 .delete()
                 .eq('id', supplierToDelete.id);
 

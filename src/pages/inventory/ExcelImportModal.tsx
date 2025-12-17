@@ -744,11 +744,16 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 className="hidden"
                                 id="file-upload"
                                 onChange={handleFileUpload}
-                                disabled={loading}
+                                disabled={loading || !isOpen}
                             />
                             <label
                                 htmlFor="file-upload"
-                                className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors inline-flex items-center ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors inline-flex items-center ${loading || !isOpen ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={(e) => {
+                                    if (loading || !isOpen) {
+                                        e.preventDefault();
+                                    }
+                                }}
                             >
                                 {loading ? (
                                     <>

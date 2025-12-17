@@ -103,7 +103,22 @@ export default function InventoryList() {
                 ? allStockLevels.filter(s => s.warehouseId === selectedWarehouseId)
                 : allStockLevels;
 
-            const totalStock = relevantStockLevels.reduce((acc, curr) => acc + curr.quantity, 0);
+            // For cardboard packaging, if there's stock on wh-kotsyubinske (1С), use it as total
+            // because 1С is the total stock, not a separate warehouse
+            let totalStock = 0;
+            if (item.category === 'packaging_cardboard') {
+                const mainStock = allStockLevels.find(s => s.warehouseId === 'wh-kotsyubinske');
+                if (mainStock && mainStock.quantity > 0) {
+                    // Use the main stock (1С) as total for cardboard packaging
+                    totalStock = mainStock.quantity;
+                } else {
+                    // If no main stock, sum all warehouses (fallback)
+                    totalStock = relevantStockLevels.reduce((acc, curr) => acc + curr.quantity, 0);
+                }
+            } else {
+                // For other categories, sum all warehouses
+                totalStock = relevantStockLevels.reduce((acc, curr) => acc + curr.quantity, 0);
+            }
             
             // Get planned consumption for this item
             const itemPlannedConsumption = plannedConsumption.filter(pc => pc.itemId === item.id);

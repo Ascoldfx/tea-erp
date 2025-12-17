@@ -17,8 +17,9 @@ interface ParsedItem {
     name: string;
     unit: string;
     category: string;
-    stockMain: number;
-    stockProd: number;
+    stockMain: number; // Коцюбинське (1С)
+    stockMai: number; // Май
+    stockFito: number; // Фито
     plannedConsumption?: Array<{
         date: string; // YYYY-MM-DD
         quantity: number;
@@ -206,11 +207,16 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     return null; // Will be filtered out
                 }
                 
-                const unit = findColumn(row, [
+                const unitRaw = findColumn(row, [
                     'Unit', 'Ед. изм.', 'Единица', 'Ед', 'Ед.изм', 'Единица измерения',
                     'ЕдиницаИзмерения', 'Ед. измерения', 'ЕдИзмерения',
                     'Од. вим.', 'Одиниця', 'Од', 'Од. виміру' // Ukrainian
-                ]) || 'шт';
+                ]);
+                // Normalize unit: convert pcs to шт
+                let unit = unitRaw || 'шт';
+                if (unit.toLowerCase() === 'pcs' || unit.toLowerCase() === 'шт') {
+                    unit = 'шт';
+                }
                 
                 // Get category from "Група" column, map common values
                 // If empty, use last category (inherit from previous row)
@@ -336,12 +342,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
                 
-                // Find stock columns - look for columns with "Залишки на 1 число, 1С" or similar patterns
-                // Try to find the first actual stock value (not planned consumption)
-                let stockMain = 0;
-                let stockProd = 0;
+                // Find stock columns for three warehouses: 1С (Коцюбинське), Май, Фито
+                let stockMain = 0; // 1С / Коцюбинське
+                let stockMai = 0;  // Май
+                let stockFito = 0; // Фито
                 
-                // Look for stock columns - prioritize columns that contain "залишки" or "остаток" but not "план"
+                // Look for stock columns - check all columns for stock values
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').toLowerCase().trim();
                     const value = row[headers[i]] || row[`__EMPTY_${i}`];
@@ -352,41 +358,66 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue;
                     }
                     
-                    // Check if this is a stock column for main warehouse (1С)
-                    if ((header.includes('залишки') || header.includes('зал') || header.includes('остаток')) &&
-                        (header.includes('1с') || header.includes('1 с') || header.includes('склад'))) {
-                        if (stockMain === 0 && numValue > 0) {
+                    // Skip if not a stock column
+                    if (!header.includes('залишки') && !header.includes('зал') && !header.includes('остаток')) {
+                        continue;
+                    }
+                    
+                    // Check for 1С / Коцюбинське (main warehouse)
+                    if (header.includes('1с') || header.includes('1 с') || 
+                        (header.includes('залишки') && header.includes('1 число') && !header.includes('май') && !header.includes('фито'))) {
+                        // Take the first non-zero value found
+                        if (numValue > 0 && stockMain === 0) {
+                            stockMain = numValue;
+                        } else if (numValue > stockMain) {
+                            // If multiple columns, take the maximum
                             stockMain = numValue;
                         }
                     }
                     
-                    // Check if this is a stock column for production (ТС)
-                    if ((header.includes('залишки') || header.includes('зал') || header.includes('остаток')) &&
-                        (header.includes('тс') || header.includes('т с') || header.includes('цех'))) {
-                        if (stockProd === 0 && numValue > 0) {
-                            stockProd = numValue;
+                    // Check for Май
+                    if (header.includes('май') || header.includes('май')) {
+                        if (numValue > 0 && stockMai === 0) {
+                            stockMai = numValue;
+                        } else if (numValue > stockMai) {
+                            stockMai = numValue;
+                        }
+                    }
+                    
+                    // Check for Фито
+                    if (header.includes('фито') || header.includes('фіто') || header.includes('fito')) {
+                        if (numValue > 0 && stockFito === 0) {
+                            stockFito = numValue;
+                        } else if (numValue > stockFito) {
+                            stockFito = numValue;
                         }
                     }
                 }
                 
-                // Fallback to old method if not found
+                // Fallback: try to find by exact column names
                 if (stockMain === 0) {
                     const stockMainStr = findColumn(row, [
-                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе', 'Склад Главный',
-                        'ОстатокСклад', 'Остаток_склад', 'СкладГлавный', 'Склад_главный',
-                        'Остаток на главном складе', 'ОстатокНаГлавномСкладе', 'Stock', 'Остатки',
-                        'Зал. на 1 число, 1С', 'Зал на 1 число 1С', 'Залишки на 1 число, 1С'
+                        'Залишки на 1 число, 1С', 'Зал. на 1 число, 1С', 'Зал на 1 число 1С',
+                        'залишки на 1 число, 1с', 'зал. на 1 число, 1с',
+                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе'
                     ]);
                     stockMain = Number(stockMainStr) || 0;
                 }
                 
-                if (stockProd === 0) {
-                    const stockProdStr = findColumn(row, [
-                        'Stock Prod', 'Цех', 'Производство', 'Склад Цех', 'ЦехСклад',
-                        'СкладЦех', 'Склад_цех', 'Остаток в цехе', 'ОстатокВЦехе',
-                        'Production', 'зал. на 1 число ТС', 'Зал. на 1 число ТС', 'Остаток ТС'
+                if (stockMai === 0) {
+                    const stockMaiStr = findColumn(row, [
+                        'залишки на 1 число Май', 'зал. на 1 число Май', 'залишки на 1 число май',
+                        'Залишки на 1 число Май', 'Зал. на 1 число Май'
                     ]);
-                    stockProd = Number(stockProdStr) || 0;
+                    stockMai = Number(stockMaiStr) || 0;
+                }
+                
+                if (stockFito === 0) {
+                    const stockFitoStr = findColumn(row, [
+                        'залишки на 1 число Фито', 'зал. на 1 число Фито', 'залишки на 1 число фито',
+                        'Залишки на 1 число Фито', 'Зал. на 1 число Фито', 'залишки на 1 число Φίτο'
+                    ]);
+                    stockFito = Number(stockFitoStr) || 0;
                 }
 
                 // Find planned consumption columns - look for columns with "план витрат" or "план расхода"
@@ -430,7 +461,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     unit: unit,
                     category: category,
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
-                    stockProd: isNaN(stockProd) ? 0 : stockProd,
+                    stockMai: isNaN(stockMai) ? 0 : stockMai,
+                    stockFito: isNaN(stockFito) ? 0 : stockFito,
                     plannedConsumption: plannedConsumption.length > 0 ? plannedConsumption : undefined,
                 };
                 
@@ -664,11 +696,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
                                         <tr>
-                                            <th className="px-3 py-2">{t('excel.previewCode')}</th>
-                                            <th className="px-3 py-2">{t('excel.previewName')}</th>
-                                            <th className="px-3 py-2">{t('excel.previewCategory')}</th>
-                                            <th className="px-3 py-2 text-right">{t('excel.previewWarehouse')}</th>
-                                            <th className="px-3 py-2 text-right">{t('excel.previewProduction')}</th>
+                                            <th className="px-3 py-2">{t('materials.code')}</th>
+                                            <th className="px-3 py-2">{t('materials.name')}</th>
+                                            <th className="px-3 py-2">{t('materials.category')}</th>
+                                            <th className="px-3 py-2 text-right">1С</th>
+                                            <th className="px-3 py-2 text-right">Май</th>
+                                            <th className="px-3 py-2 text-right">Фито</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700">
@@ -678,7 +711,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                                 <td className="px-3 py-2">{item.name}</td>
                                                 <td className="px-3 py-2 text-slate-500">{item.category}</td>
                                                 <td className="px-3 py-2 text-right font-medium">{item.stockMain}</td>
-                                                <td className="px-3 py-2 text-right font-medium">{item.stockProd}</td>
+                                                <td className="px-3 py-2 text-right font-medium">{item.stockMai}</td>
+                                                <td className="px-3 py-2 text-right font-medium">{item.stockFito}</td>
                                             </tr>
                                         ))}
                                     </tbody>

@@ -399,7 +399,7 @@ export default function InventoryList() {
                                                         className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
                                                         onClick={() => handleItemClick(item)}
                                                     >
-                                                        {item.totalStock} {item.unit}
+                                                        {item.totalStock} {item.unit === 'pcs' ? 'шт' : item.unit}
                                                     </td>
                                                     {(user?.role === 'admin' || user?.role === 'procurement') && (
                                                         <td 

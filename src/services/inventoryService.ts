@@ -119,12 +119,18 @@ export const inventoryService = {
             if (category === 'flavor') {
                 console.log(`[Category Debug] Material "${i.name}" assigned to flavor category`);
             }
+            // Normalize unit: convert pcs to шт
+            let normalizedUnit = i.unit || 'шт';
+            if (normalizedUnit.toLowerCase() === 'pcs') {
+                normalizedUnit = 'шт';
+            }
+            
             itemsMap.set(itemId, {
                 id: itemId,
                 sku: code,
                 name: i.name?.trim() || 'Без названия',
                 category: category, // Always use the category from import
-                unit: i.unit || 'pcs',
+                unit: normalizedUnit,
                 min_stock_level: 0
             });
         });
@@ -214,13 +220,13 @@ export const inventoryService = {
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
 
-            // Main warehouse stock (Коцюбинське) - sum if multiple rows have same code
+            // Main warehouse stock (Коцюбинське / 1С) - sum if multiple rows have same code
             const mainKey = `${itemId}_wh-kotsyubinske`;
             const currentMain = stockMap.get(mainKey);
             const mainQty = Number(item.stockMain) || 0;
             if (currentMain) {
                 currentMain.quantity += mainQty; // Sum quantities for duplicates
-            } else {
+            } else if (mainQty > 0) {
                 stockMap.set(mainKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-kotsyubinske',
@@ -228,17 +234,31 @@ export const inventoryService = {
                 });
             }
 
-            // Production warehouse stock (Цех) - sum if multiple rows have same code
-            const prodKey = `${itemId}_wh-ceh`;
-            const currentProd = stockMap.get(prodKey);
-            const prodQty = Number(item.stockProd) || 0;
-            if (currentProd) {
-                currentProd.quantity += prodQty; // Sum quantities for duplicates
-            } else {
-                stockMap.set(prodKey, {
+            // Май warehouse stock (ТС) - sum if multiple rows have same code
+            const maiKey = `${itemId}_wh-ts`;
+            const currentMai = stockMap.get(maiKey);
+            const maiQty = Number(item.stockMai) || 0;
+            if (currentMai) {
+                currentMai.quantity += maiQty; // Sum quantities for duplicates
+            } else if (maiQty > 0) {
+                stockMap.set(maiKey, {
                     item_id: itemId,
-                    warehouse_id: 'wh-ceh',
-                    quantity: prodQty
+                    warehouse_id: 'wh-ts',
+                    quantity: maiQty
+                });
+            }
+
+            // Фито warehouse stock - sum if multiple rows have same code
+            const fitoKey = `${itemId}_wh-fito`;
+            const currentFito = stockMap.get(fitoKey);
+            const fitoQty = Number(item.stockFito) || 0;
+            if (currentFito) {
+                currentFito.quantity += fitoQty; // Sum quantities for duplicates
+            } else if (fitoQty > 0) {
+                stockMap.set(fitoKey, {
+                    item_id: itemId,
+                    warehouse_id: 'wh-fito',
+                    quantity: fitoQty
                 });
             }
         }

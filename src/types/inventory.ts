@@ -1,4 +1,4 @@
-export type Unit = 'kg' | 'g' | 'l' | 'ml' | 'pcs';
+export type Unit = 'kg' | 'g' | 'l' | 'ml' | 'pcs' | 'шт';
 
 export type WarehouseType = 'internal' | 'supplier' | 'contractor';
 

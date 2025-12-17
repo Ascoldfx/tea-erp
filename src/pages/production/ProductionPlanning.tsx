@@ -83,10 +83,7 @@ export default function ProductionPlanning() {
     };
 
     // Calculate planned consumption for selected month
-    const monthStart = new Date(selectedYear, selectedMonth, 1);
-    const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
-    const monthStartStr = monthStart.toISOString().split('T')[0];
-    const monthEndStr = monthEnd.toISOString().split('T')[0];
+    // Note: We compare by year and month directly, not by date strings
 
     // Filter items by category
     const filteredItems = useMemo(() => {
@@ -145,7 +142,7 @@ export default function ProductionPlanning() {
                 requiredOrder,
                 stockLevels: itemStock
             };
-        }).filter(data => 
+        }).filter(() => 
             // Show all items for the selected category (even with 0 stock and 0 planned)
             true
         ).sort((a, b) => {

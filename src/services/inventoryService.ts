@@ -135,9 +135,13 @@ export const inventoryService = {
         console.log(`Подготовлено ${dbItems.length} уникальных материалов для импорта (из ${items.length} строк)`);
 
         // 3. Upsert items (onConflict: 'id' means update if exists, insert if not)
+        // IMPORTANT: Always update category to ensure correct grouping
         const { error: itemsError, data: insertedItems } = await supabase
             .from('items')
-            .upsert(dbItems, { onConflict: 'id' })
+            .upsert(dbItems, { 
+                onConflict: 'id',
+                ignoreDuplicates: false
+            })
             .select();
 
         if (itemsError) {

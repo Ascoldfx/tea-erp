@@ -217,9 +217,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (!groupValue || groupValue === '') {
                     category = 'other';
                 }
-                // 1. Ароматизаторы - ТОЛЬКО если явно указано в группе (строгая проверка)
-                else if (groupValue === 'flavor' || groupValue === 'ароматизатор' || groupValue === 'ароматизаторы' || 
-                         groupValue.startsWith('ароматизатор') || groupValue.includes(' ароматизатор')) {
+                // 1. Ароматизаторы - если указано в группе (более гибкая проверка)
+                else if (groupValue === 'flavor' || 
+                         groupValue === 'ароматизатор' || groupValue === 'ароматизаторы' || 
+                         groupValue === 'ароматизатори' || groupValue === 'ароматизаторів' ||
+                         groupValue.startsWith('ароматизатор') || 
+                         groupValue.includes('ароматизатор') ||
+                         groupValue.includes('flavor')) {
                     category = 'flavor';
                 }
                 // 2. Ярлыки - ТОЛЬКО если явно указано в группе (строгая проверка)

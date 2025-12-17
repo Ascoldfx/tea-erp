@@ -306,9 +306,13 @@ export const inventoryService = {
         console.log(`Подготовлено ${finalSuppliers.length} уникальных поставщиков для импорта (из ${dbSuppliers.length} после обработки)`);
 
         // Upsert suppliers
+        // Note: We don't include updated_at in the data - it's handled by database trigger
         const { error: suppliersError } = await supabase
             .from('contractors')
-            .upsert(finalSuppliers, { onConflict: 'id' });
+            .upsert(finalSuppliers, { 
+                onConflict: 'id',
+                ignoreDuplicates: false
+            });
 
         if (suppliersError) {
             console.error('Error upserting suppliers:', suppliersError);

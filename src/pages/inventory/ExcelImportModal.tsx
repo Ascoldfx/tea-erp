@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Upload, FileSpreadsheet, Check, AlertTriangle, Loader2 } from 'lucide-react';
@@ -41,6 +41,24 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     const [selectedSheet, setSelectedSheet] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const { refresh } = useInventory();
+
+    // Reset state when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setStep('upload');
+            setParsedData([]);
+            setParsedSuppliers([]);
+            setError(null);
+            setSheetNames([]);
+            setSelectedSheet('');
+            setLoading(false);
+            // Reset file input
+            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+            if (fileInput) {
+                fileInput.value = '';
+            }
+        }
+    }, [isOpen]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

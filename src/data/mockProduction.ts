@@ -58,29 +58,5 @@ export const MOCK_RECIPES: Recipe[] = RECIPES_LIST.map(r => ({
     ]
 }));
 
-export const MOCK_BATCHES: ProductionBatch[] = [
-    {
-        id: 'bat-001',
-        recipeId: 'rcp-001',
-        status: 'in_progress',
-        startDate: '2023-11-01',
-        materialsHandoverDate: '2023-11-01T09:00:00',
-        materialsAcceptedDate: '2023-11-01T10:30:00',
-        targetQuantity: 5000,
-        producedQuantity: 1200,
-        machineId: 'mach-001'
-    },
-    {
-        id: 'bat-002',
-        recipeId: 'rcp-002',
-        status: 'planned',
-        startDate: '2023-11-05',
-        targetQuantity: 2000
-    },
-    {
-        id: 'bat-003',
-        recipeId: 'rcp-003',
-        status: 'completed',
-        targetQuantity: 5, // 5,000 packs
-    }
-];
+// Production batches - cleared test data
+export const MOCK_BATCHES: ProductionBatch[] = [];

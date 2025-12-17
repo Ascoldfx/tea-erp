@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users } from 'lucide-react';
+import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users, Calendar } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -9,6 +9,7 @@ const getNavItems = (t: (key: string) => string) => [
     { to: '/inventory', icon: Package, label: t('nav.materials') },
     { to: '/suppliers', icon: Truck, label: t('nav.suppliers') },
     { to: '/production', icon: Factory, label: t('nav.production') },
+    { to: '/logistics', icon: Calendar, label: t('nav.logistics') },
     { to: '/calculator', icon: Calculator, label: t('nav.calculator') },
     { to: '/contractors', icon: Users, label: t('nav.contractors') },
     { to: '/catalog', icon: Book, label: t('nav.techCards') },

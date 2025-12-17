@@ -30,6 +30,7 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.materials': 'Материалы',
         'nav.suppliers': 'Поставщики',
         'nav.production': 'Производство',
+        'nav.logistics': 'Логистический календарь',
         'nav.calculator': 'Калькулятор',
         'nav.contractors': 'Подрядчики',
         
@@ -47,6 +48,12 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.users': 'Пользователи',
         'nav.settings': 'Настройки',
         'nav.logout': 'Выйти',
+        
+        // Logistics Calendar
+        'logistics.calendar.title': 'Логистический календарь',
+        'logistics.calendar.subtitle': 'Планирование и отслеживание логистических операций',
+        'logistics.calendar.week': 'Неделя',
+        'logistics.calendar.today': 'Сегодня',
         
         // Settings
         'settings.title': 'Настройки',
@@ -246,6 +253,12 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.users': 'Користувачі',
         'nav.settings': 'Налаштування',
         'nav.logout': 'Вийти',
+        
+        // Logistics Calendar
+        'logistics.calendar.title': 'Логістичний календар',
+        'logistics.calendar.subtitle': 'Планування та відстеження логістичних операцій',
+        'logistics.calendar.week': 'Тиждень',
+        'logistics.calendar.today': 'Сьогодні',
         
         // Settings
         'settings.title': 'Налаштування',

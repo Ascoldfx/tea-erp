@@ -383,123 +383,54 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Місце зберігання', 'Місцезнаходження', 'Локація'
                 ]);
                 
-                // Look for stock columns - check all columns for stock values
-                // First, try to find exact column names using findColumn (more reliable)
-                // Then fallback to pattern matching
-                
-                // Try to find stock columns using findColumn first (more reliable)
-                // Check all possible column name variations
-                
-                // Try to find 1С column first (most important for cardboard packaging)
-                const stock1CStr = findColumn(row, [
-                    'залишки на 1 число, 1С', 'Залишки на 1 число, 1С', 
-                    'зал. на 1 число, 1С', 'Зал. на 1 число, 1С',
-                    'залишки на 1 число, 1с', 'зал. на 1 число, 1с',
-                    'залишки на 1 число, 1 с', 'зал. на 1 число, 1 с',
-                    'залишки на 1 число 1С', 'зал. на 1 число 1С',
-                    'залишки на 1 число 1с', 'зал. на 1 число 1с'
-                ]);
-                if (stock1CStr !== '') {
-                    const numValue = Number(stock1CStr) || 0;
-                    // Парсим даже если значение 0 (важно для отображения)
-                    stockMain = numValue;
-                }
-                
-                // Try to find Коцюбинське column (может быть отдельная колонка)
-                const stockKotsyubinskeStr = findColumn(row, [
-                    'залишки на 1 число, коцюбинське', 'Залишки на 1 число, Коцюбинське',
-                    'зал. на 1 число, коцюбинське', 'Зал. на 1 число, Коцюбинське',
-                    'залишки на 1 число коцюбинське', 'зал. на 1 число коцюбинське'
-                ]);
-                if (stockKotsyubinskeStr !== '' && stockMain === 0) {
-                    // Используем только если нет колонки "1С" (для картонной упаковки приоритет у "1С")
-                    const numValue = Number(stockKotsyubinskeStr) || 0;
-                    stockMain = numValue;
-                }
-                
-                // Try to find Май/ТС column
-                const stockMaiStr = findColumn(row, [
-                    'залишки на 1 число, 1 число Май', 'Залишки на 1 число, 1 число Май',
-                    'зал. на 1 число, 1 число Май', 'Зал. на 1 число, 1 число Май',
-                    'залишки на 1 число Май', 'зал. на 1 число Май',
-                    'Залишки на 1 число Май', 'Зал. на 1 число Май',
-                    'залишки на 1 число ТС', 'зал. на 1 число ТС',
-                    'Залишки на 1 число ТС', 'Зал. на 1 число ТС',
-                    'залишки на 1 число, ТС', 'зал. на 1 число, ТС'
-                ]);
-                if (stockMaiStr !== '') {
-                    const numValue = Number(stockMaiStr) || 0;
-                    // Парсим даже если значение 0
-                    stockMai = numValue;
-                }
-                
-                // Try to find Фито/Фото column
-                const stockFitoStr = findColumn(row, [
-                    'залишки на 1 число, Фото', 'Залишки на 1 число, Фото',
-                    'зал. на 1 число, Фото', 'Зал. на 1 число, Фото',
-                    'залишки на 1 число Фото', 'зал. на 1 число Фото',
-                    'залишки на 1 число Фито', 'зал. на 1 число Фито',
-                    'Залишки на 1 число Фито', 'Зал. на 1 число Фито'
-                ]);
-                if (stockFitoStr !== '') {
-                    const numValue = Number(stockFitoStr) || 0;
-                    // Парсим даже если значение 0
-                    stockFito = numValue;
-                }
-                
-                // Then do pattern matching as fallback
+                // Look for stock columns - iterate through headers directly
+                // This is more reliable than findColumn for merged headers
                 for (let i = 0; i < headers.length; i++) {
-                    const header = String(headers[i] || '').toLowerCase().trim();
+                    const header = String(headers[i] || '').trim();
+                    const headerLower = header.toLowerCase();
                     const value = row[headers[i]] || row[`__EMPTY_${i}`];
                     const numValue = Number(value) || 0;
                     
                     // Skip if this is a planned consumption column
-                    if (header.includes('план') || header.includes('витрат') || header.includes('расход')) {
+                    if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
                         continue;
                     }
                     
                     // Skip if not a stock column
-                    if (!header.includes('залишки') && !header.includes('зал') && !header.includes('остаток')) {
+                    if (!headerLower.includes('залишки') && !headerLower.includes('зал') && !headerLower.includes('остаток')) {
                         continue;
                     }
                     
-                    // Check for Коцюбинське - это основной склад (может быть отдельная колонка)
-                    if (header.includes('коцюбинське') || header.includes('коцюбинское') || header.includes('kotsyubinske')) {
-                        if (numValue > 0) {
-                            // Если это колонка "залишки на 1 число, коцюбинське" - это остаток на основном складе
-                            // Но для картонной упаковки общий остаток берется из колонки "1С"
-                            // Поэтому пока не используем это значение для stockMain, оставим для 1С
+                    // Check for 1С - это ОБЩИЙ остаток для картонной упаковки
+                    // Ищем колонку с "1С" или "1с" или "1 с" в названии
+                    if ((headerLower.includes('1с') || headerLower.includes('1 с') || headerLower.includes('1c')) &&
+                        !headerLower.includes('май') && !headerLower.includes('тс') && !headerLower.includes('ts') &&
+                        !headerLower.includes('фито') && !headerLower.includes('фіто') && !headerLower.includes('фото') &&
+                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
+                        // Это колонка "1С" - общий остаток
+                        stockMain = numValue; // Берем значение напрямую (не Math.max, чтобы не перезаписывать)
+                    }
+                    // Check for Коцюбинське - отдельная колонка (может быть без "1С" в названии)
+                    else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское') || headerLower.includes('kotsyubinske')) &&
+                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
+                        // Это колонка "коцюбинське" - используем только если нет колонки "1С"
+                        if (stockMain === 0) {
+                            stockMain = numValue;
                         }
                     }
-                    
-                    // Check for 1С - это ОБЩИЙ остаток для картонной упаковки (берем максимальное значение)
-                    if (header.includes('1с') || header.includes('1 с') || header.includes('1c')) {
-                        if (numValue > 0) {
-                            // Берем максимальное значение, если встречается несколько раз
-                            stockMain = Math.max(stockMain, numValue);
-                        }
+                    // Check for Май/ТС - отдельный склад подрядчика
+                    else if ((headerLower.includes('май') || headerLower.includes('тс') || headerLower.includes('ts')) &&
+                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
+                             !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
+                        // Это колонка "Май" или "ТС" - остаток на складе подрядчика
+                        stockMai = numValue; // Берем значение напрямую
                     }
-                    
-                    // Check for ТС (может быть названо "Май" или "ТС") - отдельный склад
-                    // Важно: проверяем что это не колонка "1С" и не "коцюбинське"
-                    if ((header.includes('май') || header.includes('тс') || header.includes('ts')) && 
-                        !header.includes('1с') && !header.includes('1 с') && !header.includes('1c') &&
-                        !header.includes('коцюбинське') && !header.includes('коцюбинское')) {
-                        if (numValue > 0) {
-                            // Берем максимальное значение, если встречается несколько раз
-                            stockMai = Math.max(stockMai, numValue);
-                        }
-                    }
-                    
-                    // Check for Фито - отдельный склад
-                    // Также может быть написано "Фото" вместо "Фито" (опечатка в Excel)
-                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito') || 
-                         header.includes('фото') || header.includes('photo')) && 
-                        !header.includes('1с') && !header.includes('1 с') && !header.includes('1c')) {
-                        if (numValue > 0) {
-                            // Берем максимальное значение, если встречается несколько раз
-                            stockFito = Math.max(stockFito, numValue);
-                        }
+                    // Check for Фито/Фото - отдельный склад подрядчика
+                    else if ((headerLower.includes('фито') || headerLower.includes('фіто') || headerLower.includes('fito') ||
+                             headerLower.includes('фото') || headerLower.includes('photo')) &&
+                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
+                        // Это колонка "Фито" или "Фото" - остаток на складе подрядчика
+                        stockFito = numValue; // Берем значение напрямую
                     }
                 }
                 

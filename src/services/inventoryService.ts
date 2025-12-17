@@ -52,57 +52,125 @@ export const inventoryService = {
     },
 
     async importData(items: any[]) {
-        if (!supabase) return; // Cannot import without DB
+        if (!supabase) {
+            console.error('Supabase not connected');
+            throw new Error('База данных не подключена');
+        }
 
-        // 1. Upsert Items
-        // We assume 'code' (SKU) or 'name' could be unique identifiers. For now, let's generate ID if missing.
-        // Actually best practice is to upsert "items" first.
+        if (!items || items.length === 0) {
+            throw new Error('Нет данных для импорта');
+        }
 
-        const dbItems = items.map(i => ({
-            id: i.code || crypto.randomUUID(), // Use code as ID if possible, else random
-            sku: i.code,
-            name: i.name,
-            category: i.category,
-            unit: i.unit,
-            min_stock_level: 0
-        }));
+        console.log(`Начинаем импорт ${items.length} позиций...`);
 
-        // Using upsert on 'id' might be tricky if code isn't UUID. 
-        // Let's rely on SKU being unique? schema didn't enforce it. 
-        // Let's just UPSERT based on ID. 
-        // WARNING: If user re-uploads, we might get duplicates if IDs change.
-        // STRATEGY: Check if SKU exists first? No, too slow. 
-        // Let's use name as fallback key? 
-        // PROPOSAL: For this MVP, we map item.code to item.id. 
+        // 1. Get all existing items by SKU to map codes to IDs
+        const skus = items.map(i => i.code).filter(Boolean);
+        const { data: existingItems, error: fetchError } = await supabase
+            .from('items')
+            .select('id, sku')
+            .in('sku', skus);
 
-        const { error: itemsError } = await supabase.from('items').upsert(dbItems, { onConflict: 'id' });
-        if (itemsError) throw itemsError;
+        if (fetchError) {
+            console.error('Error fetching existing items:', fetchError);
+            throw new Error(`Ошибка при проверке существующих материалов: ${fetchError.message}`);
+        }
 
-        // 2. Upsert Stock Levels
+        // Create a map: SKU -> ID
+        const skuToIdMap = new Map<string, string>();
+        if (existingItems) {
+            existingItems.forEach(item => {
+                if (item.sku) {
+                    skuToIdMap.set(item.sku, item.id);
+                }
+            });
+        }
+
+        // 2. Prepare items for upsert
+        // Strategy: Use code as ID if it's valid, otherwise generate UUID
+        // If item with same SKU exists, use its existing ID
+        const dbItems = items.map(i => {
+            const code = i.code?.trim();
+            if (!code) {
+                throw new Error(`Найден материал без кода: ${i.name || 'Неизвестный'}`);
+            }
+
+            // Check if we have existing item with this SKU
+            let itemId = skuToIdMap.get(code);
+            
+            // If not found, use code as ID (assuming code is valid text identifier)
+            // If code looks like UUID, use it directly, otherwise use code as-is
+            if (!itemId) {
+                itemId = code; // Use code as ID (items.id is TEXT, so this should work)
+            }
+
+            return {
+                id: itemId,
+                sku: code,
+                name: i.name?.trim() || 'Без названия',
+                category: i.category || 'other',
+                unit: i.unit || 'pcs',
+                min_stock_level: 0
+            };
+        });
+
+        console.log(`Подготовлено ${dbItems.length} материалов для импорта`);
+
+        // 3. Upsert items (onConflict: 'id' means update if exists, insert if not)
+        const { error: itemsError, data: insertedItems } = await supabase
+            .from('items')
+            .upsert(dbItems, { onConflict: 'id' })
+            .select();
+
+        if (itemsError) {
+            console.error('Error upserting items:', itemsError);
+            throw new Error(`Ошибка при сохранении материалов: ${itemsError.message}`);
+        }
+
+        console.log(`Успешно сохранено/обновлено ${insertedItems?.length || dbItems.length} материалов`);
+
+        // 4. Prepare stock levels
         const stockInserts = [];
         for (const item of items) {
-            const itemId = item.code; // Since we used code as ID above
+            const code = item.code?.trim();
+            if (!code) continue;
 
-            if (item.stockMain > 0) {
+            // Get the item ID (either from map or use code)
+            const itemId = skuToIdMap.get(code) || code;
+
+            // Main warehouse stock
+            if (item.stockMain > 0 || item.stockMain === 0) {
                 stockInserts.push({
                     item_id: itemId,
                     warehouse_id: 'wh-main',
-                    quantity: item.stockMain
+                    quantity: Number(item.stockMain) || 0
                 });
             }
-            if (item.stockProd > 0) {
+
+            // Production warehouse stock
+            if (item.stockProd > 0 || item.stockProd === 0) {
                 stockInserts.push({
                     item_id: itemId,
                     warehouse_id: 'wh-prod-1',
-                    quantity: item.stockProd
+                    quantity: Number(item.stockProd) || 0
                 });
             }
         }
 
+        // 5. Upsert stock levels
         if (stockInserts.length > 0) {
-            const { error: stockError } = await supabase.from('stock_levels').upsert(stockInserts, { onConflict: 'item_id,warehouse_id' });
-            if (stockError) throw stockError;
+            console.log(`Обновляем остатки для ${stockInserts.length} записей...`);
+            const { error: stockError } = await supabase
+                .from('stock_levels')
+                .upsert(stockInserts, { onConflict: 'item_id,warehouse_id' });
+
+            if (stockError) {
+                console.error('Error upserting stock levels:', stockError);
+                throw new Error(`Ошибка при сохранении остатков: ${stockError.message}`);
+            }
+            console.log('Остатки успешно обновлены');
         }
+
+        console.log('Импорт завершен успешно!');
     },
 
     async deleteItem(itemId: string): Promise<void> {

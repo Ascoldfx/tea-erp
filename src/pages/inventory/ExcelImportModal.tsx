@@ -310,13 +310,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
     const handleImport = async () => {
         setStep('importing');
+        setError(null);
         try {
+            console.log('Начинаем импорт данных...', parsedData.length, 'позиций');
             await inventoryService.importData(parsedData);
+            console.log('Импорт завершен, обновляем список...');
             await refresh(); // Reload inventory list
             setStep('success');
-        } catch (err) {
-            console.error(err);
-            setError('Ошибка при сохранении в базу данных.');
+        } catch (err: any) {
+            console.error('Ошибка импорта:', err);
+            const errorMessage = err?.message || 'Ошибка при сохранении в базу данных. Проверьте консоль браузера (F12) для деталей.';
+            setError(errorMessage);
             setStep('preview');
         }
     };
@@ -425,6 +429,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 {step === 'preview' && (
                     <div className="space-y-4">
+                        {error && (
+                            <div className="p-3 bg-red-900/20 border border-red-900/50 rounded-lg flex items-start text-red-400 text-sm">
+                                <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 whitespace-pre-wrap">{error}</div>
+                            </div>
+                        )}
                         <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                             <h4 className="text-sm font-medium text-slate-300 mb-3 flex justify-between items-center">
                                 <span>Найдено позиций: {parsedData.length}</span>
@@ -469,7 +479,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     <div className="flex flex-col items-center justify-center py-12">
                         <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
                         <h3 className="text-lg font-medium text-slate-200">Импорт данных...</h3>
-                        <p className="text-slate-400 mt-2">Сохраняем позиции и обновляем остатки...</p>
+                        <p className="text-slate-400 mt-2">Сохраняем {parsedData.length} позиций и обновляем остатки...</p>
+                        <p className="text-xs text-slate-500 mt-4">Это может занять несколько секунд</p>
                     </div>
                 )}
 

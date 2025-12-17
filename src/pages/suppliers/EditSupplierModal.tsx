@@ -44,14 +44,14 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
         e.preventDefault();
 
         if (!supabase || !supplier) {
-            alert('Ошибка: нет соединения с базой данных или поставщик не выбран');
+            alert(t('common.dbConnectionError'));
             return;
         }
 
         setSaving(true);
 
         try {
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('contractors')
                 .update({
                     name,
@@ -59,9 +59,7 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
                     phone: phone || null,
                     email: email || null,
                 })
-                .eq('id', supplier.id)
-                .select()
-                .single();
+                .eq('id', supplier.id);
 
             if (error) {
                 console.error('Supabase error details:', {
@@ -73,14 +71,14 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
                 throw new Error(error.message || 'Ошибка при обновлении поставщика');
             }
 
-            console.log('Supplier updated successfully:', data);
+            console.log('Supplier updated successfully');
 
-            alert('Информация о поставщике успешно обновлена!');
+            alert(t('editSupplier.success'));
             onSuccess();
             onClose();
         } catch (error: any) {
             console.error('Error updating supplier:', error);
-            let errorMessage = 'Ошибка при обновлении поставщика.';
+            let errorMessage = t('editSupplier.error');
             
             if (error?.message) {
                 errorMessage = error.message;
@@ -91,10 +89,10 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
             }
             
             if (error?.hint) {
-                errorMessage += `\n\nПодсказка: ${error.hint}`;
+                errorMessage += `\n\n${t('common.hint')}: ${error.hint}`;
             }
             
-            alert(`Ошибка при обновлении поставщика:\n\n${errorMessage}\n\nПроверьте консоль браузера (F12) для деталей.`);
+            alert(`${t('editSupplier.error')}:\n\n${errorMessage}\n\n${t('common.checkConsole')}`);
         } finally {
             setSaving(false);
         }
@@ -103,37 +101,37 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
     if (!supplier) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('suppliers.editTitle')}>
+        <Modal isOpen={isOpen} onClose={onClose} title={t('editSupplier.title', { supplierName: supplier.name })}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                    label={t('suppliers.companyName') + ' *'}
+                    label={t('editSupplier.companyName')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    placeholder="ООО Поставщик"
+                    placeholder={t('editSupplier.companyNamePlaceholder')}
                 />
 
                 <Input
-                    label={t('suppliers.contactPerson')}
+                    label={t('editSupplier.contactPerson')}
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
-                    placeholder="Иван Иванов"
+                    placeholder={t('editSupplier.contactPersonPlaceholder')}
                 />
 
                 <Input
-                    label={t('suppliers.phone')}
+                    label={t('editSupplier.phone')}
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+380..."
+                    placeholder={t('editSupplier.phonePlaceholder')}
                 />
 
                 <Input
-                    label={t('suppliers.email')}
+                    label={t('editSupplier.email')}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="contact@supplier.com"
+                    placeholder={t('editSupplier.emailPlaceholder')}
                 />
 
                 <div className="flex justify-end gap-3 pt-4">

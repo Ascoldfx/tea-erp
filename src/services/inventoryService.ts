@@ -207,6 +207,99 @@ export const inventoryService = {
         console.log('Импорт завершен успешно!');
     },
 
+    async importSuppliers(suppliers: Array<{ name: string }>) {
+        if (!supabase) {
+            console.error('Supabase not connected');
+            throw new Error('База данных не подключена');
+        }
+
+        if (!suppliers || suppliers.length === 0) {
+            console.log('Нет поставщиков для импорта');
+            return;
+        }
+
+        console.log(`Начинаем импорт ${suppliers.length} поставщиков...`);
+
+        // Get unique supplier names (remove duplicates)
+        const uniqueSuppliers = Array.from(
+            new Map(suppliers.map(s => [s.name?.trim().toLowerCase(), s])).values()
+        ).filter(s => s.name && s.name.trim() !== '');
+
+        console.log(`Найдено ${uniqueSuppliers.length} уникальных поставщиков (из ${suppliers.length})`);
+
+        // Get existing suppliers to avoid duplicates
+        const supplierNames = uniqueSuppliers.map(s => s.name.trim());
+        const { data: existingSuppliers, error: fetchError } = await supabase
+            .from('contractors')
+            .select('name')
+            .in('name', supplierNames);
+
+        if (fetchError) {
+            console.error('Error fetching existing suppliers:', fetchError);
+            // Continue anyway - we'll try to insert and let upsert handle conflicts
+        }
+
+        const existingNames = new Set(
+            (existingSuppliers || []).map(s => s.name?.trim().toLowerCase())
+        );
+
+        // Prepare suppliers for upsert
+        const dbSuppliers = uniqueSuppliers.map(supplier => {
+            const name = supplier.name.trim();
+            const nameLower = name.toLowerCase();
+            
+            // Generate ID from name
+            let id = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
+            // Ensure uniqueness
+            if (existingNames.has(nameLower)) {
+                id = `${id}-${Date.now().toString().slice(-6)}`;
+            }
+
+            // Generate code from name
+            let code = name
+                .substring(0, 20)
+                .toUpperCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^A-Z0-9_А-ЯЁ]/g, '')
+                .replace(/[А-ЯЁ]/g, (char) => {
+                    const map: Record<string, string> = {
+                        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+                        'Ж': 'ZH', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+                        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+                        'Ф': 'F', 'Х': 'H', 'Ц': 'TS', 'Ч': 'CH', 'Ш': 'SH', 'Щ': 'SCH',
+                        'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'YU', 'Я': 'YA'
+                    };
+                    return map[char] || '';
+                });
+
+            if (!code || code.length < 3) {
+                code = `SUP_${id.slice(-8)}`;
+            }
+
+            return {
+                id,
+                name,
+                code,
+                contact_person: null,
+                phone: null,
+                email: null,
+            };
+        });
+
+        // Upsert suppliers
+        const { error: suppliersError, data: insertedSuppliers } = await supabase
+            .from('contractors')
+            .upsert(dbSuppliers, { onConflict: 'id' })
+            .select();
+
+        if (suppliersError) {
+            console.error('Error upserting suppliers:', suppliersError);
+            throw new Error(`Ошибка при сохранении поставщиков: ${suppliersError.message}`);
+        }
+
+        console.log(`Успешно сохранено/обновлено ${insertedSuppliers?.length || dbSuppliers.length} поставщиков`);
+    },
+
     async deleteItem(itemId: string): Promise<void> {
         if (!supabase) {
             console.log('Mock Delete:', itemId);

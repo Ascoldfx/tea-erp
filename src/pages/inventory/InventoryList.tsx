@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { ShoppingCart, AlertTriangle, Loader2, Trash2, Filter } from 'lucide-react';
+import { ShoppingCart, Loader2, Trash2, Filter } from 'lucide-react';
 import MaterialDetailsModal from './MaterialDetailsModal';
 import ReceiveGoodsModal from './ReceiveGoodsModal';
 import CreateOrderModal from './CreateOrderModal';
@@ -327,8 +327,6 @@ export default function InventoryList() {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.name')}</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.location')}</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.totalStock')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.unit')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.status')}</th>
                                             {(user?.role === 'admin' || user?.role === 'procurement') && (
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.actions')}</th>
                                             )}
@@ -336,7 +334,6 @@ export default function InventoryList() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
                                         {itemsInGroup.map(item => {
-                                            const isLowStock = item.totalStock <= item.minStockLevel;
                                             return (
                                                 <tr
                                                     key={item.id}
@@ -364,28 +361,7 @@ export default function InventoryList() {
                                                         className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
                                                         onClick={() => handleItemClick(item)}
                                                     >
-                                                        {item.totalStock}
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap text-slate-500 cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
-                                                    >
-                                                        {item.unit}
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                                                        onClick={() => handleItemClick(item)}
-                                                    >
-                                                        {isLowStock ? (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400">
-                                                                <AlertTriangle className="w-3 h-3 mr-1" />
-                                                                Мало
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-900/30 text-emerald-400">
-                                                                В норме
-                                                            </span>
-                                                        )}
+                                                        {item.totalStock} {item.unit}
                                                     </td>
                                                     {(user?.role === 'admin' || user?.role === 'procurement') && (
                                                         <td 

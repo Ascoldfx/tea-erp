@@ -21,10 +21,15 @@ interface ParsedItem {
     stockProd: number;
 }
 
+interface ParsedSupplier {
+    name: string;
+}
+
 export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
     const { t } = useLanguage();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'success'>('upload');
     const [parsedData, setParsedData] = useState<ParsedItem[]>([]);
+    const [parsedSuppliers, setParsedSuppliers] = useState<ParsedSupplier[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [sheetNames, setSheetNames] = useState<string[]>([]);
     const [selectedSheet, setSelectedSheet] = useState<string>('');
@@ -324,7 +329,28 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 return;
             }
 
+            // Extract unique suppliers from "Поставщик" or "Supplier" column
+            const suppliersMap = new Map<string, ParsedSupplier>();
+            data.forEach((row: any) => {
+                const supplierName = findColumn(row, [
+                    'Supplier', 'Поставщик', 'Постачальник', 'Основний постачальник',
+                    'Основной поставщик', 'Supplier Name', 'Поставщик товара',
+                    'Постачальник товара', 'SupplierName', 'ПоставщикТовара'
+                ])?.trim();
+                
+                if (supplierName && supplierName !== '' && supplierName !== '0') {
+                    const nameLower = supplierName.toLowerCase();
+                    if (!suppliersMap.has(nameLower)) {
+                        suppliersMap.set(nameLower, { name: supplierName });
+                    }
+                }
+            });
+
+            const suppliers = Array.from(suppliersMap.values());
+            console.log(`Найдено ${suppliers.length} уникальных поставщиков`);
+
             setParsedData(items);
+            setParsedSuppliers(suppliers);
             setStep('preview');
             setError(null);
             setLoading(false);
@@ -341,7 +367,18 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
         setError(null);
         try {
             console.log('Начинаем импорт данных...', parsedData.length, 'позиций');
+            
+            // Import materials first
             await inventoryService.importData(parsedData);
+            console.log('Материалы импортированы');
+            
+            // Import suppliers if any
+            if (parsedSuppliers.length > 0) {
+                console.log('Импортируем поставщиков...', parsedSuppliers.length);
+                await inventoryService.importSuppliers(parsedSuppliers);
+                console.log('Поставщики импортированы');
+            }
+            
             console.log('Импорт завершен, обновляем список...');
             await refresh(); // Reload inventory list
             setStep('success');
@@ -468,6 +505,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 <span>{t('excel.itemsFound')} {parsedData.length}</span>
                                 <span className="text-xs text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded">{t('excel.preview')}</span>
                             </h4>
+                            {parsedSuppliers.length > 0 && (
+                                <p className="text-xs text-blue-400 mb-3">
+                                    {t('excel.suppliersFound') || 'Найдено поставщиков'}: {parsedSuppliers.length}
+                                </p>
+                            )}
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
@@ -520,6 +562,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         <h3 className="text-xl font-bold text-white mb-2">{t('excel.success')}</h3>
                         <p className="text-slate-400 text-center mb-6">
                             {t('excel.successDesc')} {parsedData.length} {t('excel.successItems')}
+                            {parsedSuppliers.length > 0 && (
+                                <><br />{t('excel.suppliersImported') || 'Импортировано поставщиков'}: {parsedSuppliers.length}</>
+                            )}
                         </p>
                         <Button onClick={handleClose} className="bg-slate-700 hover:bg-slate-600 min-w-[120px]">
                             {t('excel.close')}

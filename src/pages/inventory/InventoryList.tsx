@@ -44,7 +44,7 @@ export default function InventoryList() {
     });
 
     const inventoryCombined = useMemo(() => {
-        return items.map(item => {
+        const mapped = items.map(item => {
             // Get ALL stock levels for this item (for the Details Modal)
             const allStockLevels = stock.filter(s => s.itemId === item.id);
 
@@ -60,7 +60,15 @@ export default function InventoryList() {
                 totalStock, // Use this for the list column "Total Stock"
                 stockLevels: allStockLevels // Pass FULL data to the modal
             };
-        }).filter(item => {
+        });
+        
+        // Debug: log categories for troubleshooting
+        if (selectedCategory !== 'all' && mapped.length > 0) {
+            const categories = [...new Set(mapped.map(i => i.category))];
+            console.log(`[Filter Debug] Selected category: ${selectedCategory}, Available categories:`, categories);
+        }
+        
+        return mapped.filter(item => {
             // Filter by warehouse
             if (selectedWarehouseId && item.totalStock === 0) return false;
             
@@ -68,7 +76,12 @@ export default function InventoryList() {
             if (selectedCategory === 'all') return true;
             
             // Exact match for specific categories
-            return item.category === selectedCategory;
+            const matches = item.category === selectedCategory;
+            if (!matches && selectedCategory !== 'all') {
+                // Debug: log items that don't match
+                console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match filter: ${selectedCategory}`);
+            }
+            return matches;
         });
     }, [selectedWarehouseId, selectedCategory, items, stock]);
 

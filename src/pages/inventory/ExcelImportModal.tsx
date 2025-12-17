@@ -357,6 +357,51 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]);
                 
                 // Look for stock columns - check all columns for stock values
+                // First, try to find exact column names using findColumn (more reliable)
+                // Then fallback to pattern matching
+                
+                // Try to find 1С column first (most important for cardboard packaging)
+                const stock1CStr = findColumn(row, [
+                    'залишки на 1 число, 1С', 'Залишки на 1 число, 1С', 
+                    'зал. на 1 число, 1С', 'Зал. на 1 число, 1С',
+                    'залишки на 1 число, 1с', 'зал. на 1 число, 1с',
+                    'залишки на 1 число, 1 с', 'зал. на 1 число, 1 с'
+                ]);
+                if (stock1CStr) {
+                    const numValue = Number(stock1CStr) || 0;
+                    if (numValue > 0) {
+                        stockMain = Math.max(stockMain, numValue);
+                    }
+                }
+                
+                // Try to find Май/ТС column
+                const stockMaiStr = findColumn(row, [
+                    'залишки на 1 число, 1 число Май', 'Залишки на 1 число, 1 число Май',
+                    'зал. на 1 число, 1 число Май', 'Зал. на 1 число, 1 число Май',
+                    'залишки на 1 число Май', 'зал. на 1 число Май',
+                    'залишки на 1 число ТС', 'зал. на 1 число ТС'
+                ]);
+                if (stockMaiStr) {
+                    const numValue = Number(stockMaiStr) || 0;
+                    if (numValue > 0) {
+                        stockMai = Math.max(stockMai, numValue);
+                    }
+                }
+                
+                // Try to find Фито/Фото column
+                const stockFitoStr = findColumn(row, [
+                    'залишки на 1 число, Фото', 'Залишки на 1 число, Фото',
+                    'зал. на 1 число, Фото', 'Зал. на 1 число, Фото',
+                    'залишки на 1 число Фито', 'зал. на 1 число Фито'
+                ]);
+                if (stockFitoStr) {
+                    const numValue = Number(stockFitoStr) || 0;
+                    if (numValue > 0) {
+                        stockFito = Math.max(stockFito, numValue);
+                    }
+                }
+                
+                // Then do pattern matching as fallback
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').toLowerCase().trim();
                     const value = row[headers[i]] || row[`__EMPTY_${i}`];

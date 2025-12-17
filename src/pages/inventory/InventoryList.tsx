@@ -325,14 +325,14 @@ export default function InventoryList() {
             {/* List Groups */}
             {(() => {
                 // Determine which groups to show based on filter
-                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'> = [];
+                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
                     // Show all groups when "all" is selected
-                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'envelope', 'other'] as const;
+                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'envelope', 'other'];
                 } else {
                     // Show only the selected category group
-                    groupsToShow = [selectedCategory] as const;
+                    groupsToShow = [selectedCategory as InventoryCategory];
                 }
 
                 return groupsToShow.map(group => {

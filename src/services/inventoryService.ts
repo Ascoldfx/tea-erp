@@ -306,17 +306,16 @@ export const inventoryService = {
         console.log(`Подготовлено ${finalSuppliers.length} уникальных поставщиков для импорта (из ${dbSuppliers.length} после обработки)`);
 
         // Upsert suppliers
-        const { error: suppliersError, data: insertedSuppliers } = await supabase
+        const { error: suppliersError } = await supabase
             .from('contractors')
-            .upsert(finalSuppliers, { onConflict: 'id' })
-            .select();
+            .upsert(finalSuppliers, { onConflict: 'id' });
 
         if (suppliersError) {
             console.error('Error upserting suppliers:', suppliersError);
             throw new Error(`Ошибка при сохранении поставщиков: ${suppliersError.message}`);
         }
 
-        console.log(`Успешно сохранено/обновлено ${insertedSuppliers?.length || dbSuppliers.length} поставщиков`);
+        console.log(`Успешно сохранено/обновлено ${finalSuppliers.length} поставщиков`);
     },
 
     async deleteItem(itemId: string): Promise<void> {

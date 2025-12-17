@@ -84,8 +84,7 @@ ON CONFLICT (id) DO UPDATE SET
     code = EXCLUDED.code,
     contact_person = EXCLUDED.contact_person,
     phone = EXCLUDED.phone,
-    email = EXCLUDED.email,
-    updated_at = NOW();
+    email = EXCLUDED.email;
 ```
 
 ### Добавить один материал

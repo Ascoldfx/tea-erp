@@ -231,6 +231,15 @@ export default function InventoryList() {
                     Упаковка
                 </button>
                 <button
+                    onClick={() => setSelectedCategory('packaging_crate')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'packaging_crate' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Гофроящики
+                </button>
+                <button
                     onClick={() => setSelectedCategory('label')}
                     className={clsx(
                         "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
@@ -253,14 +262,14 @@ export default function InventoryList() {
             {/* List Groups */}
             {(() => {
                 // Determine which groups to show based on filter
-                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging' | 'label' | 'other'> = [];
+                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging' | 'packaging_crate' | 'label' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
-                    groupsToShow = ['tea_bulk', 'flavor', 'packaging', 'label', 'other'];
+                    groupsToShow = ['tea_bulk', 'flavor', 'packaging', 'packaging_crate', 'label', 'other'];
                 } else if (selectedCategory === 'packaging') {
                     groupsToShow = ['packaging'];
                 } else {
-                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'label' | 'other'];
+                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'packaging_crate' | 'label' | 'other'];
                 }
 
                 return groupsToShow.map(group => {
@@ -268,12 +277,13 @@ export default function InventoryList() {
                         group === 'tea_bulk' ? 'Чайное сырье' : 
                         group === 'flavor' ? 'Ароматизаторы' : 
                         group === 'packaging' ? 'Упаковка и расходники' :
+                        group === 'packaging_crate' ? 'Гофроящики' :
                         group === 'label' ? 'Этикетки' :
                         'Прочее';
                     
                     const itemsInGroup = inventoryCombined.filter(item => {
                         if (group === 'packaging') {
-                            return ['packaging_consumable', 'packaging_box', 'packaging_crate'].includes(item.category);
+                            return ['packaging_consumable', 'packaging_box'].includes(item.category);
                         }
                         return item.category === group;
                     });

@@ -183,11 +183,34 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Од. вим.', 'Одиниця', 'Од', 'Од. виміру' // Ukrainian
                 ]) || 'шт';
                 
-                const category = findColumn(row, [
+                // Get category from "Група" column, map common values
+                const groupValue = findColumn(row, [
                     'Category', 'Категория', 'Группа', 'Категорія', 'Група',
                     'Категория товара', 'КатегорияТовара', 'Группа товара',
                     'Категорія товара', 'КатегоріяТовара' // Ukrainian
-                ]) || 'tea_bulk';
+                ]).toLowerCase().trim();
+                
+                // Map group values to categories
+                let category = 'tea_bulk'; // default
+                if (groupValue.includes('ярлик') || groupValue.includes('этикетк') || groupValue.includes('стикер') || groupValue.includes('наклейк')) {
+                    category = 'label';
+                } else if (groupValue.includes('ароматизатор') || groupValue === 'flavor') {
+                    category = 'flavor';
+                } else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('ящик')) {
+                    category = 'packaging_crate';
+                } else if (groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') || groupValue.includes('папір') || groupValue.includes('нитки') || groupValue.includes('м\'яка упаковка')) {
+                    category = 'packaging_consumable';
+                } else if (groupValue.includes('пачка') || groupValue.includes('коробк')) {
+                    category = 'packaging_box';
+                } else if (groupValue.includes('сировин') || groupValue.includes('цедра') || groupValue.includes('трав') || groupValue.includes('чай')) {
+                    category = 'tea_bulk';
+                } else if (groupValue) {
+                    // If group value exists but doesn't match, try to use it as-is if it's a valid category
+                    const validCategories = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'other'];
+                    if (validCategories.includes(groupValue)) {
+                        category = groupValue as any;
+                    }
+                }
                 
                 // Try multiple stock column variations (main warehouse)
                 const stockMainStr = findColumn(row, [

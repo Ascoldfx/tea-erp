@@ -55,6 +55,26 @@ const translations: Record<Language, Record<string, string>> = {
         'logistics.calendar.week': 'Неделя',
         'logistics.calendar.today': 'Сегодня',
         
+        // Production
+        'production.title': 'Производство',
+        'production.subtitle': 'Планирование и учет производства',
+        'production.calculator': 'Калькулятор',
+        'production.newBatch': 'Новая партия',
+        'production.planning': 'Планирование',
+        'production.actual': 'Фактическое производство',
+        'production.week': 'Неделя',
+        'production.planned': 'Запланировано',
+        'production.produced': 'Произведено',
+        'production.completed': 'Завершено',
+        'production.inProgress': 'В работе',
+        'production.noPlanned': 'Нет запланированных партий',
+        'production.actualProduction': 'Фактическое производство',
+        'production.noActual': 'Нет данных о фактическом производстве',
+        'production.recipe': 'Технологическая карта (Рецепт)',
+        'production.selectRecipe': 'Выберите продукт...',
+        'production.plannedQuantity': 'Планируемый объем (КГ)',
+        'production.create': 'Создать заказ',
+        
         // Settings
         'settings.title': 'Настройки',
         'settings.subtitle': 'Конфигурация системы и управление доступом',

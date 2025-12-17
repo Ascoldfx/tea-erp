@@ -401,7 +401,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                     
                     // Check for Фито - отдельный склад
-                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito')) && 
+                    // Также может быть написано "Фото" вместо "Фито" (опечатка в Excel)
+                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito') || 
+                         header.includes('фото') || header.includes('photo')) && 
                         !header.includes('1с') && !header.includes('1 с') && !header.includes('1c')) {
                         if (numValue > 0) {
                             // Берем максимальное значение, если встречается несколько раз

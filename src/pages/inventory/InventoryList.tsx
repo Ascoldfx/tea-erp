@@ -216,8 +216,11 @@ export default function InventoryList() {
         ];
         
         for (const prefix of prefixesToRemove) {
-            // Case-insensitive check
-            if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
+            // Case-insensitive check - find matching prefix length
+            const nameLower = shortened.toLowerCase();
+            const prefixLower = prefix.toLowerCase();
+            if (nameLower.startsWith(prefixLower)) {
+                // Use the actual prefix length from the original string
                 shortened = shortened.substring(prefix.length);
                 break;
             }

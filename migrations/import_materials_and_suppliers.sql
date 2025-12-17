@@ -10,25 +10,24 @@
 -- PART 1: INSERT SUPPLIERS (CONTRACTORS)
 -- ============================================
 -- Replace the examples below with your actual suppliers
--- Format: (id, name, code, contact_person, phone, email, address)
+-- Format: (id, name, code, contact_person, phone, email)
 -- Note: 'id' should be unique (e.g., 'supplier-001', 'supplier-002', etc.)
 --       'code' should be unique (will be auto-generated if not provided)
 
-INSERT INTO contractors (id, name, code, contact_person, phone, email, address)
+INSERT INTO contractors (id, name, code, contact_person, phone, email)
 VALUES
     -- Example supplier 1 - Replace with your data
-    ('supplier-001', 'Название поставщика 1', 'SUP-001', 'Иван Иванов', '+380501234567', 'supplier1@example.com', 'Адрес поставщика 1'),
+    ('supplier-001', 'Название поставщика 1', 'SUP-001', 'Иван Иванов', '+380501234567', 'supplier1@example.com'),
     -- Example supplier 2 - Replace with your data
-    ('supplier-002', 'Название поставщика 2', 'SUP-002', 'Петр Петров', '+380507654321', 'supplier2@example.com', 'Адрес поставщика 2')
+    ('supplier-002', 'Название поставщика 2', 'SUP-002', 'Петр Петров', '+380507654321', 'supplier2@example.com')
     -- Add more suppliers here (don't forget comma before last one):
-    -- ('supplier-003', 'Название поставщика 3', 'SUP-003', NULL, NULL, NULL, NULL)
+    -- ('supplier-003', 'Название поставщика 3', 'SUP-003', NULL, NULL, NULL)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     code = EXCLUDED.code,
     contact_person = EXCLUDED.contact_person,
     phone = EXCLUDED.phone,
     email = EXCLUDED.email,
-    address = EXCLUDED.address,
     updated_at = NOW();
 
 -- ============================================

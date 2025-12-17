@@ -14,7 +14,7 @@ INSERT INTO warehouses (id, name, location, type)
 VALUES
     ('wh-kotsyubinske', 'Коцюбинське', 'Коцюбинське', 'internal'),
     ('wh-ceh', 'Цех', 'Цех', 'internal'),
-    ('wh-ts', 'Май', 'Май', 'internal'),  -- Май (было ТС, теперь Май для картонной упаковки)
+    ('wh-ts', 'ТС', 'ТС', 'internal'),  -- ТС (подрядчик по фасовке)
     ('wh-fito', 'Фито', 'Фито', 'internal')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,

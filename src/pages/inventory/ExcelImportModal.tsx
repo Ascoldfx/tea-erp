@@ -18,7 +18,7 @@ interface ParsedItem {
     unit: string;
     category: string;
     stockMain: number; // Общий остаток (1С) - для картонной упаковки это общий остаток
-    stockMai: number; // Май (если есть отдельная колонка)
+    stockMai: number; // ТС (если есть отдельная колонка)
     stockFito: number; // Фито (если есть отдельная колонка)
     storageLocation?: string; // Место хранения из Excel
     plannedConsumption?: Array<{
@@ -345,9 +345,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 
                 // Find stock columns
                 // "Залишки на 1 число, 1С" - это ОБЩИЙ остаток материала (не разбитый по складам)
-                // Если есть отдельные колонки Май и Фито - это остатки на этих складах
+                // Если есть отдельные колонки ТС (Май) и Фито - это остатки на этих складах
                 let stockMain = 0; // Общий остаток (1С)
-                let stockMai = 0;  // Май (если есть отдельная колонка)
+                let stockMai = 0;  // ТС (если есть отдельная колонка, может быть названа "Май" или "ТС")
                 let stockFito = 0; // Фито (если есть отдельная колонка)
                 
                 // Find storage location column
@@ -379,8 +379,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         }
                     }
                     
-                    // Check for Май - отдельный склад
-                    if (header.includes('май') && !header.includes('1с')) {
+                    // Check for ТС (может быть названо "Май" или "ТС") - отдельный склад
+                    if ((header.includes('май') || header.includes('тс') || header.includes('ts')) && !header.includes('1с')) {
                         if (numValue > 0) {
                             stockMai = numValue;
                         }
@@ -407,7 +407,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (stockMai === 0) {
                     const stockMaiStr = findColumn(row, [
                         'залишки на 1 число Май', 'зал. на 1 число Май', 'залишки на 1 число май',
-                        'Залишки на 1 число Май', 'Зал. на 1 число Май'
+                        'Залишки на 1 число Май', 'Зал. на 1 число Май',
+                        'залишки на 1 число ТС', 'зал. на 1 число ТС', 'залишки на 1 число тс',
+                        'Залишки на 1 число ТС', 'Зал. на 1 число ТС'
                     ]);
                     stockMai = Number(stockMaiStr) || 0;
                 }
@@ -702,7 +704,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                             <th className="px-3 py-2">{t('materials.name')}</th>
                                             <th className="px-3 py-2">{t('materials.category')}</th>
                                             <th className="px-3 py-2 text-right">1С</th>
-                                            <th className="px-3 py-2 text-right">Май</th>
+                                            <th className="px-3 py-2 text-right">ТС</th>
                                             <th className="px-3 py-2 text-right">Фито</th>
                                         </tr>
                                     </thead>

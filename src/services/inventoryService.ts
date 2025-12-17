@@ -234,7 +234,7 @@ export const inventoryService = {
                 });
             }
 
-            // Май warehouse stock - отдельный склад
+            // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
             const maiKey = `${itemId}_wh-ts`;
             const maiQty = Number(item.stockMai) || 0;
             if (maiQty > 0) {

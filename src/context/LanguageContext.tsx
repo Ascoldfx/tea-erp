@@ -280,6 +280,26 @@ const translations: Record<Language, Record<string, string>> = {
         'logistics.calendar.week': 'Тиждень',
         'logistics.calendar.today': 'Сьогодні',
         
+        // Production
+        'production.title': 'Виробництво',
+        'production.subtitle': 'Планування та облік виробництва',
+        'production.calculator': 'Калькулятор',
+        'production.newBatch': 'Нова партія',
+        'production.planning': 'Планування',
+        'production.actual': 'Фактичне виробництво',
+        'production.week': 'Тиждень',
+        'production.planned': 'Заплановано',
+        'production.produced': 'Вироблено',
+        'production.completed': 'Завершено',
+        'production.inProgress': 'В роботі',
+        'production.noPlanned': 'Немає запланованих партій',
+        'production.actualProduction': 'Фактичне виробництво',
+        'production.noActual': 'Немає даних про фактичне виробництво',
+        'production.recipe': 'Технологічна карта (Рецепт)',
+        'production.selectRecipe': 'Виберіть продукт...',
+        'production.plannedQuantity': 'Запланований об\'єм (КГ)',
+        'production.create': 'Створити замовлення',
+        
         // Settings
         'settings.title': 'Налаштування',
         'settings.subtitle': 'Конфігурація системи та управління доступом',

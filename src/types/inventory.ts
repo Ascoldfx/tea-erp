@@ -1,10 +1,14 @@
 export type Unit = 'kg' | 'g' | 'l' | 'ml' | 'pcs';
 
+export type WarehouseType = 'internal' | 'supplier' | 'contractor';
+
 export interface Warehouse {
     id: string;
     name: string;
     location: string;
     description?: string;
+    type?: WarehouseType;
+    contractor_id?: string;
 }
 
 export type InventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other';
@@ -60,4 +64,15 @@ export interface StockMovementLog {
     date: string; // ISO date
     source?: string; // e.g., "Supplier" or Warehouse Name
     target?: string; // e.g., Warehouse Name
+}
+
+export interface PlannedConsumption {
+    id: string;
+    itemId: string;
+    plannedDate: string; // ISO date (YYYY-MM-DD)
+    quantity: number;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+    createdBy?: string;
 }

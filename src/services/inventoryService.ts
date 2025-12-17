@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { MOCK_ITEMS, MOCK_STOCK, MOCK_WAREHOUSES } from '../data/mockInventory';
-import type { InventoryItem, StockLevel, Warehouse } from '../types/inventory';
+import type { InventoryItem, StockLevel, Warehouse, PlannedConsumption } from '../types/inventory';
 
 export const inventoryService = {
     async getItems(): Promise<InventoryItem[]> {
@@ -345,6 +345,89 @@ export const inventoryService = {
         if (itemError) {
             console.error('Error deleting item:', itemError);
             throw itemError;
+        }
+    },
+
+    async getPlannedConsumption(itemId: string, startDate?: string, endDate?: string): Promise<PlannedConsumption[]> {
+        if (!supabase) return [];
+
+        let query = supabase
+            .from('planned_consumption')
+            .select('*')
+            .eq('item_id', itemId)
+            .order('planned_date', { ascending: true });
+
+        if (startDate) {
+            query = query.gte('planned_date', startDate);
+        }
+        if (endDate) {
+            query = query.lte('planned_date', endDate);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.error('Error fetching planned consumption:', error);
+            return [];
+        }
+
+        return (data || []).map((pc: any) => ({
+            id: pc.id,
+            itemId: pc.item_id,
+            plannedDate: pc.planned_date,
+            quantity: Number(pc.quantity),
+            notes: pc.notes || undefined,
+            createdAt: pc.created_at,
+            updatedAt: pc.updated_at,
+            createdBy: pc.created_by || undefined,
+        }));
+    },
+
+    async savePlannedConsumption(itemId: string, plannedDate: string, quantity: number, notes?: string): Promise<PlannedConsumption> {
+        if (!supabase) {
+            throw new Error('База данных не подключена');
+        }
+
+        const { data, error } = await supabase
+            .from('planned_consumption')
+            .upsert({
+                item_id: itemId,
+                planned_date: plannedDate,
+                quantity,
+                notes: notes || null,
+            }, { onConflict: 'item_id,planned_date' })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error saving planned consumption:', error);
+            throw new Error(`Ошибка при сохранении планового расхода: ${error.message}`);
+        }
+
+        return {
+            id: data.id,
+            itemId: data.item_id,
+            plannedDate: data.planned_date,
+            quantity: Number(data.quantity),
+            notes: data.notes || undefined,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
+            createdBy: data.created_by || undefined,
+        };
+    },
+
+    async deletePlannedConsumption(id: string): Promise<void> {
+        if (!supabase) {
+            throw new Error('База данных не подключена');
+        }
+
+        const { error } = await supabase
+            .from('planned_consumption')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error deleting planned consumption:', error);
+            throw new Error(`Ошибка при удалении планового расхода: ${error.message}`);
         }
     }
 };

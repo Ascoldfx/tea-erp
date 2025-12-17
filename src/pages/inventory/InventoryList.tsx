@@ -141,7 +141,21 @@ export default function InventoryList() {
 
         const locations = displayStock.map(s => {
             const wh = warehouses.find(w => w.id === s.warehouseId);
-            return { id: s.warehouseId, name: wh?.name || s.warehouseId, type: wh?.id.includes('prod') ? 'prod' : wh?.id.includes('contractor') ? 'contractor' : 'main' };
+            // Determine type based on warehouse type field or fallback to ID pattern
+            let type: 'main' | 'prod' | 'contractor' | 'supplier' = 'main';
+            if (wh?.type === 'supplier' || wh?.type === 'contractor') {
+                type = wh.type === 'supplier' ? 'supplier' : 'contractor';
+            } else if (wh?.id.includes('prod')) {
+                type = 'prod';
+            } else if (wh?.id.includes('contractor') || wh?.id.includes('supplier')) {
+                type = wh.id.includes('supplier') ? 'supplier' : 'contractor';
+            }
+            return { 
+                id: s.warehouseId, 
+                name: wh?.name || s.warehouseId, 
+                type,
+                contractorId: wh?.contractor_id
+            };
         });
 
         if (locations.length === 0) {
@@ -155,9 +169,15 @@ export default function InventoryList() {
                         "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider",
                         loc.type === 'prod' ? "bg-blue-900/40 text-blue-400 border border-blue-800" :
                             loc.type === 'contractor' ? "bg-amber-900/40 text-amber-400 border border-amber-800" :
-                                "bg-slate-700 text-slate-300 border border-slate-600"
-                    )}>
-                        {loc.type === 'prod' ? 'В ЦЕХУ' : loc.type === 'contractor' ? 'У ПОДРЯДЧИКА' : 'СКЛАД'}
+                                loc.type === 'supplier' ? "bg-purple-900/40 text-purple-400 border border-purple-800" :
+                                    "bg-slate-700 text-slate-300 border border-slate-600"
+                    )}
+                        title={loc.name}
+                    >
+                        {loc.type === 'prod' ? t('materials.location.prod') : 
+                         loc.type === 'contractor' ? t('materials.location.contractor') :
+                         loc.type === 'supplier' ? t('materials.location.supplier') :
+                         t('materials.location.main')}
                     </span>
                 ))}
             </div>

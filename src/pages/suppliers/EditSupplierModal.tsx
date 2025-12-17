@@ -101,7 +101,7 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
     if (!supplier) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('editSupplier.title', { supplierName: supplier.name })}>
+        <Modal isOpen={isOpen} onClose={onClose} title={t('editSupplier.title')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                     label={t('editSupplier.companyName')}

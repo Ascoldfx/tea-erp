@@ -4,8 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
-import { Calendar, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
-import ExcelImportModal from '../inventory/ExcelImportModal';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function ProductionPlanning() {
@@ -15,23 +14,12 @@ export default function ProductionPlanning() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
     // Force refresh when component mounts or when refreshKey changes
     useEffect(() => {
         refresh();
     }, [refreshKey]);
-
-    // Refresh data when import modal closes
-    const handleImportClose = () => {
-        setIsImportModalOpen(false);
-        // Force refresh after a short delay to ensure data is saved
-        setTimeout(() => {
-            refresh();
-            setRefreshKey(prev => prev + 1);
-        }, 500);
-    };
 
     // Ensure items, stock, and plannedConsumption are arrays
     const safeItems = Array.isArray(items) ? items : [];
@@ -126,14 +114,6 @@ export default function ProductionPlanning() {
         });
     }, [filteredItems, safeStock, safePlannedConsumption, monthStartStr, monthEndStr]);
 
-    // Calculate totals
-    const totals = useMemo(() => {
-        return planningData.reduce((acc, data) => ({
-            stock: acc.stock + data.totalStock,
-            planned: acc.planned + data.totalPlannedConsumption,
-            required: acc.required + data.requiredOrder
-        }), { stock: 0, planned: 0, required: 0 });
-    }, [planningData]);
 
     return (
         <div className="space-y-6 p-6">
@@ -143,27 +123,18 @@ export default function ProductionPlanning() {
                     <h1 className="text-2xl font-bold text-white">{t('production.planning') || 'Планирование'}</h1>
                     <p className="text-slate-400 mt-1">{t('production.planningDesc') || 'План расхода материалов, фактическое наличие и необходимый заказ'}</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            refresh();
-                            setRefreshKey(prev => prev + 1);
-                        }}
-                        className="border-slate-600 hover:bg-slate-800"
-                        disabled={loading}
-                    >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        {loading ? (t('common.loading') || 'Загрузка...') : (t('common.refresh') || 'Обновить')}
-                    </Button>
-                    <Button
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {t('production.importPlan') || 'Импорт плана'}
-                    </Button>
-                </div>
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        refresh();
+                        setRefreshKey(prev => prev + 1);
+                    }}
+                    className="border-slate-600 hover:bg-slate-800"
+                    disabled={loading}
+                >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {loading ? (t('common.loading') || 'Загрузка...') : (t('common.refresh') || 'Обновить')}
+                </Button>
             </div>
 
             {/* Filters */}
@@ -210,61 +181,38 @@ export default function ProductionPlanning() {
                                 onChange={(e) => setSelectedCategory(e.target.value)}
                                 options={[
                                     { value: 'all', label: t('materials.filter.allCategories') || 'Все категории' },
-                                    ...categories.map(cat => ({
-                                        value: cat,
-                                        label: cat === 'packaging_cardboard' 
-                                            ? (t('materials.filter.packaging_cardboard') || 'Картонная упаковка')
-                                            : cat
-                                    }))
+                                    ...categories.map(cat => {
+                                        // Get proper translation for category
+                                        let label = cat;
+                                        if (cat === 'packaging_cardboard') {
+                                            label = t('materials.filter.packaging_cardboard') || 'Картонная упаковка';
+                                        } else if (cat === 'tea_bulk') {
+                                            label = t('materials.filter.teaBulk') || 'Чайная сировина';
+                                        } else if (cat === 'flavor') {
+                                            label = t('materials.filter.flavor') || 'Ароматизаторы';
+                                        } else if (cat === 'packaging_consumable') {
+                                            label = t('materials.filter.packaging') || 'Пленки';
+                                        } else if (cat === 'soft_packaging') {
+                                            label = t('materials.filter.softPackaging') || 'Мягкая упаковка';
+                                        } else if (cat === 'packaging_crate') {
+                                            label = t('materials.filter.crates') || 'Гофроящики';
+                                        } else if (cat === 'label') {
+                                            label = t('materials.filter.labels') || 'Ярлыки';
+                                        } else if (cat === 'sticker') {
+                                            label = t('materials.filter.stickers') || 'Стикеры';
+                                        } else if (cat === 'envelope') {
+                                            label = t('materials.filter.envelopes') || 'Конверты';
+                                        } else if (cat === 'other') {
+                                            label = t('materials.filter.other') || 'Другое';
+                                        }
+                                        return { value: cat, label };
+                                    })
                                 ]}
                             />
                         </div>
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-slate-400">
-                            {t('production.totalStock') || 'Фактическое наличие'}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-slate-200">
-                            {totals.stock.toLocaleString()}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-slate-400">
-                            {t('production.totalPlanned') || 'План расхода'}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-400">
-                            {totals.planned.toLocaleString()}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-slate-400">
-                            {t('production.totalRequired') || 'Необходимо заказать'}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className={clsx(
-                            "text-2xl font-bold",
-                            totals.required > 0 ? "text-red-400" : "text-emerald-400"
-                        )}>
-                            {totals.required.toLocaleString()}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
 
             {/* Planning Table */}
             <Card>
@@ -302,17 +250,19 @@ export default function ProductionPlanning() {
                                                 <td className="px-4 py-3 font-mono text-xs text-slate-400">
                                                     {data.item.sku || '-'}
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-200">
-                                                    {data.item.name}
+                                                <td className="px-4 py-3 text-slate-200 whitespace-nowrap">
+                                                    <div className="max-w-md truncate" title={data.item.name}>
+                                                        {data.item.name}
+                                                    </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-slate-300">
+                                                <td className="px-4 py-3 text-right text-slate-300 whitespace-nowrap">
                                                     {data.totalStock.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-blue-400">
+                                                <td className="px-4 py-3 text-right text-blue-400 whitespace-nowrap">
                                                     {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
                                                 <td className={clsx(
-                                                    "px-4 py-3 text-right font-medium",
+                                                    "px-4 py-3 text-right font-medium whitespace-nowrap",
                                                     data.requiredOrder > 0 ? "text-red-400" : "text-slate-400"
                                                 )}>
                                                     {data.requiredOrder > 0 
@@ -342,11 +292,6 @@ export default function ProductionPlanning() {
                 </CardContent>
             </Card>
 
-            {/* Import Modal */}
-            <ExcelImportModal
-                isOpen={isImportModalOpen}
-                onClose={handleImportClose}
-            />
         </div>
     );
 }

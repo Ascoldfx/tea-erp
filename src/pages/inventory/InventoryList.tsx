@@ -49,12 +49,10 @@ export default function InventoryList() {
         return categories.sort();
     }, [items]);
 
-    // Standard categories that have translations
-    const standardCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_crate', 'label', 'sticker', 'envelope', 'packaging_cardboard', 'other'];
-    
-    // Dynamic categories (not in standard list)
+    // All categories are now dynamic (from database)
+    // No standard categories - everything comes from imported data
     const dynamicCategories = useMemo(() => {
-        return allCategories.filter(cat => !standardCategories.includes(cat as any));
+        return allCategories;
     }, [allCategories]);
 
     // Helper function to format category name for display
@@ -255,7 +253,7 @@ export default function InventoryList() {
                 ))}
             </div>
 
-            {/* Category Filter */}
+            {/* Category Filter - Only Dynamic Categories from Database */}
             <div className="flex gap-2 pb-4 items-center overflow-x-auto">
                 <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span className="text-sm text-slate-400 mr-2 flex-shrink-0">{t('materials.filter.group')}:</span>
@@ -271,41 +269,29 @@ export default function InventoryList() {
                     {t('materials.filter.allGroups')}
                 </button>
                 
-                {/* Standard Category Buttons */}
-                {standardCategories.map(category => {
-                    const translationKey = `materials.filter.${category}`;
-                    const label = t(translationKey);
-                    return (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={clsx(
-                                "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0",
-                                selectedCategory === category ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                            )}
-                        >
-                            {label}
-                        </button>
-                    );
-                })}
-                
-                {/* Dynamic Category Buttons (from Excel imports) */}
-                {dynamicCategories.map(category => {
-                    const label = formatCategoryName(category);
-                    return (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={clsx(
-                                "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0 border border-purple-500/50",
-                                selectedCategory === category ? "bg-purple-600 text-white border-purple-500" : "bg-slate-800 text-purple-300 border-purple-700 hover:border-purple-500"
-                            )}
-                            title={t('materials.filter.dynamicCategory') || `Динамическая категория: ${category}`}
-                        >
-                            {label}
-                        </button>
-                    );
-                })}
+                {/* Dynamic Category Buttons (all categories from database) */}
+                {dynamicCategories.length > 0 ? (
+                    dynamicCategories.map(category => {
+                        const label = formatCategoryName(category);
+                        return (
+                            <button
+                                key={category}
+                                onClick={() => setSelectedCategory(category)}
+                                className={clsx(
+                                    "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0 border",
+                                    selectedCategory === category ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                                )}
+                                title={`Категория: ${category}`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })
+                ) : (
+                    <span className="text-sm text-slate-500 italic px-3">
+                        {t('materials.filter.noCategories') || 'Нет категорий. Импортируйте материалы из Excel.'}
+                    </span>
+                )}
             </div>
 
             {/* List Groups */}

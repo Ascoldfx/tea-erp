@@ -231,11 +231,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                          groupValue.startsWith('ярлик') || groupValue.includes(' ярлик')) {
                     category = 'label';
                 }
-                // 3. Стикеры/этикетки - ТОЛЬКО если явно указано в группе (строгая проверка)
+                // 3. Стикеры/этикетки/наклейки - ТОЛЬКО если явно указано в группе (строгая проверка)
                 else if (groupValue === 'sticker' || groupValue === 'стикер' || groupValue === 'стикеры' || groupValue === 'стикери' ||
                          groupValue === 'этикетка' || groupValue === 'этикетки' || groupValue === 'етикетка' || groupValue === 'етикетки' ||
+                         groupValue === 'наклейка' || groupValue === 'наклейки' || groupValue === 'наклейка' || groupValue === 'наклейки' ||
                          groupValue.startsWith('стикер') || groupValue.startsWith('этикетк') || groupValue.startsWith('етикетк') ||
-                         groupValue.includes(' стикер') || groupValue.includes(' этикетк') || groupValue.includes(' етикетк')) {
+                         groupValue.startsWith('наклейк') || groupValue.startsWith('наклейк') ||
+                         groupValue.includes(' стикер') || groupValue.includes(' этикетк') || groupValue.includes(' етикетк') ||
+                         groupValue.includes(' наклейк') || groupValue.includes(' наклейк')) {
                     category = 'sticker';
                 }
                 // 4. Конверты - отдельная категория

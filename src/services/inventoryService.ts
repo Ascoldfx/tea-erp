@@ -88,32 +88,51 @@ export const inventoryService = {
         // 2. Prepare items for upsert
         // Strategy: Use code as ID if it's valid, otherwise generate UUID
         // If item with same SKU exists, use its existing ID
-        const dbItems = items.map(i => {
+        // IMPORTANT: Remove duplicates by ID to avoid PostgreSQL error
+        const itemsMap = new Map<string, any>();
+        
+        items.forEach(i => {
             const code = i.code?.trim();
             if (!code) {
-                throw new Error(`Найден материал без кода: ${i.name || 'Неизвестный'}`);
+                console.warn(`Пропущен материал без кода: ${i.name || 'Неизвестный'}`);
+                return;
             }
 
             // Check if we have existing item with this SKU
             let itemId = skuToIdMap.get(code);
             
             // If not found, use code as ID (assuming code is valid text identifier)
-            // If code looks like UUID, use it directly, otherwise use code as-is
             if (!itemId) {
                 itemId = code; // Use code as ID (items.id is TEXT, so this should work)
             }
 
-            return {
+            // Ensure itemId is defined (TypeScript check)
+            if (!itemId) {
+                console.warn(`Не удалось определить ID для материала: ${i.name || 'Неизвестный'}, код: ${code}`);
+                return;
+            }
+
+            // If we already have this ID, keep the last one (or you could merge data)
+            // This removes duplicates before upsert
+            itemsMap.set(itemId, {
                 id: itemId,
                 sku: code,
                 name: i.name?.trim() || 'Без названия',
                 category: i.category || 'other',
                 unit: i.unit || 'pcs',
                 min_stock_level: 0
-            };
+            });
         });
 
-        console.log(`Подготовлено ${dbItems.length} материалов для импорта`);
+        // Convert map to array (removes duplicates)
+        const dbItems = Array.from(itemsMap.values());
+        
+        const duplicatesCount = items.length - dbItems.length;
+        if (duplicatesCount > 0) {
+            console.warn(`Обнаружено ${duplicatesCount} дубликатов по коду. Будут импортированы только уникальные записи.`);
+        }
+
+        console.log(`Подготовлено ${dbItems.length} уникальных материалов для импорта (из ${items.length} строк)`);
 
         // 3. Upsert items (onConflict: 'id' means update if exists, insert if not)
         const { error: itemsError, data: insertedItems } = await supabase
@@ -129,7 +148,10 @@ export const inventoryService = {
         console.log(`Успешно сохранено/обновлено ${insertedItems?.length || dbItems.length} материалов`);
 
         // 4. Prepare stock levels
-        const stockInserts = [];
+        // Group stock by item_id and warehouse_id to avoid duplicates
+        // If same item appears multiple times, sum the quantities
+        const stockMap = new Map<string, { item_id: string; warehouse_id: string; quantity: number }>();
+        
         for (const item of items) {
             const code = item.code?.trim();
             if (!code) continue;
@@ -137,24 +159,36 @@ export const inventoryService = {
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
 
-            // Main warehouse stock
-            if (item.stockMain > 0 || item.stockMain === 0) {
-                stockInserts.push({
+            // Main warehouse stock - sum if multiple rows have same code
+            const mainKey = `${itemId}_wh-main`;
+            const currentMain = stockMap.get(mainKey);
+            const mainQty = Number(item.stockMain) || 0;
+            if (currentMain) {
+                currentMain.quantity += mainQty; // Sum quantities for duplicates
+            } else {
+                stockMap.set(mainKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-main',
-                    quantity: Number(item.stockMain) || 0
+                    quantity: mainQty
                 });
             }
 
-            // Production warehouse stock
-            if (item.stockProd > 0 || item.stockProd === 0) {
-                stockInserts.push({
+            // Production warehouse stock - sum if multiple rows have same code
+            const prodKey = `${itemId}_wh-prod-1`;
+            const currentProd = stockMap.get(prodKey);
+            const prodQty = Number(item.stockProd) || 0;
+            if (currentProd) {
+                currentProd.quantity += prodQty; // Sum quantities for duplicates
+            } else {
+                stockMap.set(prodKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-prod-1',
-                    quantity: Number(item.stockProd) || 0
+                    quantity: prodQty
                 });
             }
         }
+        
+        const stockInserts = Array.from(stockMap.values());
 
         // 5. Upsert stock levels
         if (stockInserts.length > 0) {

@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
-import { CheckCircle, Clock, Plus, Calculator, Calendar } from 'lucide-react';
+import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch } from '../../types/production';
 import { useNavigate } from 'react-router-dom';
@@ -30,10 +30,10 @@ export default function ProductionList() {
     });
 
 
-    // Get current month and weeks
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    // Get current month and weeks with navigation
+    const [viewDate, setViewDate] = useState(new Date());
+    const currentMonth = viewDate.getMonth();
+    const currentYear = viewDate.getFullYear();
     
     // Get week number (ISO week)
     function getWeekNumber(date: Date): number {
@@ -78,6 +78,12 @@ export default function ProductionList() {
         return weeksList;
     }, [currentMonth, currentYear]);
 
+    const navigateMonth = (direction: 'prev' | 'next') => {
+        const newDate = new Date(viewDate);
+        newDate.setMonth(viewDate.getMonth() + (direction === 'next' ? 1 : -1));
+        setViewDate(newDate);
+    };
+
     // Group batches by week
     const batchesByWeek = useMemo(() => {
         const grouped: Record<number, { planned: ProductionBatch[]; actual: ProductionBatch[] }> = {};
@@ -111,7 +117,7 @@ export default function ProductionList() {
     };
 
 
-    const monthName = currentDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
+    const monthName = viewDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
 
     return (
         <div className="space-y-6">
@@ -167,10 +173,32 @@ export default function ProductionList() {
                 <div className="space-y-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Calendar className="w-5 h-5" />
-                                {monthName}
-                            </CardTitle>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                    <Calendar className="w-5 h-5" />
+                                    {monthName}
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => navigateMonth('prev')}
+                                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                    >
+                                        <ChevronLeft className="w-5 h-5 text-slate-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewDate(new Date())}
+                                        className="px-3 py-1 text-sm bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                                    >
+                                        {t('production.today') || 'Сегодня'}
+                                    </button>
+                                    <button
+                                        onClick={() => navigateMonth('next')}
+                                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                    >
+                                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                                    </button>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-6">

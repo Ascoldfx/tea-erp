@@ -222,13 +222,22 @@ export default function InventoryList() {
                     Ароматизаторы
                 </button>
                 <button
-                    onClick={() => setSelectedCategory('packaging')}
+                    onClick={() => setSelectedCategory('packaging_consumable')}
                     className={clsx(
                         "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        selectedCategory === 'packaging' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                        selectedCategory === 'packaging_consumable' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
                     Упаковка
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('soft_packaging')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'soft_packaging' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Мягкая упаковка
                 </button>
                 <button
                     onClick={() => setSelectedCategory('packaging_crate')}
@@ -246,7 +255,16 @@ export default function InventoryList() {
                         selectedCategory === 'label' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Этикетки
+                    Ярлыки
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('sticker')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'sticker' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Стикеры
                 </button>
                 <button
                     onClick={() => setSelectedCategory('other')}
@@ -262,29 +280,30 @@ export default function InventoryList() {
             {/* List Groups */}
             {(() => {
                 // Determine which groups to show based on filter
-                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging' | 'packaging_crate' | 'label' | 'other'> = [];
+                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
-                    groupsToShow = ['tea_bulk', 'flavor', 'packaging', 'packaging_crate', 'label', 'other'];
+                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'other'];
                 } else if (selectedCategory === 'packaging') {
-                    groupsToShow = ['packaging'];
+                    // Legacy support - show all packaging types
+                    groupsToShow = ['packaging_consumable', 'soft_packaging', 'packaging_box'];
                 } else {
-                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'packaging_crate' | 'label' | 'other'];
+                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'];
                 }
 
                 return groupsToShow.map(group => {
                     const groupTitle = 
                         group === 'tea_bulk' ? 'Чайное сырье' : 
                         group === 'flavor' ? 'Ароматизаторы' : 
-                        group === 'packaging' ? 'Упаковка и расходники' :
+                        group === 'packaging_consumable' ? 'Упаковка' :
+                        group === 'soft_packaging' ? 'Мягкая упаковка' :
+                        group === 'packaging_box' ? 'Коробки и пачки' :
                         group === 'packaging_crate' ? 'Гофроящики' :
-                        group === 'label' ? 'Этикетки' :
+                        group === 'label' ? 'Ярлыки' :
+                        group === 'sticker' ? 'Стикеры и этикетки' :
                         'Прочее';
                     
                     const itemsInGroup = inventoryCombined.filter(item => {
-                        if (group === 'packaging') {
-                            return ['packaging_consumable', 'packaging_box'].includes(item.category);
-                        }
                         return item.category === group;
                     });
 

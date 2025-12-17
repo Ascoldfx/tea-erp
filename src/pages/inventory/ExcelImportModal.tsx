@@ -192,21 +192,46 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 
                 // Map group values to categories
                 let category = 'tea_bulk'; // default
-                if (groupValue.includes('ярлик') || groupValue.includes('этикетк') || groupValue.includes('стикер') || groupValue.includes('наклейк')) {
+                
+                // Ярлыки (отдельная категория)
+                if (groupValue.includes('ярлик') || groupValue === 'ярлик') {
                     category = 'label';
-                } else if (groupValue.includes('ароматизатор') || groupValue === 'flavor') {
-                    category = 'flavor';
-                } else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('ящик')) {
-                    category = 'packaging_crate';
-                } else if (groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') || groupValue.includes('папір') || groupValue.includes('нитки') || groupValue.includes('м\'яка упаковка')) {
+                }
+                // Этикетки/стикеры/наклейки (отдельная категория)
+                else if (groupValue.includes('этикетк') || groupValue.includes('стикер') || groupValue.includes('наклейк') || groupValue === 'sticker') {
+                    category = 'sticker';
+                }
+                // Мягкая упаковка (м/у) - отдельная категория
+                else if (groupValue.includes('м\'яка упаковка') || groupValue.includes('мягкая упаковка') || groupValue.includes('м/у') || groupValue === 'м/у') {
+                    category = 'soft_packaging';
+                }
+                // Упаковка (общая) - отдельная категория
+                else if (groupValue.includes('упаковк') && !groupValue.includes('м\'яка') && !groupValue.includes('мягкая') && !groupValue.includes('м/у')) {
                     category = 'packaging_consumable';
-                } else if (groupValue.includes('пачка') || groupValue.includes('коробк')) {
+                }
+                // Ароматизаторы
+                else if (groupValue.includes('ароматизатор') || groupValue === 'flavor') {
+                    category = 'flavor';
+                }
+                // Гофроящики
+                else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('ящик')) {
+                    category = 'packaging_crate';
+                }
+                // Пленка, пакет, бумага, нитки (если не мягкая упаковка)
+                else if (groupValue.includes('пленк') || groupValue.includes('пакет') || groupValue.includes('папір') || groupValue.includes('нитки')) {
+                    category = 'packaging_consumable';
+                }
+                // Пачки, коробки
+                else if (groupValue.includes('пачка') || groupValue.includes('коробк')) {
                     category = 'packaging_box';
-                } else if (groupValue.includes('сировин') || groupValue.includes('цедра') || groupValue.includes('трав') || groupValue.includes('чай')) {
+                }
+                // Сырье, цедра, травы, чай
+                else if (groupValue.includes('сировин') || groupValue.includes('цедра') || groupValue.includes('трав') || groupValue.includes('чай')) {
                     category = 'tea_bulk';
-                } else if (groupValue) {
-                    // If group value exists but doesn't match, try to use it as-is if it's a valid category
-                    const validCategories = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'other'];
+                }
+                // Если значение существует, но не совпадает, попробуем использовать как есть
+                else if (groupValue) {
+                    const validCategories = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'other'];
                     if (validCategories.includes(groupValue)) {
                         category = groupValue as any;
                     }

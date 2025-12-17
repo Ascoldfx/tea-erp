@@ -7,7 +7,7 @@ export interface Warehouse {
     description?: string;
 }
 
-export type InventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'other';
+export type InventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other';
 
 export interface InventoryItem {
     id: string;

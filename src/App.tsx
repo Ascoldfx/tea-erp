@@ -14,12 +14,14 @@ import UsersPage from './pages/users/UsersPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <LanguageProvider>
+      <AuthProvider>
+        <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
@@ -42,7 +44,8 @@ function App() {
           </Route>
         </Routes>
       </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

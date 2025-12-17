@@ -2,17 +2,18 @@ import { NavLink } from 'react-router-dom';
 import { Package, Factory, Truck, Settings, LogOut, Book, Calculator, ShoppingCart, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
-const navItems = [
-    { to: '/orders', icon: ShoppingCart, label: 'Заказы' },
-    { to: '/inventory', icon: Package, label: 'Материалы' },
-    { to: '/suppliers', icon: Truck, label: 'Поставщики' },
-    { to: '/production', icon: Factory, label: 'Производство' },
-    { to: '/calculator', icon: Calculator, label: 'Калькулятор' },
-    { to: '/contractors', icon: Users, label: 'Подрядчики' },
-    { to: '/catalog', icon: Book, label: 'Тех. карты' },
-    { to: '/users', icon: Users, label: 'Пользователи', requireAdmin: true },
-    { to: '/settings', icon: Settings, label: 'Настройки' },
+const getNavItems = (t: (key: string) => string) => [
+    { to: '/orders', icon: ShoppingCart, label: t('nav.orders') },
+    { to: '/inventory', icon: Package, label: t('nav.materials') },
+    { to: '/suppliers', icon: Truck, label: t('nav.suppliers') },
+    { to: '/production', icon: Factory, label: t('nav.production') },
+    { to: '/calculator', icon: Calculator, label: t('nav.calculator') },
+    { to: '/contractors', icon: Users, label: t('nav.contractors') },
+    { to: '/catalog', icon: Book, label: t('nav.techCards') },
+    { to: '/users', icon: Users, label: t('nav.users'), requireAdmin: true },
+    { to: '/settings', icon: Settings, label: t('nav.settings') },
 ];
 
 interface SidebarProps {
@@ -23,12 +24,14 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { user, logout, hasPermission } = useAuth();
+    const { t } = useLanguage();
+    const navItems = getNavItems(t);
 
     // Filter nav items based on permissions/role
     const filteredNavItems = navItems.filter(item => {
         if (item.requireAdmin) return user?.role === 'admin';
-        if (item.label === 'Настройки') return hasPermission('manage_users');
-        if (item.label === 'Подрядчики') return user?.role !== 'warehouse';
+        if (item.to === '/settings') return hasPermission('manage_users');
+        if (item.to === '/contractors') return user?.role !== 'warehouse';
         // Director sees everything else mostly (read only)
         return true;
     });
@@ -80,7 +83,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-red-400 transition-colors"
                 >
                     <LogOut className="w-5 h-5 transition-transform group-hover:rotate-180" />
-                    Выйти
+                    {t('nav.logout')}
                 </button>
             </div>
         </div>

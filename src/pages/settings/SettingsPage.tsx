@@ -3,14 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { FileSpreadsheet, Users, UserPlus, Database } from 'lucide-react';
+import { FileSpreadsheet, Users, UserPlus, Database, Globe } from 'lucide-react';
 import { useAuth, type UserRole } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { seedService } from '../../services/seedService';
 import ExcelImportModal from '../inventory/ExcelImportModal';
 import { clsx } from 'clsx';
 
 export default function SettingsPage() {
     const { user } = useAuth();
+    const { language, setLanguage, t } = useLanguage();
     const [activeTab, setActiveTab] = useState<'general' | 'users' | 'dev'>('users');
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<UserRole>('warehouse');
@@ -45,8 +47,8 @@ export default function SettingsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-slate-100">Настройки</h1>
-                <p className="text-slate-400 mt-1">Конфигурация системы и управление доступом</p>
+                <h1 className="text-3xl font-bold text-slate-100">{t('settings.title')}</h1>
+                <p className="text-slate-400 mt-1">{t('settings.subtitle')}</p>
             </div>
 
             <div className="flex gap-4 border-b border-slate-800">
@@ -57,7 +59,7 @@ export default function SettingsPage() {
                     )}
                     onClick={() => setActiveTab('users')}
                 >
-                    Пользователи
+                    {t('settings.tab.users')}
                 </button>
                 <button
                     className={clsx(
@@ -66,7 +68,7 @@ export default function SettingsPage() {
                     )}
                     onClick={() => setActiveTab('general')}
                 >
-                    Импорт и Общие
+                    {t('settings.tab.general')}
                 </button>
                 <button
                     className={clsx(
@@ -75,7 +77,7 @@ export default function SettingsPage() {
                     )}
                     onClick={() => setActiveTab('dev')}
                 >
-                    Dev Tools (Roles)
+                    {t('settings.tab.dev')}
                 </button>
             </div>
 
@@ -169,24 +171,79 @@ export default function SettingsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <FileSpreadsheet className="text-emerald-500" />
-                                Импорт материалов
+                                <Globe className="text-blue-500" />
+                                {t('settings.language')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="max-w-md space-y-4">
                                 <p className="text-sm text-slate-400">
-                                    Загрузите .xlsx файл для массового обновления справочника материалов и остатков.
+                                    {language === 'ru' 
+                                        ? 'Выберите язык интерфейса приложения'
+                                        : 'Виберіть мову інтерфейсу додатку'
+                                    }
+                                </p>
+                                <div className="flex gap-3">
+                                    <Button
+                                        onClick={() => setLanguage('ru')}
+                                        className={clsx(
+                                            "flex-1",
+                                            language === 'ru' 
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                        )}
+                                    >
+                                        {t('settings.language.ru')}
+                                    </Button>
+                                    <Button
+                                        onClick={() => setLanguage('uk')}
+                                        className={clsx(
+                                            "flex-1",
+                                            language === 'uk' 
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                        )}
+                                    >
+                                        {t('settings.language.uk')}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    {language === 'ru'
+                                        ? 'Изменения вступят в силу после обновления страницы'
+                                        : 'Зміни набудуть чинності після оновлення сторінки'
+                                    }
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileSpreadsheet className="text-emerald-500" />
+                                {language === 'ru' ? 'Импорт материалов' : 'Імпорт матеріалів'}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="max-w-md space-y-4">
+                                <p className="text-sm text-slate-400">
+                                    {language === 'ru'
+                                        ? 'Загрузите .xlsx файл для массового обновления справочника материалов и остатков.'
+                                        : 'Завантажте .xlsx файл для масового оновлення довідника матеріалів та залишків.'
+                                    }
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                    Поддерживаются большие файлы, несколько вкладок и формулы. Будет использована первая вкладка или можно выбрать нужную.
+                                    {language === 'ru'
+                                        ? 'Поддерживаются большие файлы, несколько вкладок и формулы. Будет использована первая вкладка или можно выбрать нужную.'
+                                        : 'Підтримуються великі файли, кілька вкладок та формули. Буде використана перша вкладка або можна вибрати потрібну.'
+                                    }
                                 </p>
                                 <Button 
                                     onClick={() => setIsImportModalOpen(true)}
                                     className="bg-emerald-600 hover:bg-emerald-700"
                                 >
                                     <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                    Импортировать из Excel
+                                    {language === 'ru' ? 'Импортировать из Excel' : 'Імпортувати з Excel'}
                                 </Button>
                             </div>
                         </CardContent>

@@ -8,6 +8,7 @@ import SupplierOrdersModal from './SupplierOrdersModal';
 import EditSupplierModal from './EditSupplierModal';
 import { Modal } from '../../components/ui/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Contractor {
     id: string;
@@ -20,6 +21,7 @@ interface Contractor {
 
 export default function SuppliersPage() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -114,22 +116,22 @@ export default function SuppliersPage() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-100">Поставщики</h1>
-                    <p className="text-slate-400">Управление контрагентами и история заказов</p>
+                    <h1 className="text-2xl font-bold text-slate-100">{t('suppliers.title')}</h1>
+                    <p className="text-slate-400">{t('suppliers.subtitle')}</p>
                 </div>
                 <Button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="bg-emerald-600 hover:bg-emerald-700"
                 >
                     <Plus className="w-4 h-4 mr-2" />
-                    Добавить поставщика
+                    {t('suppliers.add')}
                 </Button>
             </div>
 
             {/* Search */}
             <div className="max-w-md">
                 <Input
-                    placeholder="Поиск по названию или email..."
+                    placeholder={t('suppliers.search')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -140,7 +142,7 @@ export default function SuppliersPage() {
                 {filteredContractors.length === 0 ? (
                     <div className="text-center py-12 text-slate-500">
                         <Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>Поставщики не найдены</p>
+                        <p>{t('suppliers.notFound')}</p>
                     </div>
                 ) : (
                     filteredContractors.map(contractor => (
@@ -195,7 +197,7 @@ export default function SuppliersPage() {
                                             setIsOrdersModalOpen(true);
                                         }}
                                     >
-                                        История заказов
+                                        {t('suppliers.ordersHistory')}
                                     </Button>
                                 </div>
                             </div>

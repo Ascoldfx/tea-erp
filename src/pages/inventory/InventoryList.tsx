@@ -11,6 +11,7 @@ import CreateOrderModal from './CreateOrderModal';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useInventory } from '../../hooks/useInventory';
 import ExcelImportModal from './ExcelImportModal';
 import { inventoryService } from '../../services/inventoryService';
@@ -18,6 +19,7 @@ import type { InventoryCategory } from '../../types/inventory';
 
 export default function InventoryList() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     // Use Hook to fetch data (Real DB or Mock Fallback)
     const { items, warehouses, stock, loading, refresh } = useInventory();
 
@@ -81,7 +83,7 @@ export default function InventoryList() {
             setItemToDelete(null);
         } catch (error) {
             console.error('Error deleting item:', error);
-            alert('Ошибка при удалении материала. Попробуйте еще раз.');
+            alert(t('materials.deleteConfirm') + ' ' + t('common.error') || 'Ошибка при удалении материала. Попробуйте еще раз.');
         } finally {
             setIsDeleting(false);
         }
@@ -91,7 +93,7 @@ export default function InventoryList() {
         return (
             <div className="flex h-96 items-center justify-center text-slate-500">
                 <Loader2 className="w-8 h-8 animate-spin mr-2" />
-                Загрузка склада...
+                {t('common.loading')}
             </div>
         );
     }
@@ -130,7 +132,9 @@ export default function InventoryList() {
             return { id: s.warehouseId, name: wh?.name || s.warehouseId, type: wh?.id.includes('prod') ? 'prod' : wh?.id.includes('contractor') ? 'contractor' : 'main' };
         });
 
-        if (locations.length === 0) return <span className="text-slate-600 text-xs italic">Нет на остатке</span>;
+        if (locations.length === 0) {
+            return <span className="text-slate-600 text-xs italic">{t('materials.status.low')}</span>;
+        }
 
         return (
             <div className="flex flex-wrap gap-1">
@@ -152,14 +156,14 @@ export default function InventoryList() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-100">Материалы</h1>
-                    <p className="text-slate-400 mt-1">Управление запасами сырья, упаковки и материалов</p>
+                    <h1 className="text-3xl font-bold text-slate-100">{t('materials.title')}</h1>
+                    <p className="text-slate-400 mt-1">{t('materials.subtitle')}</p>
                 </div>
                 <div className="flex gap-4 items-center">
                     {(user?.role === 'admin' || user?.role === 'procurement') && (
                         <Button onClick={() => setIsOrderModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 h-12 px-6 text-lg shadow-lg shadow-blue-900/20">
                             <ShoppingCart className="w-5 h-5 mr-2" />
-                            Создать заказ
+                            {t('materials.createOrder')}
                         </Button>
                     )}
                 </div>
@@ -174,7 +178,7 @@ export default function InventoryList() {
                         !selectedWarehouseId ? "bg-slate-100 text-slate-900 border-slate-100" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Все склады
+                    {t('materials.filter.allGroups').replace('группы', 'склады') || 'Всі склади'}
                 </button>
                 {warehouses.map(w => (
                     <button
@@ -193,7 +197,7 @@ export default function InventoryList() {
             {/* Category Filter */}
             <div className="flex gap-2 pb-4 items-center">
                 <Filter className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-400 mr-2">Группа:</span>
+                <span className="text-sm text-slate-400 mr-2">{t('materials.filter.allGroups').replace('Все группы', 'Группа:') || 'Група:'}</span>
                 <button
                     onClick={() => setSelectedCategory('all')}
                     className={clsx(
@@ -201,7 +205,7 @@ export default function InventoryList() {
                         selectedCategory === 'all' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Все группы
+                    {t('materials.filter.allGroups')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('tea_bulk')}
@@ -210,7 +214,7 @@ export default function InventoryList() {
                         selectedCategory === 'tea_bulk' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Чайное сырье
+                    {t('materials.filter.teaBulk')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('flavor')}
@@ -219,7 +223,7 @@ export default function InventoryList() {
                         selectedCategory === 'flavor' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Ароматизаторы
+                    {t('materials.filter.flavor')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('packaging_consumable')}
@@ -228,7 +232,7 @@ export default function InventoryList() {
                         selectedCategory === 'packaging_consumable' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Упаковка
+                    {t('materials.filter.packaging')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('soft_packaging')}
@@ -237,7 +241,7 @@ export default function InventoryList() {
                         selectedCategory === 'soft_packaging' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Мягкая упаковка
+                    {t('materials.filter.softPackaging')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('packaging_crate')}
@@ -246,7 +250,7 @@ export default function InventoryList() {
                         selectedCategory === 'packaging_crate' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Гофроящики
+                    {t('materials.filter.crates')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('label')}
@@ -255,7 +259,7 @@ export default function InventoryList() {
                         selectedCategory === 'label' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Ярлыки
+                    {t('materials.filter.labels')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('sticker')}
@@ -264,7 +268,7 @@ export default function InventoryList() {
                         selectedCategory === 'sticker' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Стикеры
+                    {t('materials.filter.stickers')}
                 </button>
                 <button
                     onClick={() => setSelectedCategory('other')}
@@ -273,7 +277,7 @@ export default function InventoryList() {
                         selectedCategory === 'other' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                     )}
                 >
-                    Прочее
+                    {t('materials.filter.other')}
                 </button>
             </div>
 
@@ -293,15 +297,15 @@ export default function InventoryList() {
 
                 return groupsToShow.map(group => {
                     const groupTitle = 
-                        group === 'tea_bulk' ? 'Чайное сырье' : 
-                        group === 'flavor' ? 'Ароматизаторы' : 
-                        group === 'packaging_consumable' ? 'Упаковка' :
-                        group === 'soft_packaging' ? 'Мягкая упаковка' :
-                        group === 'packaging_box' ? 'Коробки и пачки' :
-                        group === 'packaging_crate' ? 'Гофроящики' :
-                        group === 'label' ? 'Ярлыки' :
-                        group === 'sticker' ? 'Стикеры и этикетки' :
-                        'Прочее';
+                        group === 'tea_bulk' ? t('materials.group.teaBulk') : 
+                        group === 'flavor' ? t('materials.group.flavor') : 
+                        group === 'packaging_consumable' ? t('materials.group.packaging') :
+                        group === 'soft_packaging' ? t('materials.group.softPackaging') :
+                        group === 'packaging_box' ? (t('materials.group.packaging') + ' (коробки)') :
+                        group === 'packaging_crate' ? t('materials.group.crates') :
+                        group === 'label' ? t('materials.group.labels') :
+                        group === 'sticker' ? t('materials.group.stickers') :
+                        t('materials.group.other');
                     
                     const itemsInGroup = inventoryCombined.filter(item => {
                         return item.category === group;
@@ -320,14 +324,14 @@ export default function InventoryList() {
                                 <table className="w-full">
                                     <thead className="bg-slate-900 border-b border-slate-800">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Код</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Наименование</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Местонахождение</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Общий остаток</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Ед. изм.</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Статус</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.code')}</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.name')}</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.location')}</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.totalStock')}</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.unit')}</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.status')}</th>
                                             {(user?.role === 'admin' || user?.role === 'procurement') && (
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Действия</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.actions')}</th>
                                             )}
                                         </tr>
                                     </thead>
@@ -492,17 +496,17 @@ export default function InventoryList() {
             <Modal
                 isOpen={!!itemToDelete}
                 onClose={() => setItemToDelete(null)}
-                title="Подтверждение удаления"
+                title={t('common.delete') + ' - ' + t('materials.title')}
             >
                 <div className="space-y-4">
                     <p className="text-slate-300">
-                        Вы уверены, что хотите удалить материал <strong className="text-slate-100">{itemToDelete?.name}</strong>?
+                        {t('materials.deleteConfirm')} <strong className="text-slate-100">{itemToDelete?.name}</strong>?
                     </p>
                     <p className="text-sm text-slate-400">
-                        Артикул: <span className="font-mono">{itemToDelete?.sku}</span>
+                        {t('materials.code')}: <span className="font-mono">{itemToDelete?.sku}</span>
                     </p>
                     <p className="text-sm text-red-400">
-                        ⚠️ Это действие нельзя отменить. Все связанные данные (остатки, заказы) также будут удалены.
+                        ⚠️ {t('materials.deleteWarning')}
                     </p>
                     <div className="flex justify-end gap-3 pt-4">
                         <Button 
@@ -511,7 +515,7 @@ export default function InventoryList() {
                             onClick={() => setItemToDelete(null)}
                             disabled={isDeleting}
                         >
-                            Отмена
+                            {t('common.cancel')}
                         </Button>
                         <Button 
                             type="button"
@@ -522,12 +526,12 @@ export default function InventoryList() {
                             {isDeleting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Удаление...
+                                    {t('common.loading')}
                                 </>
                             ) : (
                                 <>
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Удалить
+                                    {t('common.delete')}
                                 </>
                             )}
                         </Button>

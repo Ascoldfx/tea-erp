@@ -76,8 +76,7 @@ export default function InventoryList() {
             'tea_bulk': language === 'uk' ? 'Чайна сировина' : 'Чайное сырье',
             'sticker': language === 'uk' ? 'Стікери' : 'Стикеры',
             'other': language === 'uk' ? 'Інше' : 'Прочее',
-            'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка',
-            'packaging_box': language === 'uk' ? 'Коробки та пачки' : 'Коробки и пачки'
+            'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка'
         };
         
         // Check if we have a mapping for this category
@@ -386,7 +385,7 @@ export default function InventoryList() {
             {/* List Groups */}
             {(() => {
                 // Determine which groups to show based on filter
-                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'other'> = [];
+                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'packaging_cardboard' | 'other'> = [];
                 
                 if (selectedCategory === 'all') {
                     // Show all groups when "all" is selected (including dynamic categories)

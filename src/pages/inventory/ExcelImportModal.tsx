@@ -341,10 +341,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Убрали проверку по названию nameLower.includes('конверт'), чтобы картон не попадал в конверты
                     category = 'envelope';
                 }
-                // 5a. Коробки и пачки (если не картон)
+                // 5a. Коробки и пачки - теперь это картонная упаковка
                 else if (groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
-                         (groupValue.includes('коробк') && !groupValue.includes('гофро') && !groupValue.includes('картон'))) {
-                    category = 'packaging_box';
+                         (groupValue.includes('коробк') && !groupValue.includes('гофро'))) {
+                    category = 'packaging_cardboard';
                 }
                 // 6. Гофроящики - отдельная категория (проверяем ПЕРЕД общей упаковкой)
                 else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('гофроящик') ||
@@ -357,10 +357,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                          (groupValue.includes('упаковк') && (groupValue.includes('мягк') || groupValue.includes('м\'як')))) {
                     category = 'soft_packaging';
                 }
-                // 8. Пачки - отдельная категория (проверяем ПЕРЕД общей упаковкой)
+                // 8. Пачки - теперь это картонная упаковка (проверяем ПЕРЕД общей упаковкой)
                 else if (groupValue === 'пачка' || groupValue === 'пачки' || groupValue.startsWith('пачка') ||
                          (groupValue.includes('пачка') && !groupValue.includes('упаковк'))) {
-                    category = 'packaging_box';
+                    category = 'packaging_cardboard';
                 }
                 // 9. Упаковка (общая) - только если НЕ картон, НЕ гофро, НЕ мягкая (пленка, пакет, бумага, нитки)
                 else if ((groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') || 
@@ -378,7 +378,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // 11. Если значение существует, но не совпадает с известными категориями
                 // Сохраняем его как динамическую категорию (нормализованную)
                 else {
-                    const validCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard', 'other'];
+                    const validCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard', 'other'];
                     if (validCategories.includes(groupValue)) {
                         category = groupValue as any;
                     } else {

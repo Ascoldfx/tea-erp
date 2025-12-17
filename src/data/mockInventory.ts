@@ -55,11 +55,11 @@ export const MOCK_ITEMS: InventoryItem[] = [
     { id: 'pak-cello', name: 'Целлофан (Рулон)', sku: 'PAK-CEL', category: 'packaging_consumable', unit: 'kg', minStockLevel: 100 },
 
     // --- PACKAGING: CARDBOARD BOXES (4-6 types) ---
-    { id: 'pak-box-25-std', name: 'Пачка 25 пак. "Стандарт"', sku: 'PAK-BOX-25-S', category: 'packaging_box', unit: 'pcs', minStockLevel: 5000 },
-    { id: 'pak-box-25-prem', name: 'Пачка 25 пак. "Премиум"', sku: 'PAK-BOX-25-P', category: 'packaging_box', unit: 'pcs', minStockLevel: 3000 },
-    { id: 'pak-box-100-std', name: 'Пачка 100 пак. "Стандарт"', sku: 'PAK-BOX-100-S', category: 'packaging_box', unit: 'pcs', minStockLevel: 2000 },
-    { id: 'pak-box-100-fam', name: 'Пачка 100 пак. "Семейная"', sku: 'PAK-BOX-100-F', category: 'packaging_box', unit: 'pcs', minStockLevel: 1000 },
-    { id: 'pak-box-pyr-20', name: 'Пачка 20 пирамидок', sku: 'PAK-BOX-PYR-20', category: 'packaging_box', unit: 'pcs', minStockLevel: 2000 },
+    { id: 'pak-box-25-std', name: 'Пачка 25 пак. "Стандарт"', sku: 'PAK-BOX-25-S', category: 'packaging_cardboard', unit: 'pcs', minStockLevel: 5000 },
+    { id: 'pak-box-25-prem', name: 'Пачка 25 пак. "Премиум"', sku: 'PAK-BOX-25-P', category: 'packaging_cardboard', unit: 'pcs', minStockLevel: 3000 },
+    { id: 'pak-box-100-std', name: 'Пачка 100 пак. "Стандарт"', sku: 'PAK-BOX-100-S', category: 'packaging_cardboard', unit: 'pcs', minStockLevel: 2000 },
+    { id: 'pak-box-100-fam', name: 'Пачка 100 пак. "Семейная"', sku: 'PAK-BOX-100-F', category: 'packaging_cardboard', unit: 'pcs', minStockLevel: 1000 },
+    { id: 'pak-box-pyr-20', name: 'Пачка 20 пирамидок', sku: 'PAK-BOX-PYR-20', category: 'packaging_cardboard', unit: 'pcs', minStockLevel: 2000 },
 
     // --- PACKAGING: CRATES (6-8 types) ---
     { id: 'crt-std-20', name: 'Гофрокороб (20 пачек)', sku: 'CRT-STD-20', category: 'packaging_crate', unit: 'pcs', minStockLevel: 1000 },

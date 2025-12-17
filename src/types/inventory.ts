@@ -12,7 +12,7 @@ export interface Warehouse {
 }
 
 // Base categories - can be extended with dynamic categories from database
-export type BaseInventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'packaging_cardboard' | 'other';
+export type BaseInventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'packaging_cardboard' | 'other';
 // Allow string for dynamic categories from Excel imports
 export type InventoryCategory = BaseInventoryCategory | string;
 

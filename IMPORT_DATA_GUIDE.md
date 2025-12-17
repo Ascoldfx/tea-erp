@@ -13,7 +13,6 @@
 - **Контактное лицо** - имя контактного лица (опционально)
 - **Телефон** - номер телефона (опционально)
 - **Email** - электронная почта (опционально)
-- **Адрес** - адрес поставщика (опционально)
 
 ### Материалы (Items)
 - **ID** - уникальный идентификатор (рекомендуется использовать артикул)
@@ -45,10 +44,10 @@
 
 3. Замените примеры данных на ваши реальные данные:
    ```sql
-   INSERT INTO contractors (id, name, code, contact_person, phone, email, address)
+   INSERT INTO contractors (id, name, code, contact_person, phone, email)
    VALUES
-       ('supplier-001', 'Ваш поставщик 1', 'SUP-001', 'Имя', '+380501234567', 'email@example.com', 'Адрес'),
-       ('supplier-002', 'Ваш поставщик 2', 'SUP-002', NULL, NULL, NULL, NULL),
+       ('supplier-001', 'Ваш поставщик 1', 'SUP-001', 'Имя', '+380501234567', 'email@example.com'),
+       ('supplier-002', 'Ваш поставщик 2', 'SUP-002', NULL, NULL, NULL),
        -- Добавьте больше поставщиков...
    ON CONFLICT (id) DO UPDATE SET ...;
    ```
@@ -78,15 +77,14 @@
 
 ### Добавить одного поставщика
 ```sql
-INSERT INTO contractors (id, name, code, contact_person, phone, email, address)
-VALUES ('supplier-001', 'ООО "Поставщик"', 'SUP-001', 'Иван Иванов', '+380501234567', 'supplier@example.com', 'Киев, ул. Примерная, 1')
+INSERT INTO contractors (id, name, code, contact_person, phone, email)
+VALUES ('supplier-001', 'ООО "Поставщик"', 'SUP-001', 'Иван Иванов', '+380501234567', 'supplier@example.com')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     code = EXCLUDED.code,
     contact_person = EXCLUDED.contact_person,
     phone = EXCLUDED.phone,
     email = EXCLUDED.email,
-    address = EXCLUDED.address,
     updated_at = NOW();
 ```
 

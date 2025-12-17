@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import type { InventoryItem, StockLevel } from '../../types/inventory';
+import type { InventoryItem, StockLevel, Warehouse } from '../../types/inventory';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
 import { History, Play, CheckCircle, Copy, Check } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -11,9 +11,10 @@ interface MaterialDetailsModalProps {
     item: (InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null;
     isOpen: boolean;
     onClose: () => void;
+    warehouses?: Warehouse[];
 }
 
-export default function MaterialDetailsModal({ item, isOpen, onClose }: MaterialDetailsModalProps) {
+export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses = [] }: MaterialDetailsModalProps) {
     const { t } = useLanguage();
     const [movementHistory, setMovementHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
@@ -104,11 +105,12 @@ export default function MaterialDetailsModal({ item, isOpen, onClose }: Material
                         <h4 className="text-sm font-medium text-slate-400 uppercase">Текущее размещение</h4>
                         <div className="grid grid-cols-2 gap-2">
                             {item.stockLevels.length > 0 ? item.stockLevels.map(stock => {
-                                const warehouse = MOCK_WAREHOUSES.find(w => w.id === stock.warehouseId);
+                                // Get warehouse from the warehouses list passed from parent
+                                const warehouse = (warehouses.length > 0 ? warehouses : MOCK_WAREHOUSES).find((w: Warehouse) => w.id === stock.warehouseId);
                                 return (
                                     <div key={stock.id} className="bg-slate-800/50 p-3 rounded border border-slate-700">
                                         <p className="text-xs text-slate-400">{warehouse?.name || stock.warehouseId}</p>
-                                        <p className="font-semibold text-slate-200">{stock.quantity} {item.unit}</p>
+                                        <p className="font-semibold text-slate-200">{stock.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}</p>
                                     </div>
                                 );
                             }) : (

@@ -199,8 +199,8 @@ export default function InventoryList() {
             );
         }
 
-        // Otherwise, show warehouse badges
-        // We only want to show badges for warehouses that actually have stock
+        // Otherwise, show warehouse names (like in modal)
+        // We only want to show warehouses that actually have stock
         const relevantStock = stockLevels.filter(s => s.quantity > 0);
 
         const displayStock = selectedWarehouseId
@@ -209,46 +209,18 @@ export default function InventoryList() {
 
         const locations = displayStock.map(s => {
             const wh = warehouses.find(w => w.id === s.warehouseId);
-            // Determine type based on warehouse type field or fallback to ID/name pattern
-            let type: 'main' | 'prod' | 'contractor' | 'supplier' = 'main';
-            if (wh?.type === 'supplier' || wh?.type === 'contractor') {
-                type = wh.type === 'supplier' ? 'supplier' : 'contractor';
-            } else if (wh?.id === 'wh-ceh' || wh?.name === 'Цех' || wh?.id.includes('ceh')) {
-                type = 'prod';
-            } else if (wh?.id.includes('contractor') || wh?.id.includes('supplier')) {
-                type = wh.id.includes('supplier') ? 'supplier' : 'contractor';
-            }
-            return { 
-                id: s.warehouseId, 
-                name: wh?.name || s.warehouseId, 
-                type,
-                contractorId: wh?.contractor_id
-            };
+            return wh?.name || s.warehouseId;
         });
 
         if (locations.length === 0) {
             return <span className="text-slate-600 text-xs italic">{t('materials.status.low')}</span>;
         }
 
+        // Show warehouse names separated by comma (like in modal)
         return (
-            <div className="flex flex-wrap gap-1">
-                {locations.map(loc => (
-                    <span key={loc.id} className={clsx(
-                        "px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider",
-                        loc.type === 'prod' ? "bg-blue-900/40 text-blue-400 border border-blue-800" :
-                            loc.type === 'contractor' ? "bg-amber-900/40 text-amber-400 border border-amber-800" :
-                                loc.type === 'supplier' ? "bg-purple-900/40 text-purple-400 border border-purple-800" :
-                                    "bg-slate-700 text-slate-300 border border-slate-600"
-                    )}
-                        title={loc.name}
-                    >
-                        {loc.type === 'prod' ? t('materials.location.prod') : 
-                         loc.type === 'contractor' ? t('materials.location.contractor') :
-                         loc.type === 'supplier' ? t('materials.location.supplier') :
-                         t('materials.location.main')}
-                    </span>
-                ))}
-            </div>
+            <span className="text-slate-300 text-xs">
+                {locations.join(', ')}
+            </span>
         );
     };
 
@@ -531,6 +503,7 @@ export default function InventoryList() {
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 item={selectedItem}
+                warehouses={warehouses}
             />
             {isReceiveModalOpen && (
                 <ReceiveGoodsModal

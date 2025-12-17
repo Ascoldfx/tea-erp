@@ -178,6 +178,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             };
             
             // Map column indices to month dates (if month is found in row above headers)
+            // Месяц указывается СТРОГО над столбцом (в той же колонке)
             const columnToMonthMap = new Map<number, string>();
             for (let colIndex = 0; colIndex < Math.max(headers.length, monthRow.length); colIndex++) {
                 const monthCell = monthRow[colIndex] ? String(monthRow[colIndex]).trim() : '';
@@ -186,28 +187,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 
                 // Check if this column has "план витрат" in header
                 if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
-                    // Check if month is in the cell above (same column)
+                    // Check if month is in the cell above (STRICTLY same column, not adjacent)
                     if (monthCell) {
                         const monthDate = parseMonthToDate(monthCell);
                         if (monthDate) {
                             columnToMonthMap.set(colIndex, monthDate);
-                            console.log(`[Excel Import] Found month "${monthCell}" above "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
-                        }
-                    }
-                    
-                    // Also check if month is in adjacent cells in the month row
-                    for (let offset = -2; offset <= 2; offset++) {
-                        const checkColIndex = colIndex + offset;
-                        if (checkColIndex >= 0 && checkColIndex < monthRow.length) {
-                            const adjacentMonthCell = String(monthRow[checkColIndex] || '').trim();
-                            if (adjacentMonthCell) {
-                                const monthDate = parseMonthToDate(adjacentMonthCell);
-                                if (monthDate) {
-                                    columnToMonthMap.set(colIndex, monthDate);
-                                    console.log(`[Excel Import] Found month "${adjacentMonthCell}" in adjacent cell (col ${checkColIndex}) for "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
-                                    break;
-                                }
-                            }
+                            console.log(`[Excel Import] Found month "${monthCell}" STRICTLY above "план витрат" column ${colIndex}, mapped to date: ${monthDate}`);
                         }
                     }
                 }

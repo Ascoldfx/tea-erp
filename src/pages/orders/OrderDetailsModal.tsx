@@ -165,7 +165,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                         <div className="flex items-center justify-between mb-3">
                             <div>
                                 <h3 className="text-lg font-medium text-slate-200">
-                                    {order.contractor?.name || 'Неизвестный поставщик'}
+                                    {(order.supplier || order.contractor)?.name || 'Неизвестный поставщик'}
                                 </h3>
                                 <p className="text-sm text-slate-400">
                                     Дата заказа: {new Date(order.order_date).toLocaleDateString()}

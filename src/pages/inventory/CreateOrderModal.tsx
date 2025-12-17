@@ -112,11 +112,11 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
         }
 
         try {
-            // 1. Create Order
+            // 1. Create Order (using supplier_id for material orders)
             const { data: orderData, error: orderError } = await supabase
                 .from('orders')
                 .insert({
-                    contractor_id: contractorId,
+                    supplier_id: contractorId, // For material orders, use supplier_id
                     status: 'ordered',
                     total_amount: totalCost,
                     order_date: new Date().toISOString()

@@ -44,10 +44,10 @@ export default function OrdersList() {
         }
 
         try {
-            // Fetch orders with contractor info
+            // Fetch orders with supplier/contractor info
             const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select('id, contractor_id, status, total_amount, order_date, contractors(name)')
+                .select('id, supplier_id, contractor_id, status, total_amount, order_date, suppliers(name), contractors(name)')
                 .order('order_date', { ascending: false });
 
             if (ordersError) throw ordersError;
@@ -62,9 +62,13 @@ export default function OrdersList() {
                         .select('id, item_id, quantity, received_quantity, items(name, sku, unit)')
                         .eq('order_id', order.id);
 
+                    const supplier = (order.suppliers as any) || null;
+                    const contractor = (order.contractors as any) || null;
+                    
                     return {
                         ...order,
-                        contractor: order.contractors as any,
+                        supplier,
+                        contractor,
                         items: (itemsData || []).map(item => ({
                             ...item,
                             item: item.items as any
@@ -158,7 +162,7 @@ export default function OrdersList() {
                                     <div>
                                         <h3 className="font-semibold text-slate-200">
                                             {/* @ts-ignore - Supabase join typing is tricky without generated types */}
-                                            {order.contractor?.name || 'Неизвестный поставщик'}
+                                            {(order.supplier || order.contractor)?.name || 'Неизвестный поставщик'}
                                         </h3>
                                         <p className="text-sm text-slate-400">
                                             📅 {new Date(order.order_date).toLocaleDateString('ru-RU')}

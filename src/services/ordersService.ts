@@ -16,10 +16,14 @@ export interface OrderItem {
 
 export interface OrderWithItems {
     id: string;
-    contractor_id: string;
+    supplier_id?: string; // For material orders
+    contractor_id?: string; // For production orders (if needed in future)
     status: 'draft' | 'ordered' | 'shipped' | 'delivered' | 'cancelled';
     total_amount: number;
     order_date: string;
+    supplier?: {
+        name: string;
+    };
     contractor?: {
         name: string;
     };
@@ -32,15 +36,17 @@ export const ordersService = {
 
         console.log('🔍 Fetching order:', orderId);
 
-        // Fetch order with contractor
+        // Fetch order with supplier (material orders use suppliers, not contractors)
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .select(`
                 id,
+                supplier_id,
                 contractor_id,
                 status,
                 total_amount,
                 order_date,
+                suppliers (name),
                 contractors (name)
             `)
             .eq('id', orderId)
@@ -89,9 +95,14 @@ export const ordersService = {
             item: itemsData.find(item => item.id === orderItem.item_id)
         }));
 
+        // Determine supplier or contractor based on what's available
+        const supplier = (order.suppliers as any) || null;
+        const contractor = (order.contractors as any) || null;
+        
         return {
             ...order,
-            contractor: order.contractors as any,
+            supplier,
+            contractor,
             items
         };
     },

@@ -221,13 +221,12 @@ export const inventoryService = {
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
 
-            // Main warehouse stock (Коцюбинське / 1С) - sum if multiple rows have same code
+            // Main warehouse stock (Коцюбинське / 1С) - для картонной упаковки это общий остаток
+            // Если материал встречается несколько раз, берем последнее значение (не суммируем)
             const mainKey = `${itemId}_wh-kotsyubinske`;
-            const currentMain = stockMap.get(mainKey);
             const mainQty = Number(item.stockMain) || 0;
-            if (currentMain) {
-                currentMain.quantity += mainQty; // Sum quantities for duplicates
-            } else if (mainQty > 0) {
+            if (mainQty > 0) {
+                // Перезаписываем значение, если уже есть (берем последнее из Excel)
                 stockMap.set(mainKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-kotsyubinske',
@@ -235,13 +234,10 @@ export const inventoryService = {
                 });
             }
 
-            // Май warehouse stock (ТС) - sum if multiple rows have same code
+            // Май warehouse stock - отдельный склад
             const maiKey = `${itemId}_wh-ts`;
-            const currentMai = stockMap.get(maiKey);
             const maiQty = Number(item.stockMai) || 0;
-            if (currentMai) {
-                currentMai.quantity += maiQty; // Sum quantities for duplicates
-            } else if (maiQty > 0) {
+            if (maiQty > 0) {
                 stockMap.set(maiKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-ts',
@@ -249,13 +245,10 @@ export const inventoryService = {
                 });
             }
 
-            // Фито warehouse stock - sum if multiple rows have same code
+            // Фито warehouse stock - отдельный склад
             const fitoKey = `${itemId}_wh-fito`;
-            const currentFito = stockMap.get(fitoKey);
             const fitoQty = Number(item.stockFito) || 0;
-            if (currentFito) {
-                currentFito.quantity += fitoQty; // Sum quantities for duplicates
-            } else if (fitoQty > 0) {
+            if (fitoQty > 0) {
                 stockMap.set(fitoKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-fito',

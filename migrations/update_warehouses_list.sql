@@ -6,18 +6,17 @@
 -- DELETE FROM warehouses WHERE id IN ('wh-main', 'wh-prod-1', 'wh-prod-2', 'wh-contractor');
 
 -- Insert or update new warehouses
-INSERT INTO warehouses (id, name, location, description, type)
+-- Note: description column may not exist in warehouses table, so we don't include it
+INSERT INTO warehouses (id, name, location, type)
 VALUES
-    ('wh-kotsyubinske', 'Коцюбинське', 'Коцюбинське', 'Склад в Коцюбинське', 'internal'),
-    ('wh-ceh', 'Цех', 'Цех', 'Производственный цех', 'internal'),
-    ('wh-ts', 'ТС', 'ТС', 'Торговый склад', 'internal'),
-    ('wh-fito', 'Фито', 'Фито', 'Склад Фито', 'internal')
+    ('wh-kotsyubinske', 'Коцюбинське', 'Коцюбинське', 'internal'),
+    ('wh-ceh', 'Цех', 'Цех', 'internal'),
+    ('wh-ts', 'ТС', 'ТС', 'internal'),
+    ('wh-fito', 'Фито', 'Фито', 'internal')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     location = EXCLUDED.location,
-    description = EXCLUDED.description,
     type = EXCLUDED.type;
 
 -- Comments
 COMMENT ON TABLE warehouses IS 'Склады: Коцюбинське, Цех, ТС, Фито';
-

@@ -103,5 +103,34 @@ export const inventoryService = {
             const { error: stockError } = await supabase.from('stock_levels').upsert(stockInserts, { onConflict: 'item_id,warehouse_id' });
             if (stockError) throw stockError;
         }
+    },
+
+    async deleteItem(itemId: string): Promise<void> {
+        if (!supabase) {
+            console.log('Mock Delete:', itemId);
+            return;
+        }
+
+        // Delete stock levels first (foreign key constraint)
+        const { error: stockError } = await supabase
+            .from('stock_levels')
+            .delete()
+            .eq('item_id', itemId);
+
+        if (stockError) {
+            console.error('Error deleting stock levels:', stockError);
+            throw stockError;
+        }
+
+        // Delete the item
+        const { error: itemError } = await supabase
+            .from('items')
+            .delete()
+            .eq('id', itemId);
+
+        if (itemError) {
+            console.error('Error deleting item:', itemError);
+            throw itemError;
+        }
     }
 };

@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { ShoppingCart, AlertTriangle, Loader2 } from 'lucide-react';
+import { ShoppingCart, AlertTriangle, Loader2, Trash2, Filter } from 'lucide-react';
 import MaterialDetailsModal from './MaterialDetailsModal';
 import ReceiveGoodsModal from './ReceiveGoodsModal';
 import CreateOrderModal from './CreateOrderModal';
@@ -13,11 +13,13 @@ import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../hooks/useInventory';
 import ExcelImportModal from './ExcelImportModal';
+import { inventoryService } from '../../services/inventoryService';
+import type { InventoryCategory } from '../../types/inventory';
 
 export default function InventoryList() {
     const { user } = useAuth();
     // Use Hook to fetch data (Real DB or Mock Fallback)
-    const { items, warehouses, stock, loading } = useInventory();
+    const { items, warehouses, stock, loading, refresh } = useInventory();
 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -25,9 +27,12 @@ export default function InventoryList() {
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Filtering
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all' | 'packaging'>('all');
 
     const [transferData, setTransferData] = useState({
         sourceWarehouseId: '',
@@ -53,8 +58,34 @@ export default function InventoryList() {
                 totalStock, // Use this for the list column "Total Stock"
                 stockLevels: allStockLevels // Pass FULL data to the modal
             };
-        }).filter(item => !selectedWarehouseId || item.totalStock > 0); // Hide items with 0 stock in the selected warehouse
-    }, [selectedWarehouseId, items, stock]);
+        }).filter(item => {
+            // Filter by warehouse
+            if (selectedWarehouseId && item.totalStock === 0) return false;
+            
+            // Filter by category
+            if (selectedCategory === 'all') return true;
+            if (selectedCategory === 'packaging') {
+                return ['packaging_consumable', 'packaging_box', 'packaging_crate', 'label'].includes(item.category);
+            }
+            return item.category === selectedCategory;
+        });
+    }, [selectedWarehouseId, selectedCategory, items, stock]);
+
+    const handleDeleteItem = async () => {
+        if (!itemToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await inventoryService.deleteItem(itemToDelete.id);
+            await refresh(); // Refresh the list
+            setItemToDelete(null);
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            alert('Ошибка при удалении материала. Попробуйте еще раз.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -134,6 +165,7 @@ export default function InventoryList() {
                 </div>
             </div>
 
+            {/* Warehouse Filter */}
             <div className="flex gap-2 pb-2 overflow-x-auto">
                 <button
                     onClick={() => setSelectedWarehouseId(null)}
@@ -158,17 +190,95 @@ export default function InventoryList() {
                 ))}
             </div>
 
-            {/* List Groups */}
-            {['tea_bulk', 'flavor', 'packaging'].map(group => {
-                const groupTitle = group === 'tea_bulk' ? 'Чайное сырье' : group === 'flavor' ? 'Ароматизаторы' : 'Упаковка и расходники';
-                const itemsInGroup = inventoryCombined.filter(item => {
-                    if (group === 'packaging') {
-                        return ['packaging_consumable', 'packaging_box', 'packaging_crate', 'label'].includes(item.category);
-                    }
-                    return item.category === group;
-                });
+            {/* Category Filter */}
+            <div className="flex gap-2 pb-4 items-center">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-400 mr-2">Группа:</span>
+                <button
+                    onClick={() => setSelectedCategory('all')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'all' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Все группы
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('tea_bulk')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'tea_bulk' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Чайное сырье
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('flavor')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'flavor' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Ароматизаторы
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('packaging')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'packaging' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Упаковка
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('label')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'label' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Этикетки
+                </button>
+                <button
+                    onClick={() => setSelectedCategory('other')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'other' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    Прочее
+                </button>
+            </div>
 
-                if (itemsInGroup.length === 0) return null;
+            {/* List Groups */}
+            {(() => {
+                // Determine which groups to show based on filter
+                let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging' | 'label' | 'other'> = [];
+                
+                if (selectedCategory === 'all') {
+                    groupsToShow = ['tea_bulk', 'flavor', 'packaging', 'label', 'other'];
+                } else if (selectedCategory === 'packaging') {
+                    groupsToShow = ['packaging'];
+                } else {
+                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'label' | 'other'];
+                }
+
+                return groupsToShow.map(group => {
+                    const groupTitle = 
+                        group === 'tea_bulk' ? 'Чайное сырье' : 
+                        group === 'flavor' ? 'Ароматизаторы' : 
+                        group === 'packaging' ? 'Упаковка и расходники' :
+                        group === 'label' ? 'Этикетки' :
+                        'Прочее';
+                    
+                    const itemsInGroup = inventoryCombined.filter(item => {
+                        if (group === 'packaging') {
+                            return ['packaging_consumable', 'packaging_box', 'packaging_crate'].includes(item.category);
+                        }
+                        return item.category === group;
+                    });
+
+                    if (itemsInGroup.length === 0) return null;
 
                 return (
                     <Card key={group}>
@@ -187,6 +297,9 @@ export default function InventoryList() {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Общий остаток</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Ед. изм.</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Статус</th>
+                                            {(user?.role === 'admin' || user?.role === 'procurement') && (
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Действия</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -195,23 +308,42 @@ export default function InventoryList() {
                                             return (
                                                 <tr
                                                     key={item.id}
-                                                    className="hover:bg-slate-800/50 transition-colors cursor-pointer group"
-                                                    onClick={() => handleItemClick(item)}
+                                                    className="hover:bg-slate-800/50 transition-colors group"
                                                 >
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
                                                         {item.sku}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200 group-hover:text-emerald-400 transition-colors">
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap font-medium text-slate-200 group-hover:text-emerald-400 transition-colors cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
                                                         {item.name}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
                                                         {renderLocationBadges(item.stockLevels)}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-200">
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
                                                         {item.totalStock}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500">{item.unit}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap text-slate-500 cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
+                                                        {item.unit}
+                                                    </td>
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                                                        onClick={() => handleItemClick(item)}
+                                                    >
                                                         {isLowStock ? (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400">
                                                                 <AlertTriangle className="w-3 h-3 mr-1" />
@@ -223,6 +355,20 @@ export default function InventoryList() {
                                                             </span>
                                                         )}
                                                     </td>
+                                                    {(user?.role === 'admin' || user?.role === 'procurement') && (
+                                                        <td 
+                                                            className="px-6 py-4 whitespace-nowrap"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <button
+                                                                onClick={() => setItemToDelete(item)}
+                                                                className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-900/20 rounded"
+                                                                title="Удалить материал"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             );
                                         })}
@@ -232,7 +378,7 @@ export default function InventoryList() {
                         </CardContent>
                     </Card>
                 );
-            })}
+            })})()}
 
             {/* Modals */}
             <ExcelImportModal
@@ -312,6 +458,53 @@ export default function InventoryList() {
                     onClose={() => setIsOrderModalOpen(false)}
                 />
             )}
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={!!itemToDelete}
+                onClose={() => setItemToDelete(null)}
+                title="Подтверждение удаления"
+            >
+                <div className="space-y-4">
+                    <p className="text-slate-300">
+                        Вы уверены, что хотите удалить материал <strong className="text-slate-100">{itemToDelete?.name}</strong>?
+                    </p>
+                    <p className="text-sm text-slate-400">
+                        Артикул: <span className="font-mono">{itemToDelete?.sku}</span>
+                    </p>
+                    <p className="text-sm text-red-400">
+                        ⚠️ Это действие нельзя отменить. Все связанные данные (остатки, заказы) также будут удалены.
+                    </p>
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => setItemToDelete(null)}
+                            disabled={isDeleting}
+                        >
+                            Отмена
+                        </Button>
+                        <Button 
+                            type="button"
+                            onClick={handleDeleteItem}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Удаление...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Удалить
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

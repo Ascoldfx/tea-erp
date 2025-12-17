@@ -163,7 +163,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                     // Try case-insensitive match
                     for (const key in row) {
-                        if (key.trim().toLowerCase() === name.toLowerCase()) {
+                        const keyLower = key.trim().toLowerCase();
+                        const nameLower = name.toLowerCase().trim();
+                        // Exact match
+                        if (keyLower === nameLower) {
+                            const value = row[key];
+                            if (value !== undefined && value !== null && value !== '') {
+                                return String(value).trim();
+                            }
+                        }
+                        // Partial match (header contains the name)
+                        if (keyLower.includes(nameLower) || nameLower.includes(keyLower)) {
                             const value = row[key];
                             if (value !== undefined && value !== null && value !== '') {
                                 return String(value).trim();
@@ -236,9 +246,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     lastCategory = groupValue;
                 }
                 
-                // Also check name for category hints if group value is empty
-                const nameLower = name ? String(name).toLowerCase() : '';
-                
                 // Map group values to categories
                 // STRICT LOGIC: Each material can belong to ONLY ONE category
                 // Priority order matters - check most specific first
@@ -273,15 +280,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                          groupValue.includes(' наклейк') || groupValue.includes(' наклейк')) {
                     category = 'sticker';
                 }
-                // 4. Конверты - отдельная категория
-                else if (groupValue === 'envelope' || groupValue === 'конверт' || groupValue === 'конверты' || groupValue === 'конверти' ||
-                         groupValue.startsWith('конверт') || groupValue.includes(' конверт') || nameLower.includes('конверт')) {
-                    category = 'envelope';
-                }
-                // 5. Картонная упаковка - отдельная категория (проверяем ПЕРЕД общей упаковкой)
-                else if (groupValue === 'картон' || groupValue.includes('картон') || groupValue.includes('картонн') ||
-                         groupValue === 'packaging_cardboard') {
+                // 4. Картонная упаковка - отдельная категория (проверяем ПЕРЕД конвертами и общей упаковкой)
+                // Приоритет картона выше, чтобы позиции с группой "картон" не попадали в другие категории
+                if (groupValue === 'картон' || groupValue.includes('картон') || groupValue.includes('картонн') ||
+                    groupValue === 'packaging_cardboard' || groupValue.trim().toLowerCase() === 'картон') {
                     category = 'packaging_cardboard';
+                }
+                // 5. Конверты - отдельная категория (проверяем ПОСЛЕ картона)
+                else if (groupValue === 'envelope' || groupValue === 'конверт' || groupValue === 'конверты' || groupValue === 'конверти' ||
+                         groupValue.startsWith('конверт') || groupValue.includes(' конверт')) {
+                    // Убрали проверку по названию nameLower.includes('конверт'), чтобы картон не попадал в конверты
+                    category = 'envelope';
                 }
                 // 5a. Коробки и пачки (если не картон)
                 else if (groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
@@ -360,18 +369,34 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // First, try to find exact column names using findColumn (more reliable)
                 // Then fallback to pattern matching
                 
+                // Try to find stock columns using findColumn first (more reliable)
+                // Check all possible column name variations
+                
                 // Try to find 1С column first (most important for cardboard packaging)
                 const stock1CStr = findColumn(row, [
                     'залишки на 1 число, 1С', 'Залишки на 1 число, 1С', 
                     'зал. на 1 число, 1С', 'Зал. на 1 число, 1С',
                     'залишки на 1 число, 1с', 'зал. на 1 число, 1с',
-                    'залишки на 1 число, 1 с', 'зал. на 1 число, 1 с'
+                    'залишки на 1 число, 1 с', 'зал. на 1 число, 1 с',
+                    'залишки на 1 число 1С', 'зал. на 1 число 1С',
+                    'залишки на 1 число 1с', 'зал. на 1 число 1с'
                 ]);
-                if (stock1CStr) {
+                if (stock1CStr !== '') {
                     const numValue = Number(stock1CStr) || 0;
-                    if (numValue > 0) {
-                        stockMain = Math.max(stockMain, numValue);
-                    }
+                    // Парсим даже если значение 0 (важно для отображения)
+                    stockMain = numValue;
+                }
+                
+                // Try to find Коцюбинське column (может быть отдельная колонка)
+                const stockKotsyubinskeStr = findColumn(row, [
+                    'залишки на 1 число, коцюбинське', 'Залишки на 1 число, Коцюбинське',
+                    'зал. на 1 число, коцюбинське', 'Зал. на 1 число, Коцюбинське',
+                    'залишки на 1 число коцюбинське', 'зал. на 1 число коцюбинське'
+                ]);
+                if (stockKotsyubinskeStr !== '' && stockMain === 0) {
+                    // Используем только если нет колонки "1С" (для картонной упаковки приоритет у "1С")
+                    const numValue = Number(stockKotsyubinskeStr) || 0;
+                    stockMain = numValue;
                 }
                 
                 // Try to find Май/ТС column
@@ -379,26 +404,29 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'залишки на 1 число, 1 число Май', 'Залишки на 1 число, 1 число Май',
                     'зал. на 1 число, 1 число Май', 'Зал. на 1 число, 1 число Май',
                     'залишки на 1 число Май', 'зал. на 1 число Май',
-                    'залишки на 1 число ТС', 'зал. на 1 число ТС'
+                    'Залишки на 1 число Май', 'Зал. на 1 число Май',
+                    'залишки на 1 число ТС', 'зал. на 1 число ТС',
+                    'Залишки на 1 число ТС', 'Зал. на 1 число ТС',
+                    'залишки на 1 число, ТС', 'зал. на 1 число, ТС'
                 ]);
-                if (stockMaiStr) {
+                if (stockMaiStr !== '') {
                     const numValue = Number(stockMaiStr) || 0;
-                    if (numValue > 0) {
-                        stockMai = Math.max(stockMai, numValue);
-                    }
+                    // Парсим даже если значение 0
+                    stockMai = numValue;
                 }
                 
                 // Try to find Фито/Фото column
                 const stockFitoStr = findColumn(row, [
                     'залишки на 1 число, Фото', 'Залишки на 1 число, Фото',
                     'зал. на 1 число, Фото', 'Зал. на 1 число, Фото',
-                    'залишки на 1 число Фито', 'зал. на 1 число Фито'
+                    'залишки на 1 число Фото', 'зал. на 1 число Фото',
+                    'залишки на 1 число Фито', 'зал. на 1 число Фито',
+                    'Залишки на 1 число Фито', 'Зал. на 1 число Фито'
                 ]);
-                if (stockFitoStr) {
+                if (stockFitoStr !== '') {
                     const numValue = Number(stockFitoStr) || 0;
-                    if (numValue > 0) {
-                        stockFito = Math.max(stockFito, numValue);
-                    }
+                    // Парсим даже если значение 0
+                    stockFito = numValue;
                 }
                 
                 // Then do pattern matching as fallback
@@ -551,6 +579,16 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     storageLocation: storageLocation || undefined,
                     plannedConsumption: plannedConsumption.length > 0 ? plannedConsumption : undefined,
                 };
+                
+                // Debug logging for cardboard packaging to track stock parsing
+                if (category === 'packaging_cardboard') {
+                    console.log(`[Cardboard Debug] Item "${name}" (code: ${code}): stockMain=${stockMain}, stockMai=${stockMai}, stockFito=${stockFito}, groupValue="${groupValue}"`);
+                }
+                
+                // Debug logging if category doesn't match group (e.g., картон -> envelope)
+                if (groupValue && groupValue.toLowerCase().includes('картон') && category !== 'packaging_cardboard') {
+                    console.warn(`[Category Mismatch] Item "${name}" (code: ${code}): groupValue="${groupValue}" but category="${category}"`);
+                }
                 
                 // Debug logging for flavor and sticker categories
                 if (category === 'flavor') {

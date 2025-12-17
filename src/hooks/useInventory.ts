@@ -25,10 +25,18 @@ export function useInventory() {
             if (fetchedItems.length > 0) {
                 const { supabase } = await import('../lib/supabase');
                 if (supabase) {
-                    const { data } = await supabase
+                    const { data, error } = await supabase
                         .from('planned_consumption')
                         .select('*');
-                    setPlannedConsumption(data || []);
+                    if (error) {
+                        console.error('Error fetching planned consumption:', error);
+                    } else {
+                        console.log(`[useInventory] Loaded ${data?.length || 0} planned consumption entries`);
+                        if (data && data.length > 0) {
+                            console.log('[useInventory] Sample planned consumption:', data.slice(0, 3));
+                        }
+                        setPlannedConsumption(data || []);
+                    }
                 }
             }
         } catch (error) {

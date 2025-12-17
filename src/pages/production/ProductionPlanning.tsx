@@ -104,20 +104,35 @@ export default function ProductionPlanning() {
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            // plannedDate is stored as YYYY-MM-01 (first day of month), so we need to match by month and year
+            // plannedDate can be stored as YYYY-MM-01 (first day of month) or YYYY-MM-DD
             const itemPlannedConsumption = safePlannedConsumption.filter(pc => {
                 if (pc.itemId !== item.id) return false;
-                // Parse the planned date (format: YYYY-MM-01 or YYYY-MM-DD)
+                
+                // Try multiple date parsing approaches
                 try {
+                    // Method 1: Parse as ISO date string
                     const pcDate = new Date(pc.plannedDate);
+                    if (isNaN(pcDate.getTime())) {
+                        // If invalid date, try parsing as YYYY-MM format
+                        const dateMatch = String(pc.plannedDate).match(/^(\d{4})-(\d{2})/);
+                        if (dateMatch) {
+                            const [, year, month] = dateMatch;
+                            const pcYear = parseInt(year, 10);
+                            const pcMonth = parseInt(month, 10) - 1; // Month is 0-indexed
+                            return pcYear === selectedYear && pcMonth === selectedMonth;
+                        }
+                        return false;
+                    }
+                    
                     const pcYear = pcDate.getFullYear();
                     const pcMonth = pcDate.getMonth();
-                    // Compare with selected month and year
                     const matches = pcYear === selectedYear && pcMonth === selectedMonth;
-                    // Debug logging for cardboard packaging
-                    if (item.category === 'packaging_cardboard' && matches && pc.quantity > 0) {
-                        console.log(`[Planned Consumption] Item ${item.sku}: found ${pc.quantity} for ${pc.plannedDate} (${pcYear}-${pcMonth + 1})`);
+                    
+                    // Debug logging for all items with planned consumption
+                    if (matches && pc.quantity > 0) {
+                        console.log(`[Planned Consumption] Item ${item.sku}: found ${pc.quantity} for ${pc.plannedDate} (parsed as ${pcYear}-${pcMonth + 1}, selected: ${selectedYear}-${selectedMonth + 1})`);
                     }
+                    
                     return matches;
                 } catch (e) {
                     console.warn('Invalid planned date format:', pc.plannedDate, e);
@@ -281,14 +296,11 @@ export default function ProductionPlanning() {
                                         <th className="px-4 py-3 text-left">{t('materials.name') || 'Наименование'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.stock') || 'Наличие'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.planned') || 'План'}</th>
-                                        <th className="px-4 py-3 text-right">{t('production.required') || 'Необходимо'}</th>
-                                        <th className="px-4 py-3 text-center">{t('production.status') || 'Статус'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.shortage') || 'Не хватает'}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
                                     {planningData.map((data) => {
-                                        const status = data.requiredOrder > 0 ? 'critical' : 
-                                                      data.totalPlannedConsumption > data.totalStock ? 'warning' : 'ok';
                                         return (
                                             <tr key={data.item.id} className="hover:bg-slate-800/50">
                                                 <td className="px-4 py-3 font-mono text-xs text-slate-400">
@@ -313,18 +325,6 @@ export default function ProductionPlanning() {
                                                         ? `${data.requiredOrder.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className={clsx(
-                                                        "px-2 py-1 rounded text-xs font-medium",
-                                                        status === 'critical' && "bg-red-900/30 text-red-400",
-                                                        status === 'warning' && "bg-yellow-900/30 text-yellow-400",
-                                                        status === 'ok' && "bg-emerald-900/30 text-emerald-400"
-                                                    )}>
-                                                        {status === 'critical' && (t('production.critical') || 'Критично')}
-                                                        {status === 'warning' && (t('production.warning') || 'Внимание')}
-                                                        {status === 'ok' && (t('production.ok') || 'ОК')}
-                                                    </span>
                                                 </td>
                                             </tr>
                                         );

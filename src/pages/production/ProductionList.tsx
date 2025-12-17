@@ -8,7 +8,7 @@ import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
 import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch } from '../../types/production';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -131,6 +131,14 @@ export default function ProductionList() {
                     </p>
                 </div>
                 <div className="flex gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/production/planning')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                    >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {t('production.planning') || 'Планирование'}
+                    </Button>
                     <Button variant="outline" onClick={() => navigate('/calculator')}>
                         <Calculator className="w-4 h-4 mr-2" />
                         {t('production.calculator') || 'Калькулятор'}
@@ -146,16 +154,16 @@ export default function ProductionList() {
 
             {/* Tabs */}
             <div className="flex items-center gap-4 border-b border-slate-700 pb-1">
-                <button
+                <Link
+                    to="/production/planning"
                     className={clsx(
                         "px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2",
-                        activeTab === 'planning' ? "border-blue-500 text-blue-400" : "border-transparent text-slate-400 hover:text-slate-200"
+                        "border-transparent text-slate-400 hover:text-slate-200"
                     )}
-                    onClick={() => setActiveTab('planning')}
                 >
                     <Clock size={16} />
                     {t('production.planning') || 'Планирование'}
-                </button>
+                </Link>
                 <button
                     className={clsx(
                         "px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2",

@@ -4,6 +4,7 @@ import OrdersList from './pages/orders/OrdersList';
 import CatalogList from './pages/catalog/CatalogList';
 import InventoryList from './pages/inventory/InventoryList';
 import ProductionList from './pages/production/ProductionList';
+import ProductionPlanning from './pages/production/ProductionPlanning';
 import TechCardsList from './pages/production/TechCardsList';
 import RecipeEditor from './pages/production/RecipeEditor';
 import ProductionCalculator from './pages/production/ProductionCalculator';
@@ -33,6 +34,7 @@ function App() {
               <Route path="/catalog" element={<CatalogList />} />
               <Route path="/inventory" element={<InventoryList />} />
               <Route path="/production" element={<ProductionList />} />
+              <Route path="/production/planning" element={<ProductionPlanning />} />
               <Route path="/logistics" element={<LogisticsCalendar />} />
               <Route path="/calculator" element={<ProductionCalculator />} />
               <Route path="/production/recipes" element={<TechCardsList />} />

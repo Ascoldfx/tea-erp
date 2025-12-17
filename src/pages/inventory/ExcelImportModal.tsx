@@ -21,7 +21,7 @@ interface ParsedItem {
     stockMai: number; // ТС (если есть отдельная колонка)
     stockFito: number; // Фито (если есть отдельная колонка)
     storageLocation?: string; // Место хранения из Excel
-    plannedConsumption?: Array<{
+    plannedConsumption: Array<{
         date: string; // YYYY-MM-DD (первый день месяца)
         quantity: number;
     }>;
@@ -205,9 +205,40 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Find date columns (e.g., "01.12.2023", "01.12.2025")
             const datePattern = /\d{2}\.\d{2}\.\d{4}/;
             const dateColumnIndices: number[] = [];
+            
+            // Month names mapping (Russian and Ukrainian)
+            const monthNames: Record<string, number> = {
+                'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
+                'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
+                'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
+                'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
+                'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
+                'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
+                'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
+                'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
+                'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
+                'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
+                'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
+                'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
+            };
+            
+            // Find month name columns and date columns
+            const monthColumnIndices: Array<{ index: number; month: number; year?: number }> = [];
             headers.forEach((header, index) => {
+                const headerLower = String(header || '').toLowerCase().trim();
+                
+                // Check for date pattern (DD.MM.YYYY)
                 if (datePattern.test(String(header || ''))) {
                     dateColumnIndices.push(index);
+                }
+                
+                // Check for month name
+                if (monthNames[headerLower]) {
+                    const month = monthNames[headerLower];
+                    // Try to extract year from header or use current year
+                    const yearMatch = String(header || '').match(/(\d{4})/);
+                    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+                    monthColumnIndices.push({ index, month, year });
                 }
             });
 
@@ -484,18 +515,153 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Find planned consumption columns - "план витрат" это плановый расход на МЕСЯЦ
                 const plannedConsumption: Array<{ date: string; quantity: number }> = [];
                 
-                // Look for date columns and their corresponding planned consumption columns
+                // Helper function to parse month name to date string
+                const parseMonthToDate = (monthName: string, year?: number): string | null => {
+                    const monthLower = monthName.toLowerCase().trim();
+                    const monthMap: Record<string, number> = {
+                        'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
+                        'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
+                        'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
+                        'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
+                        'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
+                        'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
+                        'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
+                        'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
+                        'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
+                        'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
+                        'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
+                        'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
+                    };
+                    
+                    if (monthMap[monthLower]) {
+                        const month = monthMap[monthLower];
+                        const finalYear = year || new Date().getFullYear();
+                        return `${finalYear}-${String(month).padStart(2, '0')}-01`;
+                    }
+                    return null;
+                };
+                
+                // First, try to find planned consumption columns and link them with month names or dates
+                for (let i = 0; i < headers.length; i++) {
+                    const header = String(headers[i] || '').trim();
+                    const headerLower = header.toLowerCase();
+                    const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                    const quantity = Number(value) || 0;
+                    
+                    // Check if this is a planned consumption column (план витрат, план расход, etc.)
+                    if ((headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) ||
+                        headerLower.includes('план витрат') || headerLower.includes('план расход')) {
+                        
+                        let foundDate = false;
+                        
+                        // Look backwards for month name or date (most common case: месяц, план витрат)
+                        for (let offset = 1; offset <= 3; offset++) {
+                            const prevColIndex = i - offset;
+                            if (prevColIndex < 0) break;
+                            
+                            const prevHeader = String(headers[prevColIndex] || '').trim();
+                            
+                            // Check for month name
+                            const monthDate = parseMonthToDate(prevHeader);
+                            if (monthDate) {
+                                // Парсим все значения, включая 0
+                                plannedConsumption.push({ date: monthDate, quantity });
+                                foundDate = true;
+                                break;
+                            }
+                            
+                            // Check for date pattern (DD.MM.YYYY)
+                            const dateMatch = prevHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                            if (dateMatch) {
+                                const [, , month, year] = dateMatch;
+                                const dateStr = `${year}-${month}-01`;
+                                // Парсим все значения, включая 0
+                                plannedConsumption.push({ date: dateStr, quantity });
+                                foundDate = true;
+                                break;
+                            }
+                        }
+                        
+                        // If no date found backwards, look forwards
+                        if (!foundDate) {
+                            for (let offset = 1; offset <= 3; offset++) {
+                                const nextColIndex = i + offset;
+                                if (nextColIndex >= headers.length) break;
+                                
+                                const nextHeader = String(headers[nextColIndex] || '').trim();
+                                
+                                // Check for month name
+                                const monthDate = parseMonthToDate(nextHeader);
+                                if (monthDate) {
+                                    // Парсим все значения, включая 0
+                                    plannedConsumption.push({ date: monthDate, quantity });
+                                    foundDate = true;
+                                    break;
+                                }
+                                
+                                // Check for date pattern
+                                const dateMatch = nextHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                                if (dateMatch) {
+                                    const [, , month, year] = dateMatch;
+                                    const dateStr = `${year}-${month}-01`;
+                                    // Парсим все значения, включая 0
+                                    plannedConsumption.push({ date: dateStr, quantity });
+                                    foundDate = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If still no date found, but we have a planned consumption column,
+                        // use current month as fallback
+                        if (!foundDate) {
+                            const now = new Date();
+                            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                            plannedConsumption.push({ date: dateStr, quantity });
+                        }
+                    }
+                }
+                
+                // Also process month name columns and look for planned consumption nearby
+                monthColumnIndices.forEach(({ index, month, year }) => {
+                    const dateStr = `${year || new Date().getFullYear()}-${String(month).padStart(2, '0')}-01`;
+                    
+                    // Check if we already have this date in plannedConsumption
+                    const existing = plannedConsumption.find(pc => pc.date === dateStr);
+                    if (existing) return; // Already found
+                    
+                    // Look for planned consumption column near this month column
+                    for (let offset = 1; offset <= 3; offset++) {
+                        const colIndex = index + offset;
+                        if (colIndex >= headers.length) break;
+                        
+                        const colHeader = String(headers[colIndex] || '').toLowerCase().trim();
+                        const colValue = row[headers[colIndex]] || row[`__EMPTY_${colIndex}`];
+                        const quantity = Number(colValue) || 0;
+                        
+                        // Check if this is a planned consumption column
+                        if ((colHeader.includes('план') && (colHeader.includes('витрат') || colHeader.includes('расход'))) ||
+                            colHeader.includes('план витрат') || colHeader.includes('план расход')) {
+                            // Парсим все значения, включая 0 (0 означает отсутствие плана, но это тоже информация)
+                            plannedConsumption.push({ date: dateStr, quantity });
+                            break;
+                        }
+                    }
+                });
+                
+                // Also look for date columns (DD.MM.YYYY format) and their corresponding planned consumption columns
                 dateColumnIndices.forEach(dateColIndex => {
                     const dateHeader = String(headers[dateColIndex] || '').trim();
-                    // Extract date from header (format: DD.MM.YYYY)
                     const dateMatch = dateHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
                     if (dateMatch) {
-                        const [, , month, year] = dateMatch; // day не используется, используем первый день месяца
-                        // Use first day of the month for planned consumption (месячный план)
+                        const [, , month, year] = dateMatch;
                         const dateStr = `${year}-${month}-01`;
                         
-                        // Look for planned consumption column near this date column
-                        // Usually it's in the same date group (next columns after date)
+                        // Check if we already have this date
+                        const existing = plannedConsumption.find(pc => pc.date === dateStr);
+                        if (existing) return;
+                        
+                        // Look for planned consumption column near this date
                         for (let offset = 1; offset <= 5; offset++) {
                             const colIndex = dateColIndex + offset;
                             if (colIndex >= headers.length) break;
@@ -504,14 +670,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             const colValue = row[headers[colIndex]] || row[`__EMPTY_${colIndex}`];
                             const quantity = Number(colValue) || 0;
                             
-                            // Check if this is a planned consumption column
-                            if ((colHeader.includes('план') && colHeader.includes('витрат')) ||
-                                (colHeader.includes('план') && colHeader.includes('расход')) ||
-                                colHeader.includes('план витрат')) {
-                                if (quantity > 0) {
-                                    plannedConsumption.push({ date: dateStr, quantity });
-                                    break; // Found planned consumption for this month
-                                }
+                            if ((colHeader.includes('план') && (colHeader.includes('витрат') || colHeader.includes('расход'))) ||
+                                colHeader.includes('план витрат') || colHeader.includes('план расход')) {
+                                // Парсим все значения, включая 0
+                                plannedConsumption.push({ date: dateStr, quantity });
+                                break;
                             }
                         }
                     }
@@ -526,8 +689,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockMai: isNaN(stockMai) ? 0 : stockMai,
                     stockFito: isNaN(stockFito) ? 0 : stockFito,
                     storageLocation: storageLocation || undefined,
-                    plannedConsumption: plannedConsumption.length > 0 ? plannedConsumption : undefined,
+                    // Always include plannedConsumption array, even if empty (for debugging)
+                    plannedConsumption: plannedConsumption,
                 };
+                
+                // Debug logging for planned consumption
+                if (plannedConsumption.length > 0) {
+                    console.log(`[Planned Consumption Debug] Item "${name}" (code: ${code}):`, plannedConsumption);
+                }
                 
                 // Debug logging for cardboard packaging to track stock parsing
                 if (category === 'packaging_cardboard') {

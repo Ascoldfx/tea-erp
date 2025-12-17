@@ -166,6 +166,18 @@ export const inventoryService = {
         }
 
         console.log(`Успешно сохранено/обновлено ${insertedItems?.length || dbItems.length} материалов`);
+        
+        // Debug: verify categories were saved correctly
+        if (insertedItems && insertedItems.length > 0) {
+            const savedCategoryCounts = insertedItems.reduce((acc: Record<string, number>, item: any) => {
+                acc[item.category] = (acc[item.category] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
+            console.log('[Category Debug] Saved category distribution:', savedCategoryCounts);
+            if (savedCategoryCounts['flavor']) {
+                console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['flavor']} items with flavor category`);
+            }
+        }
 
         // 4. Prepare stock levels
         // Group stock by item_id and warehouse_id to avoid duplicates

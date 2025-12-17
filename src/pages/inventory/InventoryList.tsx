@@ -21,7 +21,7 @@ export default function InventoryList() {
     const { user } = useAuth();
     const { t, language } = useLanguage();
     // Use Hook to fetch data (Real DB or Mock Fallback)
-    const { items, warehouses, stock, loading, refresh } = useInventory();
+    const { items, warehouses, stock, plannedConsumption, loading, refresh } = useInventory();
 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -35,6 +35,7 @@ export default function InventoryList() {
     // Filtering
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all'>('all');
+    const [showZeroStockCardboard, setShowZeroStockCardboard] = useState(false);
 
     const [transferData, setTransferData] = useState({
         sourceWarehouseId: '',
@@ -103,11 +104,16 @@ export default function InventoryList() {
                 : allStockLevels;
 
             const totalStock = relevantStockLevels.reduce((acc, curr) => acc + curr.quantity, 0);
+            
+            // Get planned consumption for this item
+            const itemPlannedConsumption = plannedConsumption.filter(pc => pc.itemId === item.id);
+            const totalPlannedConsumption = itemPlannedConsumption.reduce((acc, curr) => acc + curr.quantity, 0);
 
             return {
                 ...item,
                 totalStock, // Use this for the list column "Total Stock"
-                stockLevels: allStockLevels // Pass FULL data to the modal
+                stockLevels: allStockLevels, // Pass FULL data to the modal
+                totalPlannedConsumption // Total planned consumption
             };
         });
         
@@ -130,9 +136,17 @@ export default function InventoryList() {
                 // Debug: log items that should be flavor but aren't
                 console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match flavor filter. Expected: flavor, got: ${item.category}`);
             }
+            
+            // Hide cardboard packaging with zero stock and zero planned consumption
+            if (item.category === 'packaging_cardboard' && !showZeroStockCardboard) {
+                if (item.totalStock === 0 && item.totalPlannedConsumption === 0) {
+                    return false; // Hide this item
+                }
+            }
+            
             return matches;
         });
-    }, [selectedWarehouseId, selectedCategory, items, stock]);
+    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroStockCardboard]);
 
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
@@ -256,7 +270,7 @@ export default function InventoryList() {
             </div>
 
             {/* Warehouse Filter */}
-            <div className="flex gap-2 pb-2 overflow-x-auto">
+            <div className="flex gap-2 pb-2 overflow-x-auto items-center">
                 <button
                     onClick={() => setSelectedWarehouseId(null)}
                     className={clsx(
@@ -279,6 +293,27 @@ export default function InventoryList() {
                     </button>
                 ))}
             </div>
+
+            {/* Button to show zero stock cardboard */}
+            {(selectedCategory === 'all' || selectedCategory === 'packaging_cardboard') && (
+                <div className="flex items-center gap-2 pb-2">
+                    <button
+                        onClick={() => setShowZeroStockCardboard(!showZeroStockCardboard)}
+                        className={clsx(
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
+                            showZeroStockCardboard 
+                                ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40" 
+                                : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
+                        )}
+                    >
+                        <Filter className="w-4 h-4" />
+                        {showZeroStockCardboard 
+                            ? (t('materials.hideZeroStockCardboard') || 'Скрыть картонную упаковку с нулевыми остатками')
+                            : (t('materials.showZeroStockCardboard') || 'Показать картонную упаковку с нулевыми остатками')
+                        }
+                    </button>
+                </div>
+            )}
 
             {/* Category Filter - Only Dynamic Categories from Database */}
             <div className="flex flex-wrap gap-2 pb-4 items-center">

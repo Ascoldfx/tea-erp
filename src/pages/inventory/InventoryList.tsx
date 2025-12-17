@@ -175,15 +175,20 @@ export default function InventoryList() {
     };
 
     // ... existing renderLocationBadges ...
-    const renderLocationBadges = (stockLevels: StockLevel[]) => {
+    const renderLocationBadges = (stockLevels: StockLevel[], item?: InventoryItem) => {
+        // If item has storage_location from Excel, show it
+        if (item?.storage_location) {
+            return (
+                <span className="text-slate-300 text-xs">
+                    {item.storage_location}
+                </span>
+            );
+        }
+
+        // Otherwise, show warehouse badges
         // We only want to show badges for warehouses that actually have stock
         const relevantStock = stockLevels.filter(s => s.quantity > 0);
 
-        // If filtering is active, maybe we only want to show that badge? 
-        // User asked for "full info in modal", but didn't specify list behavior changes other than duplicates.
-        // Let's keep showing all badges for now, or filter if that's cleaner. 
-        // Actually context: "when clicking... show all info". The list row can show all or just relevant.
-        // Let's show relevant badges to the filter if selected, or all if not.
         const displayStock = selectedWarehouseId
             ? relevantStock.filter(s => s.warehouseId === selectedWarehouseId)
             : relevantStock;
@@ -393,7 +398,7 @@ export default function InventoryList() {
                                                         className="px-6 py-4 whitespace-nowrap cursor-pointer"
                                                         onClick={() => handleItemClick(item)}
                                                     >
-                                                        {renderLocationBadges(item.stockLevels)}
+                                                        {renderLocationBadges(item.stockLevels, item)}
                                                     </td>
                                                     <td 
                                                         className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"

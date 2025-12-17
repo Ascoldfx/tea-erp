@@ -17,11 +17,12 @@ interface ParsedItem {
     name: string;
     unit: string;
     category: string;
-    stockMain: number; // Коцюбинське (1С)
-    stockMai: number; // Май
-    stockFito: number; // Фито
+    stockMain: number; // Общий остаток (1С) - для картонной упаковки это общий остаток
+    stockMai: number; // Май (если есть отдельная колонка)
+    stockFito: number; // Фито (если есть отдельная колонка)
+    storageLocation?: string; // Место хранения из Excel
     plannedConsumption?: Array<{
-        date: string; // YYYY-MM-DD
+        date: string; // YYYY-MM-DD (первый день месяца)
         quantity: number;
     }>;
 }
@@ -342,10 +343,18 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
                 
-                // Find stock columns for three warehouses: 1С (Коцюбинське), Май, Фито
-                let stockMain = 0; // 1С / Коцюбинське
-                let stockMai = 0;  // Май
-                let stockFito = 0; // Фито
+                // Find stock columns
+                // "Залишки на 1 число, 1С" - это ОБЩИЙ остаток материала (не разбитый по складам)
+                // Если есть отдельные колонки Май и Фито - это остатки на этих складах
+                let stockMain = 0; // Общий остаток (1С)
+                let stockMai = 0;  // Май (если есть отдельная колонка)
+                let stockFito = 0; // Фито (если есть отдельная колонка)
+                
+                // Find storage location column
+                const storageLocation = findColumn(row, [
+                    'Место хранения', 'Место хранения', 'Местонахождение', 'Локация', 'Location',
+                    'Місце зберігання', 'Місцезнаходження', 'Локація'
+                ]);
                 
                 // Look for stock columns - check all columns for stock values
                 for (let i = 0; i < headers.length; i++) {
@@ -363,32 +372,23 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue;
                     }
                     
-                    // Check for 1С / Коцюбинське (main warehouse)
-                    if (header.includes('1с') || header.includes('1 с') || 
-                        (header.includes('залишки') && header.includes('1 число') && !header.includes('май') && !header.includes('фито'))) {
-                        // Take the first non-zero value found
+                    // Check for 1С - это ОБЩИЙ остаток (берем первое найденное значение, не суммируем)
+                    if (header.includes('1с') || header.includes('1 с')) {
                         if (numValue > 0 && stockMain === 0) {
-                            stockMain = numValue;
-                        } else if (numValue > stockMain) {
-                            // If multiple columns, take the maximum
-                            stockMain = numValue;
+                            stockMain = numValue; // Общий остаток (берем первое значение)
                         }
                     }
                     
-                    // Check for Май
-                    if (header.includes('май') || header.includes('май')) {
-                        if (numValue > 0 && stockMai === 0) {
-                            stockMai = numValue;
-                        } else if (numValue > stockMai) {
+                    // Check for Май - отдельный склад
+                    if (header.includes('май') && !header.includes('1с')) {
+                        if (numValue > 0) {
                             stockMai = numValue;
                         }
                     }
                     
-                    // Check for Фито
-                    if (header.includes('фито') || header.includes('фіто') || header.includes('fito')) {
-                        if (numValue > 0 && stockFito === 0) {
-                            stockFito = numValue;
-                        } else if (numValue > stockFito) {
+                    // Check for Фито - отдельный склад
+                    if ((header.includes('фито') || header.includes('фіто') || header.includes('fito')) && !header.includes('1с')) {
+                        if (numValue > 0) {
                             stockFito = numValue;
                         }
                     }
@@ -420,7 +420,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockFito = Number(stockFitoStr) || 0;
                 }
 
-                // Find planned consumption columns - look for columns with "план витрат" or "план расхода"
+                // Find planned consumption columns - "план витрат" это плановый расход на МЕСЯЦ
                 const plannedConsumption: Array<{ date: string; quantity: number }> = [];
                 
                 // Look for date columns and their corresponding planned consumption columns
@@ -429,8 +429,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Extract date from header (format: DD.MM.YYYY)
                     const dateMatch = dateHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
                     if (dateMatch) {
-                        const [, day, month, year] = dateMatch;
-                        const dateStr = `${year}-${month}-${day}`;
+                        const [, , month, year] = dateMatch; // day не используется, используем первый день месяца
+                        // Use first day of the month for planned consumption (месячный план)
+                        const dateStr = `${year}-${month}-01`;
                         
                         // Look for planned consumption column near this date column
                         // Usually it's in the same date group (next columns after date)
@@ -448,7 +449,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 colHeader.includes('план витрат')) {
                                 if (quantity > 0) {
                                     plannedConsumption.push({ date: dateStr, quantity });
-                                    break; // Found planned consumption for this date
+                                    break; // Found planned consumption for this month
                                 }
                             }
                         }
@@ -463,6 +464,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockMai: isNaN(stockMai) ? 0 : stockMai,
                     stockFito: isNaN(stockFito) ? 0 : stockFito,
+                    storageLocation: storageLocation || undefined,
                     plannedConsumption: plannedConsumption.length > 0 ? plannedConsumption : undefined,
                 };
                 

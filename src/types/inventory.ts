@@ -24,6 +24,7 @@ export interface InventoryItem {
     unit: Unit;
     minStockLevel: number;
     description?: string;
+    storage_location?: string; // Место хранения из Excel
 }
 
 export interface StockLevel {

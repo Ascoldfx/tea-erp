@@ -131,7 +131,8 @@ export const inventoryService = {
                 name: i.name?.trim() || 'Без названия',
                 category: category, // Always use the category from import
                 unit: normalizedUnit,
-                min_stock_level: 0
+                min_stock_level: 0,
+                storage_location: i.storageLocation || null
             });
         });
 

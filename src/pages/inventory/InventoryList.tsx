@@ -201,22 +201,23 @@ export default function InventoryList() {
     // Function to shorten material names in the list
     const shortenMaterialName = (name: string): string => {
         let shortened = name;
-        // Remove common packaging prefixes
+        // Remove common packaging prefixes (order matters - check longer prefixes first)
         const prefixesToRemove = [
+            'Картонна упаковка на чай ',
+            'Картонная упаковка на чай ',
             'Упаковка для чая ',
             'Упаковка для чаю ',
-            'Картонна упаковка на чай ',
             'Упаковка на чай ',
-            'Картонная упаковка на чай ',
+            'Картонна упаковка на чай',
+            'Картонная упаковка на чай',
             'Упаковка для чая',
             'Упаковка для чаю',
-            'Картонна упаковка на чай',
-            'Упаковка на чай',
-            'Картонная упаковка на чай'
+            'Упаковка на чай'
         ];
         
         for (const prefix of prefixesToRemove) {
-            if (shortened.startsWith(prefix)) {
+            // Case-insensitive check
+            if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
                 shortened = shortened.substring(prefix.length);
                 break;
             }

@@ -11,7 +11,7 @@ export interface Warehouse {
     contractor_id?: string;
 }
 
-export type InventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other';
+export type InventoryCategory = 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'other';
 
 export interface InventoryItem {
     id: string;

@@ -303,6 +303,15 @@ export default function InventoryList() {
                     {t('materials.filter.stickers')}
                 </button>
                 <button
+                    onClick={() => setSelectedCategory('envelope')}
+                    className={clsx(
+                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                        selectedCategory === 'envelope' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                    )}
+                >
+                    {t('materials.filter.envelopes')}
+                </button>
+                <button
                     onClick={() => setSelectedCategory('other')}
                     className={clsx(
                         "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
@@ -320,10 +329,10 @@ export default function InventoryList() {
                 
                 if (selectedCategory === 'all') {
                     // Show all groups when "all" is selected
-                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'other'];
+                    groupsToShow = ['tea_bulk', 'flavor', 'packaging_consumable', 'soft_packaging', 'packaging_box', 'packaging_crate', 'label', 'sticker', 'envelope', 'other'] as const;
                 } else {
                     // Show only the selected category group
-                    groupsToShow = [selectedCategory as 'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_box' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'other'];
+                    groupsToShow = [selectedCategory] as const;
                 }
 
                 return groupsToShow.map(group => {

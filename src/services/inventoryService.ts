@@ -114,11 +114,16 @@ export const inventoryService = {
 
             // If we already have this ID, keep the last one (or you could merge data)
             // This removes duplicates before upsert
+            // IMPORTANT: Always use the category from the current import to ensure correct grouping
+            const category = i.category || 'other';
+            if (category === 'flavor') {
+                console.log(`[Category Debug] Material "${i.name}" assigned to flavor category`);
+            }
             itemsMap.set(itemId, {
                 id: itemId,
                 sku: code,
                 name: i.name?.trim() || 'Без названия',
-                category: i.category || 'other',
+                category: category, // Always use the category from import
                 unit: i.unit || 'pcs',
                 min_stock_level: 0
             });

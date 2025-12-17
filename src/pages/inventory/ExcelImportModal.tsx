@@ -315,7 +315,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]);
                 const stockProd = Number(stockProdStr) || 0;
 
-                return {
+                const result = {
                     code: code,
                     name: name,
                     unit: unit,
@@ -323,6 +323,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
                     stockProd: isNaN(stockProd) ? 0 : stockProd,
                 };
+                
+                // Debug logging for flavor category
+                if (category === 'flavor') {
+                    console.log(`[Category Debug] Parsed item "${name}" (code: ${code}) -> category: ${category}, groupValue: "${groupValue}"`);
+                }
+                
+                return result;
             }).filter((i): i is ParsedItem => {
                 // Skip null items (from early return)
                 if (!i) return false;

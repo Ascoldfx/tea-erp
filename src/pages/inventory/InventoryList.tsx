@@ -77,9 +77,9 @@ export default function InventoryList() {
             
             // Exact match for specific categories
             const matches = item.category === selectedCategory;
-            if (!matches) {
-                // Debug: log items that don't match
-                console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match filter: ${selectedCategory}`);
+            if (!matches && selectedCategory === 'flavor') {
+                // Debug: log items that should be flavor but aren't
+                console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match flavor filter. Expected: flavor, got: ${item.category}`);
             }
             return matches;
         });

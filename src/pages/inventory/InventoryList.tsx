@@ -214,7 +214,7 @@ export default function InventoryList() {
             );
         }
 
-        // Otherwise, show warehouse names (like in modal)
+        // Otherwise, show warehouse names as separate independent blocks
         // We only want to show warehouses that actually have stock
         const relevantStock = stockLevels.filter(s => s.quantity > 0);
 
@@ -224,18 +224,28 @@ export default function InventoryList() {
 
         const locations = displayStock.map(s => {
             const wh = warehouses.find(w => w.id === s.warehouseId);
-            return wh?.name || s.warehouseId;
+            return {
+                name: wh?.name || s.warehouseId,
+                quantity: s.quantity
+            };
         });
 
         if (locations.length === 0) {
             return <span className="text-slate-600 text-xs italic">{t('materials.status.low')}</span>;
         }
 
-        // Show warehouse names separated by comma (like in modal)
+        // Show warehouse names as separate independent blocks
         return (
-            <span className="text-slate-300 text-xs">
-                {locations.join(', ')}
-            </span>
+            <div className="flex flex-wrap gap-1.5">
+                {locations.map((loc, idx) => (
+                    <span 
+                        key={idx}
+                        className="inline-flex items-center px-2 py-1 rounded-md bg-slate-800/50 border border-slate-700 text-slate-300 text-xs font-medium"
+                    >
+                        {loc.name}
+                    </span>
+                ))}
+            </div>
         );
     };
 

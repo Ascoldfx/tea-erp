@@ -59,16 +59,16 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={item.name}>
             <div className="space-y-6">
-                {/* Артикул для копирования */}
-                <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <span className="text-slate-400 text-xs block mb-1">{t('materials.article') || 'Артикул'}</span>
-                            <span className="text-sm font-mono font-semibold text-slate-200">{item.sku}</span>
+                {/* Артикул для копирования - одна строка */}
+                <div className="bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-slate-400 text-xs whitespace-nowrap">{t('materials.article') || 'Артикул'}:</span>
+                            <span className="text-sm font-mono font-semibold text-slate-200 truncate">{item.sku}</span>
                         </div>
                         <button
                             onClick={() => copyToClipboard(item.sku)}
-                            className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-slate-100 text-xs"
+                            className="flex items-center gap-1.5 px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-slate-300 hover:text-slate-100 text-xs flex-shrink-0"
                             title={t('materials.copy') || 'Копировать'}
                         >
                             {copied ? (

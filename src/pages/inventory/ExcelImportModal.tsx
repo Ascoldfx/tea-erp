@@ -206,9 +206,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Priority order matters - check more specific first
                 let category = 'other'; // default to 'other' instead of 'tea_bulk'
                 
-                // If no group value, try to infer from name
-                const nameLower = name ? String(name).toLowerCase() : '';
-                
                 // Ароматизаторы (проверяем первым, так как это отдельная группа)
                 if (groupValue.includes('ароматизатор') || groupValue === 'flavor' || groupValue.includes('flavor') || nameLower.includes('ароматизатор')) {
                     category = 'flavor';

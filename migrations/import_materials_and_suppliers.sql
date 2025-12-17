@@ -18,14 +18,10 @@ INSERT INTO contractors (id, name, code, contact_person, phone, email, address)
 VALUES
     -- Example supplier 1 - Replace with your data
     ('supplier-001', 'Название поставщика 1', 'SUP-001', 'Иван Иванов', '+380501234567', 'supplier1@example.com', 'Адрес поставщика 1'),
-    
     -- Example supplier 2 - Replace with your data
-    ('supplier-002', 'Название поставщика 2', 'SUP-002', 'Петр Петров', '+380507654321', 'supplier2@example.com', 'Адрес поставщика 2'),
-    
-    -- Add more suppliers here...
-    -- ('supplier-003', 'Название поставщика 3', 'SUP-003', NULL, NULL, NULL, NULL),
-    
-    -- Continue adding suppliers...
+    ('supplier-002', 'Название поставщика 2', 'SUP-002', 'Петр Петров', '+380507654321', 'supplier2@example.com', 'Адрес поставщика 2')
+    -- Add more suppliers here (don't forget comma before last one):
+    -- ('supplier-003', 'Название поставщика 3', 'SUP-003', NULL, NULL, NULL, NULL)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     code = EXCLUDED.code,
@@ -61,14 +57,10 @@ VALUES
     -- Example material 1 - Replace with your data
     -- Use 'Артикул' as 'id' and 'sku', 'Назва' as 'name'
     ('ART-001', 'ART-001', 'Название материала 1', 'tea_bulk', 'kg', 100),
-    
     -- Example material 2 - Replace with your data
-    ('ART-002', 'ART-002', 'Название материала 2', 'flavor', 'kg', 50),
-    
-    -- Add more materials here...
-    -- ('ART-003', 'ART-003', 'Название материала 3', 'packaging_consumable', 'pcs', 1000),
-    
-    -- Continue adding materials...
+    ('ART-002', 'ART-002', 'Название материала 2', 'flavor', 'kg', 50)
+    -- Add more materials here (don't forget comma before last one):
+    -- ('ART-003', 'ART-003', 'Название материала 3', 'packaging_consumable', 'pcs', 1000)
 ON CONFLICT (id) DO UPDATE SET
     sku = EXCLUDED.sku,
     name = EXCLUDED.name,

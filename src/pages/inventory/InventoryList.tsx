@@ -396,7 +396,7 @@ export default function InventoryList() {
                                                             <button
                                                                 onClick={() => setItemToDelete(item)}
                                                                 className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-900/20 rounded"
-                                                                title="Удалить материал"
+                                                                           title={t('materials.deleteMaterial')}
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
                                                             </button>

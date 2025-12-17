@@ -138,9 +138,20 @@ export const inventoryService = {
         }
 
         console.log(`Подготовлено ${dbItems.length} уникальных материалов для импорта (из ${items.length} строк)`);
+        
+        // Debug: log category distribution
+        const categoryCounts = dbItems.reduce((acc, item) => {
+            acc[item.category] = (acc[item.category] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+        console.log('[Category Debug] Category distribution:', categoryCounts);
+        if (categoryCounts['flavor']) {
+            console.log(`[Category Debug] Found ${categoryCounts['flavor']} items with flavor category`);
+        }
 
         // 3. Upsert items (onConflict: 'id' means update if exists, insert if not)
         // IMPORTANT: Always update category to ensure correct grouping
+        // Supabase upsert updates ALL fields by default, so category will be updated
         const { error: itemsError, data: insertedItems } = await supabase
             .from('items')
             .upsert(dbItems, { 

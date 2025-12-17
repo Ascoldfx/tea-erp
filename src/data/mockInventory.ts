@@ -84,16 +84,16 @@ export const MOCK_STOCK: StockLevel[] = MOCK_ITEMS.flatMap(item => {
     // Distribute stock across warehouses roughly
     return [
         {
-            id: `stk-${item.id}-main`,
-            warehouseId: 'wh-main',
+            id: `stk-${item.id}-kotsyubinske`,
+            warehouseId: 'wh-kotsyubinske',
             itemId: item.id,
             quantity: Math.floor(Math.random() * 1000) + item.minStockLevel, // Ensure most are in stock
             lastUpdated: new Date().toISOString()
         },
         // Some items in production buffer
         ...(Math.random() > 0.7 ? [{
-            id: `stk-${item.id}-prod`,
-            warehouseId: 'wh-prod-1',
+            id: `stk-${item.id}-ceh`,
+            warehouseId: 'wh-ceh',
             itemId: item.id,
             quantity: Math.floor(Math.random() * 50),
             lastUpdated: new Date().toISOString()

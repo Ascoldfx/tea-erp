@@ -582,31 +582,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Find planned consumption columns - "план витрат" это плановый расход на МЕСЯЦ
                 const plannedConsumption: Array<{ date: string; quantity: number }> = [];
                 
-                // Helper function to parse month name to date string
-                const parseMonthToDate = (monthName: string, year?: number): string | null => {
-                    const monthLower = monthName.toLowerCase().trim();
-                    const monthMap: Record<string, number> = {
-                        'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
-                        'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
-                        'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
-                        'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
-                        'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
-                        'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
-                        'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
-                        'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
-                        'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
-                        'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
-                        'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
-                        'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
-                    };
-                    
-                    if (monthMap[monthLower]) {
-                        const month = monthMap[monthLower];
-                        const finalYear = year || new Date().getFullYear();
-                        return `${finalYear}-${String(month).padStart(2, '0')}-01`;
-                    }
-                    return null;
-                };
+                // Note: parseMonthToDate is already defined above (line 155), reuse it here
                 
                 // First, try to find planned consumption columns and link them with month names or dates
                 for (let i = 0; i < headers.length; i++) {

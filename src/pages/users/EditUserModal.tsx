@@ -100,8 +100,10 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
                         onChange={(e) => setFormData({ ...formData, warehouse_id: e.target.value || null })}
                         options={[
                             { value: '', label: 'Выберите склад' },
-                            { value: 'wh-main', label: 'Основной склад' },
-                            { value: 'wh-production', label: 'Производственный' },
+                            { value: 'wh-kotsyubinske', label: 'Коцюбинське' },
+                            { value: 'wh-ceh', label: 'Цех' },
+                            { value: 'wh-ts', label: 'ТС' },
+                            { value: 'wh-fito', label: 'Фито' },
                             { value: 'wh-finished', label: 'Готовой продукции' }
                         ]}
                     />

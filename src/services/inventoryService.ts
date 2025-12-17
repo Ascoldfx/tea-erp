@@ -159,8 +159,8 @@ export const inventoryService = {
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
 
-            // Main warehouse stock - sum if multiple rows have same code
-            const mainKey = `${itemId}_wh-main`;
+            // Main warehouse stock (Коцюбинське) - sum if multiple rows have same code
+            const mainKey = `${itemId}_wh-kotsyubinske`;
             const currentMain = stockMap.get(mainKey);
             const mainQty = Number(item.stockMain) || 0;
             if (currentMain) {
@@ -168,13 +168,13 @@ export const inventoryService = {
             } else {
                 stockMap.set(mainKey, {
                     item_id: itemId,
-                    warehouse_id: 'wh-main',
+                    warehouse_id: 'wh-kotsyubinske',
                     quantity: mainQty
                 });
             }
 
-            // Production warehouse stock - sum if multiple rows have same code
-            const prodKey = `${itemId}_wh-prod-1`;
+            // Production warehouse stock (Цех) - sum if multiple rows have same code
+            const prodKey = `${itemId}_wh-ceh`;
             const currentProd = stockMap.get(prodKey);
             const prodQty = Number(item.stockProd) || 0;
             if (currentProd) {
@@ -182,7 +182,7 @@ export const inventoryService = {
             } else {
                 stockMap.set(prodKey, {
                     item_id: itemId,
-                    warehouse_id: 'wh-prod-1',
+                    warehouse_id: 'wh-ceh',
                     quantity: prodQty
                 });
             }

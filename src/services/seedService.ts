@@ -37,7 +37,7 @@ export const seedService = {
         if (itemError) throw new Error('Error seeding items: ' + itemError.message);
 
         // 4. Stock Levels (Generate FRESH random stock)
-        const warehouses = ['wh-main', 'wh-prod-1', 'wh-contractor'];
+        const warehouses = ['wh-kotsyubinske', 'wh-ceh', 'wh-ts', 'wh-fito'];
         const stockInserts = MOCK_ITEMS.flatMap(item => {
             return warehouses.map(whId => ({
                 warehouse_id: whId,

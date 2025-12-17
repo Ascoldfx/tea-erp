@@ -20,7 +20,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number | string>>({});
-    const [selectedWarehouse, setSelectedWarehouse] = useState('wh-main');
+    const [selectedWarehouse, setSelectedWarehouse] = useState('wh-kotsyubinske');
     const [showWarehouseSelector, setShowWarehouseSelector] = useState(false);
 
     useEffect(() => {

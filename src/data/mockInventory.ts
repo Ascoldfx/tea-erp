@@ -1,10 +1,10 @@
 import type { Warehouse, InventoryItem, StockLevel } from '../types/inventory';
 
 export const MOCK_WAREHOUSES: Warehouse[] = [
-    { id: 'wh-main', name: 'Главный склад', location: 'Москва, Основной терминал', description: 'Сырье и материалы' },
-    { id: 'wh-prod-1', name: 'Цех (IMA C23 #1)', location: 'Производство, Линия 1', description: 'Оперативный запас на линии' },
-    { id: 'wh-prod-2', name: 'Цех (IMA C23 #2)', location: 'Производство, Линия 2', description: 'Оперативный запас на линии' },
-    { id: 'wh-contractor', name: 'Склад Подрядчика', location: 'Внешний', description: 'Материалы у фасовщика' },
+    { id: 'wh-kotsyubinske', name: 'Коцюбинське', location: 'Коцюбинське', description: 'Склад в Коцюбинське' },
+    { id: 'wh-ceh', name: 'Цех', location: 'Цех', description: 'Производственный цех' },
+    { id: 'wh-ts', name: 'ТС', location: 'ТС', description: 'Торговый склад' },
+    { id: 'wh-fito', name: 'Фито', location: 'Фито', description: 'Склад Фито' },
 ];
 
 export const MOCK_ITEMS: InventoryItem[] = [

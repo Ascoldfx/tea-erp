@@ -96,7 +96,7 @@ export const ordersService = {
         };
     },
 
-    async receiveOrder(orderId: string, warehouseId: string = 'wh-main'): Promise<boolean> {
+    async receiveOrder(orderId: string, warehouseId: string = 'wh-kotsyubinske'): Promise<boolean> {
         if (!supabase) return false;
 
         try {

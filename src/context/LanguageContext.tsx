@@ -96,6 +96,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.selectRecipe': 'Выберите продукт...',
         'production.plannedQuantity': 'Планируемый объем (КГ)',
         'production.create': 'Создать заказ',
+        'production.currentMonth': 'Актуальный месяц',
         
         // Settings
         'settings.title': 'Настройки',
@@ -342,6 +343,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.selectRecipe': 'Виберіть продукт...',
         'production.plannedQuantity': 'Запланований об\'єм (КГ)',
         'production.create': 'Створити замовлення',
+        'production.currentMonth': 'Актуальний місяць',
         
         // Settings
         'settings.title': 'Налаштування',

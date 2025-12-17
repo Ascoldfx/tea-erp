@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
-import { CheckCircle, Clock, Plus, Calculator, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch } from '../../types/production';
 import { useNavigate, Link } from 'react-router-dom';

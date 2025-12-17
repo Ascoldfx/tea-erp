@@ -11,6 +11,24 @@ export default function ProductionPlanning() {
     const { t, language } = useLanguage();
     const { items, stock, plannedConsumption, loading, refresh } = useInventory();
     
+    // Debug: log planned consumption data
+    useEffect(() => {
+        if (plannedConsumption.length > 0) {
+            console.log('[ProductionPlanning] Total planned consumption entries:', plannedConsumption.length);
+            const decemberPlanned = plannedConsumption.filter(pc => {
+                try {
+                    const date = new Date(pc.plannedDate);
+                    return date.getFullYear() === 2025 && date.getMonth() === 11; // December is month 11 (0-indexed)
+                } catch {
+                    return false;
+                }
+            });
+            if (decemberPlanned.length > 0) {
+                console.log('[ProductionPlanning] December 2025 planned consumption:', decemberPlanned);
+            }
+        }
+    }, [plannedConsumption]);
+    
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
@@ -85,12 +103,37 @@ export default function ProductionPlanning() {
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            const itemPlannedConsumption = safePlannedConsumption.filter(pc => 
-                pc.itemId === item.id &&
-                pc.plannedDate >= monthStartStr &&
-                pc.plannedDate <= monthEndStr
-            );
+            // plannedDate is stored as YYYY-MM-01 (first day of month), so we need to match by month and year
+            const itemPlannedConsumption = safePlannedConsumption.filter(pc => {
+                if (pc.itemId !== item.id) return false;
+                // Parse the planned date (format: YYYY-MM-01 or YYYY-MM-DD)
+                try {
+                    const pcDate = new Date(pc.plannedDate);
+                    const pcYear = pcDate.getFullYear();
+                    const pcMonth = pcDate.getMonth();
+                    // Compare with selected month and year
+                    const matches = pcYear === selectedYear && pcMonth === selectedMonth;
+                    // Debug logging for cardboard packaging
+                    if (item.category === 'packaging_cardboard' && matches && pc.quantity > 0) {
+                        console.log(`[Planned Consumption] Item ${item.sku}: found ${pc.quantity} for ${pc.plannedDate} (${pcYear}-${pcMonth + 1})`);
+                    }
+                    return matches;
+                } catch (e) {
+                    console.warn('Invalid planned date format:', pc.plannedDate, e);
+                    return false;
+                }
+            });
             const totalPlannedConsumption = itemPlannedConsumption.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+            
+            // Debug logging for items with no planned consumption
+            if (item.category === 'packaging_cardboard' && totalPlannedConsumption === 0) {
+                const allItemPlanned = safePlannedConsumption.filter(pc => pc.itemId === item.id);
+                if (allItemPlanned.length > 0) {
+                    console.log(`[Planned Consumption Debug] Item ${item.sku} has ${allItemPlanned.length} planned consumption entries:`, 
+                        allItemPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity}`));
+                    console.log(`[Planned Consumption Debug] Selected month: ${selectedYear}-${selectedMonth + 1}`);
+                }
+            }
 
             // Calculate required order (planned - stock, but not less than 0)
             const requiredOrder = Math.max(0, totalPlannedConsumption - totalStock);
@@ -103,8 +146,8 @@ export default function ProductionPlanning() {
                 stockLevels: itemStock
             };
         }).filter(data => 
-            // Show only items with planned consumption or stock
-            data.totalPlannedConsumption > 0 || data.totalStock > 0
+            // Show all items for the selected category (even with 0 stock and 0 planned)
+            true
         ).sort((a, b) => {
             // Sort by required order (descending), then by planned consumption
             if (b.requiredOrder !== a.requiredOrder) {
@@ -112,7 +155,7 @@ export default function ProductionPlanning() {
             }
             return b.totalPlannedConsumption - a.totalPlannedConsumption;
         });
-    }, [filteredItems, safeStock, safePlannedConsumption, monthStartStr, monthEndStr]);
+    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth]);
 
 
     return (

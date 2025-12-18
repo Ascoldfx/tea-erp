@@ -33,9 +33,22 @@ export function useInventory() {
                     } else {
                         console.log(`[useInventory] Loaded ${data?.length || 0} planned consumption entries`);
                         if (data && data.length > 0) {
-                            console.log('[useInventory] Sample planned consumption:', data.slice(0, 3));
+                            console.log('[useInventory] Sample planned consumption (raw):', data.slice(0, 3));
+                            // Transform snake_case DB columns to camelCase TS interface
+                            const transformed = data.map((pc: any) => ({
+                                id: pc.id,
+                                itemId: pc.item_id,
+                                plannedDate: pc.planned_date,
+                                quantity: pc.quantity || 0,
+                                notes: pc.notes || null,
+                                createdAt: pc.created_at,
+                                updatedAt: pc.updated_at
+                            }));
+                            console.log('[useInventory] Sample planned consumption (transformed):', transformed.slice(0, 3));
+                            setPlannedConsumption(transformed);
+                        } else {
+                            setPlannedConsumption([]);
                         }
-                        setPlannedConsumption(data || []);
                     }
                 }
             }

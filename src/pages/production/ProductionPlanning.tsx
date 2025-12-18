@@ -121,12 +121,35 @@ export default function ProductionPlanning() {
             const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
             
             // Find all planned consumption entries that match this item
+            // CRITICAL: Check both item.id (UUID) and item.sku (code) because:
+            // - New imports use UUID (item.id)
+            // - Old imports might have used code (item.sku) as fallback
             const allMatchingPlanned = safePlannedConsumption.filter(pc => {
-                // Match by ID or SKU
-                const matchesId = pc.itemId === item.id;
-                const matchesSku = pc.itemId === item.sku;
-                return matchesId || matchesSku;
+                const pcItemId = String(pc.itemId || '').trim();
+                const itemIdStr = String(item.id || '').trim();
+                const itemSkuStr = String(item.sku || '').trim();
+                
+                // Match by UUID (preferred)
+                if (pcItemId === itemIdStr && itemIdStr) {
+                    return true;
+                }
+                
+                // Match by SKU (fallback for old data)
+                if (pcItemId === itemSkuStr && itemSkuStr) {
+                    return true;
+                }
+                
+                return false;
             });
+            
+            // Debug: log if we found matches but they don't match by ID
+            if (allMatchingPlanned.length > 0 && item.category === 'packaging_cardboard') {
+                const matchedById = allMatchingPlanned.some(pc => String(pc.itemId) === String(item.id));
+                const matchedBySku = allMatchingPlanned.some(pc => String(pc.itemId) === String(item.sku));
+                if (!matchedById && matchedBySku) {
+                    console.warn(`[ProductionPlanning] Item ${item.sku} matched by SKU (not UUID). This indicates old data format.`);
+                }
+            }
 
             // Filter by date - only entries for the selected month
             const monthMatchingPlanned = allMatchingPlanned.filter(pc => {

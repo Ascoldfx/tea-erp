@@ -14,8 +14,10 @@ interface PlanningDataItem {
     totalStock: number;
     totalPlannedConsumption: number;
     plannedArrival: number; // Количество из открытых заказов
+    actualArrival: number; // Фактический приход из доставленных заказов
+    actualConsumption: number; // Фактический расход из stock_movements
     previousMonthDifference: number; // Остаток с предыдущего месяца
-    difference: number; // Итоговая разница с учетом остатка и прихода
+    difference: number; // Итоговая разница с учетом остатка и прихода (приоритет фактических данных)
     stockLevels: StockLevel[];
 }
 
@@ -55,6 +57,18 @@ export default function ProductionPlanning() {
         item_id: string;
         quantity: number;
         received_quantity: number;
+    }>>([]);
+    
+    // State for actual arrival (delivered orders for selected month)
+    const [actualArrivals, setActualArrivals] = useState<Array<{
+        item_id: string;
+        quantity: number;
+    }>>([]);
+    
+    // State for actual consumption (stock_movements type='out' for selected month)
+    const [actualConsumptions, setActualConsumptions] = useState<Array<{
+        item_id: string;
+        quantity: number;
     }>>([]);
 
     // Force refresh when component mounts or when refreshKey changes
@@ -119,6 +133,119 @@ export default function ProductionPlanning() {
         
         fetchOpenOrders();
     }, [refreshKey]);
+    
+    // Fetch actual arrivals (delivered orders for selected month)
+    useEffect(() => {
+        const fetchActualArrivals = async () => {
+            if (!supabase) return;
+            
+            try {
+                const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+                const monthStart = `${targetYearMonth}-01`;
+                const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
+                
+                // Get delivered orders for selected month
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('id, order_date')
+                    .eq('status', 'delivered')
+                    .gte('order_date', monthStart)
+                    .lte('order_date', monthEnd);
+                
+                if (ordersError) throw ordersError;
+                
+                if (!ordersData || ordersData.length === 0) {
+                    setActualArrivals([]);
+                    return;
+                }
+                
+                // Get order items with received_quantity
+                const orderIds = ordersData.map(o => o.id);
+                const { data: orderItems, error: itemsError } = await supabase
+                    .from('order_items')
+                    .select('item_id, received_quantity')
+                    .in('order_id', orderIds)
+                    .gt('received_quantity', 0);
+                
+                if (itemsError) throw itemsError;
+                
+                // Sum received_quantity by item_id
+                const itemsMap = new Map<string, number>();
+                (orderItems || []).forEach(item => {
+                    const received = item.received_quantity || 0;
+                    if (received > 0) {
+                        const current = itemsMap.get(item.item_id) || 0;
+                        itemsMap.set(item.item_id, current + received);
+                    }
+                });
+                
+                const arrivalsArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
+                    item_id,
+                    quantity
+                }));
+                
+                setActualArrivals(arrivalsArray);
+                console.log('[ProductionPlanning] Actual arrivals:', arrivalsArray.length);
+            } catch (error) {
+                console.error('[ProductionPlanning] Error fetching actual arrivals:', error);
+                setActualArrivals([]);
+            }
+        };
+        
+        fetchActualArrivals();
+    }, [selectedYear, selectedMonth, refreshKey]);
+    
+    // Fetch actual consumption (stock_movements type='out' for selected month)
+    useEffect(() => {
+        const fetchActualConsumption = async () => {
+            if (!supabase) return;
+            
+            try {
+                const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+                const monthStart = `${targetYearMonth}-01`;
+                const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
+                
+                // Get stock movements with type='out' for selected month
+                // Note: stock_movements uses 'created_at' or 'date' field - check actual schema
+                const { data: movements, error: movementsError } = await supabase
+                    .from('stock_movements')
+                    .select('item_id, quantity, created_at')
+                    .eq('type', 'out');
+                
+                // Filter by month in JavaScript since we're not sure of the exact date field name
+                const filteredMovements = (movements || []).filter(movement => {
+                    if (!movement.created_at) return false;
+                    const movementDate = new Date(movement.created_at);
+                    return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                });
+                
+                if (movementsError) throw movementsError;
+                
+                // Sum quantity by item_id
+                const itemsMap = new Map<string, number>();
+                filteredMovements.forEach(movement => {
+                    const qty = movement.quantity || 0;
+                    if (qty > 0) {
+                        const current = itemsMap.get(movement.item_id) || 0;
+                        itemsMap.set(movement.item_id, current + qty);
+                    }
+                });
+                
+                const consumptionsArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
+                    item_id,
+                    quantity
+                }));
+                
+                setActualConsumptions(consumptionsArray);
+                console.log('[ProductionPlanning] Actual consumptions:', consumptionsArray.length);
+            } catch (error) {
+                console.error('[ProductionPlanning] Error fetching actual consumption:', error);
+                setActualConsumptions([]);
+            }
+        };
+        
+        fetchActualConsumption();
+    }, [selectedYear, selectedMonth, refreshKey]);
 
     // Ensure items, stock, and plannedConsumption are arrays
     const safeItems = Array.isArray(items) ? items : [];
@@ -189,6 +316,18 @@ export default function ProductionPlanning() {
         openOrders.forEach(order => {
             const current = plannedArrivalMap.get(order.item_id) || 0;
             plannedArrivalMap.set(order.item_id, current + order.quantity);
+        });
+        
+        // Create a map of actual arrival from delivered orders
+        const actualArrivalMap = new Map<string, number>();
+        actualArrivals.forEach(arrival => {
+            actualArrivalMap.set(arrival.item_id, arrival.quantity);
+        });
+        
+        // Create a map of actual consumption from stock_movements
+        const actualConsumptionMap = new Map<string, number>();
+        actualConsumptions.forEach(consumption => {
+            actualConsumptionMap.set(consumption.item_id, consumption.quantity);
         });
 
         // Calculate previous month
@@ -302,16 +441,21 @@ export default function ProductionPlanning() {
             // (current stock already accounts for previous month's consumption)
             const previousMonthDifference = totalStock;
 
-            // Calculate final difference: previous month remainder + planned arrival - planned consumption
-            // This shows what will be left after this month's consumption
-            // Formula: (remainder from previous month + planned arrival) - planned consumption
-            const difference = previousMonthDifference + plannedArrival - totalPlannedConsumption;
+            // Calculate final difference with priority for actual data
+            // Use actual arrival/consumption if available, otherwise use planned
+            // Formula: (remainder from previous month + arrival) - consumption
+            // Priority: actual > planned
+            const finalArrival = actualArrival > 0 ? actualArrival : plannedArrival;
+            const finalConsumption = actualConsumption > 0 ? actualConsumption : totalPlannedConsumption;
+            const difference = previousMonthDifference + finalArrival - finalConsumption;
 
             return {
                 item,
                 totalStock,
                 totalPlannedConsumption,
                 plannedArrival,
+                actualArrival,
+                actualConsumption,
                 previousMonthDifference,
                 difference,
                 stockLevels: itemStock
@@ -335,7 +479,7 @@ export default function ProductionPlanning() {
             const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
             return orderA - orderB;
         });
-    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems, openOrders]);
+    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems, openOrders, actualArrivals, actualConsumptions]);
 
 
     return (
@@ -460,7 +604,9 @@ export default function ProductionPlanning() {
                                         <th className="px-4 py-3 text-left">{t('materials.name') || 'Наименование'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.stock') || 'Наличие'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.plannedArrival') || 'Планируемый приход'}</th>
-                                        <th className="px-4 py-3 text-right">{t('production.planned') || 'План'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.actualArrival') || 'Фактический приход'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.plannedConsumption') || 'планируемый расход'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.actualConsumption') || 'Фактический расход'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.difference') || 'Разница'}</th>
                                     </tr>
                                 </thead>

@@ -56,7 +56,6 @@ export default function ProductionPlanning() {
         quantity: number;
         received_quantity: number;
     }>>([]);
-    const [ordersLoading, setOrdersLoading] = useState(false);
 
     // Force refresh when component mounts or when refreshKey changes
     useEffect(() => {
@@ -68,7 +67,6 @@ export default function ProductionPlanning() {
         const fetchOpenOrders = async () => {
             if (!supabase) return;
             
-            setOrdersLoading(true);
             try {
                 // Get all open orders (draft, ordered, shipped)
                 const { data: ordersData, error: ordersError } = await supabase
@@ -81,7 +79,6 @@ export default function ProductionPlanning() {
                 
                 if (!ordersData || ordersData.length === 0) {
                     setOpenOrders([]);
-                    setOrdersLoading(false);
                     return;
                 }
                 
@@ -117,8 +114,6 @@ export default function ProductionPlanning() {
             } catch (error) {
                 console.error('[ProductionPlanning] Error fetching open orders:', error);
                 setOpenOrders([]);
-            } finally {
-                setOrdersLoading(false);
             }
         };
         
@@ -207,8 +202,7 @@ export default function ProductionPlanning() {
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            // Build target month string for comparison (YYYY-MM-01 format)
-            const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+            // Build target month string for comparison (YYYY-MM format)
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
             
             // Find planned consumption entries that match this item by UUID ONLY

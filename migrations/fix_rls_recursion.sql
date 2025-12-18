@@ -63,3 +63,4 @@ CREATE POLICY "Admins can delete profiles"
 COMMENT ON FUNCTION is_admin IS 'Check if user is admin (bypasses RLS to avoid recursion)';
 
 
+

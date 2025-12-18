@@ -69,3 +69,4 @@ DO UPDATE SET
 4. Для создания новых пользователей используйте Supabase Dashboard + SQL
 
 
+

@@ -6,6 +6,15 @@ import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
+import type { InventoryItem, StockLevel } from '../../types/inventory';
+
+interface PlanningDataItem {
+    item: InventoryItem;
+    totalStock: number;
+    totalPlannedConsumption: number;
+    difference: number;
+    stockLevels: StockLevel[];
+}
 
 // Production Planning Component
 // Handles material consumption planning, stock levels, and required orders
@@ -97,7 +106,7 @@ export default function ProductionPlanning() {
     }, [safeItems, selectedCategory]);
 
     // Calculate planning data for each item
-    const planningData = useMemo(() => {
+    const planningData = useMemo((): PlanningDataItem[] => {
         // Create a map of item SKU to item ID for faster lookup
         const skuToIdMap = new Map<string, string>();
         safeItems.forEach(item => {
@@ -206,7 +215,7 @@ export default function ProductionPlanning() {
         });
         
         // Sort by original order (lower index = earlier in Excel)
-        return planningData.sort((a, b) => {
+        return planningData.sort((a: PlanningDataItem, b: PlanningDataItem) => {
             const orderA = itemOrderMap.get(a.item.id) ?? Infinity;
             const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
             return orderA - orderB;
@@ -340,7 +349,7 @@ export default function ProductionPlanning() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {planningData.map((data) => {
+                                    {planningData.map((data: PlanningDataItem) => {
                                         return (
                                             <tr key={data.item.id} className="hover:bg-slate-800/50">
                                                 <td className="px-4 py-3 font-mono text-xs text-slate-400">

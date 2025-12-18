@@ -46,3 +46,4 @@ SELECT COUNT(*) as order_items_after FROM order_items;
 -- Step 9: Success message
 SELECT 'All materials have been cleared successfully! Ready for fresh import.' as message;
 
+

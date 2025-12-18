@@ -64,3 +64,4 @@ DO UPDATE SET role = 'admin', full_name = COALESCE(profiles.full_name, 'Анто
 - Admin API больше не используется напрямую на фронтенде (безопасно)
 
 
+

@@ -21,3 +21,4 @@ DELETE FROM items;
 SELECT COUNT(*) as remaining_items FROM items;
 
 
+

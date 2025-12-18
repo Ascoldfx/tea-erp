@@ -197,3 +197,4 @@ WHERE i.id = '2010247'  -- Замените на ID материала
 ORDER BY pc.planned_date;
 ```
 
+

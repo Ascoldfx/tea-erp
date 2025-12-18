@@ -89,3 +89,4 @@ COMMENT ON FUNCTION create_user_by_admin IS 'Creates a new user (requires Edge F
 COMMENT ON FUNCTION update_user_role_by_admin IS 'Updates user role and profile (admin only)';
 
 
+

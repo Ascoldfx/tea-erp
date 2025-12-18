@@ -19,3 +19,4 @@ SELECT COUNT(*) as remaining_order_items FROM order_items;
 -- Step 5: Show message
 SELECT 'All orders and order items have been deleted successfully!' as message;
 
+

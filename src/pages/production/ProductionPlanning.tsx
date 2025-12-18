@@ -112,52 +112,29 @@ export default function ProductionPlanning() {
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            // CRITICAL: itemId in planned_consumption might be either:
-            // 1. item.id (UUID) - if item was found in database
-            // 2. item.sku (code) - if item was not found and code was used as fallback
-            // We need to check BOTH possibilities
+            // COMPLETELY REWRITTEN: Match ONLY by UUID (item.id), not by SKU
+            // All new imports use UUID, old data with SKU should be cleaned up
             
             // Build target month string for comparison (YYYY-MM-01 format)
             const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+            const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
             
-            // Find all planned consumption entries that match this item
-            // CRITICAL: Check both item.id (UUID) and item.sku (code) because:
-            // - New imports use UUID (item.id)
-            // - Old imports might have used code (item.sku) as fallback
-            const allMatchingPlanned = safePlannedConsumption.filter(pc => {
+            // Find planned consumption entries that match this item by UUID ONLY
+            const matchingPlanned = safePlannedConsumption.filter(pc => {
+                // Match by UUID only (item.id)
                 const pcItemId = String(pc.itemId || '').trim();
                 const itemIdStr = String(item.id || '').trim();
-                const itemSkuStr = String(item.sku || '').trim();
                 
-                // Match by UUID (preferred)
-                if (pcItemId === itemIdStr && itemIdStr) {
-                    return true;
+                if (pcItemId !== itemIdStr || !itemIdStr) {
+                    return false;
                 }
                 
-                // Match by SKU (fallback for old data)
-                if (pcItemId === itemSkuStr && itemSkuStr) {
-                    return true;
-                }
-                
-                return false;
-            });
-            
-            // Debug: log if we found matches but they don't match by ID
-            if (allMatchingPlanned.length > 0 && item.category === 'packaging_cardboard') {
-                const matchedById = allMatchingPlanned.some(pc => String(pc.itemId) === String(item.id));
-                const matchedBySku = allMatchingPlanned.some(pc => String(pc.itemId) === String(item.sku));
-                if (!matchedById && matchedBySku) {
-                    console.warn(`[ProductionPlanning] Item ${item.sku} matched by SKU (not UUID). This indicates old data format.`);
-                }
-            }
-
-            // Filter by date - only entries for the selected month
-            const monthMatchingPlanned = allMatchingPlanned.filter(pc => {
+                // Filter by date - only entries for the selected month
                 try {
-                    const pcDateStr = String(pc.plannedDate).trim();
+                    const pcDateStr = String(pc.plannedDate || '').trim();
                     
                     // Check if date matches target month (YYYY-MM-01 or YYYY-MM-DD)
-                    if (pcDateStr.startsWith(targetMonthStr.substring(0, 7))) { // Compare YYYY-MM part
+                    if (pcDateStr.startsWith(targetYearMonth)) {
                         return true;
                     }
                     
@@ -178,9 +155,9 @@ export default function ProductionPlanning() {
             // IMPORTANT: If multiple entries exist for the same month, take the LAST one (most recent)
             // This prevents summing duplicates
             let totalPlannedConsumption = 0;
-            if (monthMatchingPlanned.length > 0) {
+            if (matchingPlanned.length > 0) {
                 // Sort by date (most recent first) and take the first (most recent) value
-                const sorted = monthMatchingPlanned.sort((a, b) => {
+                const sorted = matchingPlanned.sort((a, b) => {
                     const dateA = new Date(a.plannedDate).getTime();
                     const dateB = new Date(b.plannedDate).getTime();
                     return dateB - dateA; // Most recent first
@@ -188,21 +165,20 @@ export default function ProductionPlanning() {
                 totalPlannedConsumption = sorted[0].quantity || 0;
                 
                 // Debug logging
-                if (item.category === 'packaging_cardboard' && totalPlannedConsumption > 0) {
+                if (item.category === 'packaging_cardboard') {
                     console.log(`[ProductionPlanning] Item ${item.sku} (id: ${item.id}): found ${totalPlannedConsumption} for ${targetMonthStr}`);
-                    if (monthMatchingPlanned.length > 1) {
-                        console.warn(`[ProductionPlanning] WARNING: Item ${item.sku} has ${monthMatchingPlanned.length} entries for ${targetMonthStr}, using most recent: ${totalPlannedConsumption}`);
+                    if (matchingPlanned.length > 1) {
+                        console.warn(`[ProductionPlanning] WARNING: Item ${item.sku} has ${matchingPlanned.length} entries for ${targetMonthStr}, using most recent: ${totalPlannedConsumption}`);
+                        console.warn(`[ProductionPlanning] All entries:`, matchingPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity}`));
                     }
                 }
-            }
-            
-            // Debug logging for items with no planned consumption
-            if (item.category === 'packaging_cardboard' && totalPlannedConsumption === 0 && allMatchingPlanned.length > 0) {
-                console.log(`[ProductionPlanning Debug] Item ${item.sku} (id: ${item.id}):`);
-                console.log(`  - Total matching entries: ${allMatchingPlanned.length}`);
-                console.log(`  - Entries:`, allMatchingPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity} (itemId: ${pc.itemId})`));
-                console.log(`  - Selected month: ${targetMonthStr}`);
-                console.log(`  - Month matching entries: ${monthMatchingPlanned.length}`);
+            } else if (item.category === 'packaging_cardboard') {
+                // Debug: log if we expected to find planned consumption but didn't
+                const allForItem = safePlannedConsumption.filter(pc => String(pc.itemId) === String(item.id));
+                if (allForItem.length > 0) {
+                    console.warn(`[ProductionPlanning] Item ${item.sku} (id: ${item.id}) has ${allForItem.length} planned consumption entries, but none match month ${targetMonthStr}`);
+                    console.warn(`[ProductionPlanning] Available dates:`, allForItem.map(pc => pc.plannedDate));
+                }
             }
 
             // Calculate required order (planned - stock, but not less than 0)

@@ -338,8 +338,7 @@ export const inventoryService = {
         }
 
         // 6. Import planned consumption
-        // CRITICAL: We must use the actual item.id (UUID) from the database, not the code
-        // This ensures proper matching when loading data later
+        // COMPLETELY REWRITTEN: Use ONLY UUID from database, refresh map after items are saved
         const plannedConsumptionMap = new Map<string, {
             item_id: string;
             planned_date: string;
@@ -347,40 +346,42 @@ export const inventoryService = {
             notes?: string;
         }>();
 
+        // Collect all planned consumption data first (before processing)
+        const allPlannedConsumption: Array<{ code: string; date: string; quantity: number }> = [];
         for (const item of items) {
             const code = item.code?.trim();
             if (!code) continue;
-
-            // Get the actual database ID (UUID) for this item
-            // If item doesn't exist in database yet, skip planned consumption (item will be created first)
-            const itemId = skuToIdMap.get(code);
-            
-            // CRITICAL: Only save planned consumption if we have a valid UUID from database
-            // If itemId is undefined, it means the item doesn't exist in DB yet
-            // In this case, we should skip planned consumption for this item
-            if (!itemId) {
-                console.warn(`[Import] Skipping planned consumption for code ${code}: item not found in database (will be created, but planned consumption will be skipped)`);
-                continue;
-            }
             
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
-                    // Only save non-zero quantities
                     if (pc.quantity > 0) {
-                        // Use composite key to prevent duplicates: item_id + planned_date
-                        const key = `${itemId}_${pc.date}`;
-                        
-                        // If duplicate exists, use the last (most recent) value
-                        plannedConsumptionMap.set(key, {
-                            item_id: itemId, // Always use UUID, never code
-                            planned_date: pc.date,
-                            quantity: pc.quantity,
-                            notes: `Импортировано из Excel`
-                        });
-                        console.log(`[Import] Saving planned consumption: itemId=${itemId} (UUID, code=${code}), date=${pc.date}, quantity=${pc.quantity}`);
+                        allPlannedConsumption.push({ code, date: pc.date, quantity: pc.quantity });
                     }
                 });
             }
+        }
+
+        // Now process planned consumption using refreshed skuToIdMap (after items are saved)
+        for (const pcData of allPlannedConsumption) {
+            const code = pcData.code;
+            const itemId = skuToIdMap.get(code);
+            
+            if (!itemId) {
+                console.warn(`[Import] Skipping planned consumption for code ${code}: item not found in database after save`);
+                continue;
+            }
+            
+            // Use composite key to prevent duplicates: item_id + planned_date
+            const key = `${itemId}_${pcData.date}`;
+            
+            // If duplicate exists, use the last (most recent) value
+            plannedConsumptionMap.set(key, {
+                item_id: itemId, // Always use UUID
+                planned_date: pcData.date,
+                quantity: pcData.quantity,
+                notes: `Импортировано из Excel`
+            });
+            console.log(`[Import] Saving planned consumption: itemId=${itemId} (UUID, code=${code}), date=${pcData.date}, quantity=${pcData.quantity}`);
         }
 
         const plannedConsumptionInserts = Array.from(plannedConsumptionMap.values());

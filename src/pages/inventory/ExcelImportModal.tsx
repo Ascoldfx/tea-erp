@@ -580,110 +580,40 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 }
 
                 // Find planned consumption columns - "план витрат" это плановый расход на МЕСЯЦ
-                // Use Map to prevent duplicates - key is date, value is quantity
-                // If same date appears multiple times, use the LAST value (most specific)
-                const plannedConsumptionMap = new Map<string, number>();
+                // COMPLETELY REWRITTEN: Use ONLY columnToMonthMap (month from row above header)
+                // This ensures we only use data where month is STRICTLY above the column
+                const plannedConsumption: Array<{ date: string; quantity: number }> = [];
                 
                 // Note: parseMonthToDate is already defined above (line 155), reuse it here
-                // This avoids duplicate function definitions
                 
-                // First, try to find planned consumption columns and link them with month names or dates
+                // ONLY use columns that have month mapped from row above headers
+                // This is the ONLY reliable way to get correct month-date association
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    const value = row[headers[i]] || row[`__EMPTY_${i}`];
-                    const quantity = Number(value) || 0;
                     
-                    // Check if this is a planned consumption column (план витрат, план расход, etc.)
-                    if ((headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) ||
-                        headerLower.includes('план витрат') || headerLower.includes('план расход')) {
-                        
-                        let foundDate = false;
-                        
-                        // PRIORITY 1: Check if we already mapped this column to a month (from row above headers)
+                    // Check if this is a planned consumption column
+                    const isPlannedConsumption = (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) ||
+                                                headerLower.includes('план витрат') || headerLower.includes('план расход');
+                    
+                    if (isPlannedConsumption) {
+                        // ONLY use if we have month mapped from row above
                         if (columnToMonthMap.has(i)) {
                             const monthDate = columnToMonthMap.get(i)!;
-                            plannedConsumptionMap.set(monthDate, quantity); // Overwrite if duplicate
-                            foundDate = true;
-                            console.log(`[Excel Import] Using pre-mapped month for column ${i} (${header}): ${monthDate}, quantity: ${quantity}`);
-                        }
-                        
-                        // PRIORITY 2: Look backwards for month name or date in same header row
-                        if (!foundDate) {
-                            for (let offset = 1; offset <= 3; offset++) {
-                                const prevColIndex = i - offset;
-                                if (prevColIndex < 0) break;
-                                
-                                const prevHeader = String(headers[prevColIndex] || '').trim();
-                                
-                                // Check for month name
-                                const monthDate = parseMonthToDate(prevHeader);
-                                if (monthDate) {
-                                    plannedConsumptionMap.set(monthDate, quantity); // Overwrite if duplicate
-                                    foundDate = true;
-                                    console.log(`[Excel Import] Found month in previous column ${prevColIndex} (${prevHeader}): ${monthDate}, quantity: ${quantity}`);
-                                    break;
-                                }
-                                
-                                // Check for date pattern (DD.MM.YYYY)
-                                const dateMatch = prevHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-                                if (dateMatch) {
-                                    const [, , month, year] = dateMatch;
-                                    const dateStr = `${year}-${month}-01`;
-                                    plannedConsumptionMap.set(dateStr, quantity); // Overwrite if duplicate
-                                    foundDate = true;
-                                    console.log(`[Excel Import] Found date in previous column ${prevColIndex} (${prevHeader}): ${dateStr}, quantity: ${quantity}`);
-                                    break;
-                                }
+                            const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                            const quantity = Number(value) || 0;
+                            
+                            // Only add non-zero quantities
+                            if (quantity > 0) {
+                                plannedConsumption.push({ date: monthDate, quantity });
+                                console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}`);
                             }
-                        }
-                        
-                        // PRIORITY 3: If no date found backwards, look forwards
-                        if (!foundDate) {
-                            for (let offset = 1; offset <= 3; offset++) {
-                                const nextColIndex = i + offset;
-                                if (nextColIndex >= headers.length) break;
-                                
-                                const nextHeader = String(headers[nextColIndex] || '').trim();
-                                
-                                // Check for month name
-                                const monthDate = parseMonthToDate(nextHeader);
-                                if (monthDate) {
-                                    plannedConsumptionMap.set(monthDate, quantity); // Overwrite if duplicate
-                                    foundDate = true;
-                                    console.log(`[Excel Import] Found month in next column ${nextColIndex} (${nextHeader}): ${monthDate}, quantity: ${quantity}`);
-                                    break;
-                                }
-                                
-                                // Check for date pattern
-                                const dateMatch = nextHeader.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-                                if (dateMatch) {
-                                    const [, , month, year] = dateMatch;
-                                    const dateStr = `${year}-${month}-01`;
-                                    plannedConsumptionMap.set(dateStr, quantity); // Overwrite if duplicate
-                                    foundDate = true;
-                                    console.log(`[Excel Import] Found date in next column ${nextColIndex} (${nextHeader}): ${dateStr}, quantity: ${quantity}`);
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        // PRIORITY 4: If still no date found, but we have a planned consumption column,
-                        // use current month as fallback
-                        if (!foundDate) {
-                            const now = new Date();
-                            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-                            plannedConsumptionMap.set(dateStr, quantity); // Overwrite if duplicate
-                            console.log(`[Excel Import] No month found for column ${i} (${header}), using current month fallback: ${dateStr}, quantity: ${quantity}`);
+                        } else {
+                            // Log warning if we found "план витрат" but no month above it
+                            console.warn(`[Excel Import] Item "${name}" (code: ${code}): Found "план витрат" column ${i} "${header}" but no month found above it. Skipping.`);
                         }
                     }
                 }
-                
-                // Convert Map to Array format for result
-                const plannedConsumption = Array.from(plannedConsumptionMap.entries()).map(([date, quantity]) => ({
-                    date,
-                    quantity
-                }));
 
                 const result: ParsedItem = {
                     code: code,

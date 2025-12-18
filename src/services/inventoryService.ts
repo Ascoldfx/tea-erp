@@ -187,6 +187,15 @@ export const inventoryService = {
 
         console.log(`Успешно сохранено/обновлено ${dbItems.length} материалов`);
         
+        // CRITICAL: Refresh skuToIdMap after items are saved to include newly created items
+        // This ensures planned consumption can be linked to the correct item IDs
+        dbItems.forEach(item => {
+            if (item.sku) {
+                skuToIdMap.set(item.sku, item.id);
+            }
+        });
+        console.log(`[Import] Refreshed skuToIdMap after items save: ${skuToIdMap.size} items mapped`);
+        
         // Debug: verify categories were saved correctly by fetching from DB
         const itemIds = dbItems.map(item => item.id);
         const { data: savedItems, error: categoryFetchError } = await supabase

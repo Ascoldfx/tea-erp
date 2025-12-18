@@ -105,8 +105,12 @@ export default function ProductionPlanning() {
 
             // Get planned consumption for this month
             // plannedDate can be stored as YYYY-MM-01 (first day of month) or YYYY-MM-DD
+            // Note: itemId in planned_consumption might be either item.id (UUID) or item.sku (code)
             const itemPlannedConsumption = safePlannedConsumption.filter(pc => {
-                if (pc.itemId !== item.id) return false;
+                // Match by both ID and SKU (code) to handle cases where itemId was saved as code
+                const matchesId = pc.itemId === item.id;
+                const matchesSku = pc.itemId === item.sku;
+                if (!matchesId && !matchesSku) return false;
                 
                 // Try multiple date parsing approaches
                 try {

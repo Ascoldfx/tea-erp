@@ -344,12 +344,16 @@ export const inventoryService = {
             
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
-                    plannedConsumptionInserts.push({
-                        item_id: itemId,
-                        planned_date: pc.date,
-                        quantity: pc.quantity,
-                        notes: `Импортировано из Excel`
-                    });
+                    // Only save non-zero quantities
+                    if (pc.quantity > 0) {
+                        plannedConsumptionInserts.push({
+                            item_id: itemId,
+                            planned_date: pc.date,
+                            quantity: pc.quantity,
+                            notes: `Импортировано из Excel`
+                        });
+                        console.log(`[Import] Saving planned consumption: itemId=${itemId} (code=${code}), date=${pc.date}, quantity=${pc.quantity}`);
+                    }
                 });
             }
         }

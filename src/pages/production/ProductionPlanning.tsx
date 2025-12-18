@@ -98,61 +98,88 @@ export default function ProductionPlanning() {
 
     // Calculate planning data for each item
     const planningData = useMemo(() => {
+        // Create a map of item SKU to item ID for faster lookup
+        const skuToIdMap = new Map<string, string>();
+        safeItems.forEach(item => {
+            if (item.sku) {
+                skuToIdMap.set(item.sku, item.id);
+            }
+        });
+
         return filteredItems.map(item => {
             // Get stock levels for this item
             const itemStock = safeStock.filter(s => s.itemId === item.id);
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            // plannedDate can be stored as YYYY-MM-01 (first day of month) or YYYY-MM-DD
-            // Note: itemId in planned_consumption might be either item.id (UUID) or item.sku (code)
-            const itemPlannedConsumption = safePlannedConsumption.filter(pc => {
-                // Match by both ID and SKU (code) to handle cases where itemId was saved as code
+            // CRITICAL: itemId in planned_consumption might be either:
+            // 1. item.id (UUID) - if item was found in database
+            // 2. item.sku (code) - if item was not found and code was used as fallback
+            // We need to check BOTH possibilities
+            
+            // Build target month string for comparison (YYYY-MM-01 format)
+            const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+            
+            // Find all planned consumption entries that match this item
+            const allMatchingPlanned = safePlannedConsumption.filter(pc => {
+                // Match by ID or SKU
                 const matchesId = pc.itemId === item.id;
                 const matchesSku = pc.itemId === item.sku;
-                if (!matchesId && !matchesSku) return false;
-                
-                // Try multiple date parsing approaches
+                return matchesId || matchesSku;
+            });
+
+            // Filter by date - only entries for the selected month
+            const monthMatchingPlanned = allMatchingPlanned.filter(pc => {
                 try {
-                    // Method 1: Parse as ISO date string
-                    const pcDate = new Date(pc.plannedDate);
-                    if (isNaN(pcDate.getTime())) {
-                        // If invalid date, try parsing as YYYY-MM format
-                        const dateMatch = String(pc.plannedDate).match(/^(\d{4})-(\d{2})/);
-                        if (dateMatch) {
-                            const [, year, month] = dateMatch;
-                            const pcYear = parseInt(year, 10);
-                            const pcMonth = parseInt(month, 10) - 1; // Month is 0-indexed
-                            return pcYear === selectedYear && pcMonth === selectedMonth;
-                        }
-                        return false;
+                    const pcDateStr = String(pc.plannedDate).trim();
+                    
+                    // Check if date matches target month (YYYY-MM-01 or YYYY-MM-DD)
+                    if (pcDateStr.startsWith(targetMonthStr.substring(0, 7))) { // Compare YYYY-MM part
+                        return true;
                     }
                     
-                    const pcYear = pcDate.getFullYear();
-                    const pcMonth = pcDate.getMonth();
-                    const matches = pcYear === selectedYear && pcMonth === selectedMonth;
-                    
-                    // Debug logging for all items with planned consumption
-                    if (matches && pc.quantity > 0) {
-                        console.log(`[Planned Consumption] Item ${item.sku}: found ${pc.quantity} for ${pc.plannedDate} (parsed as ${pcYear}-${pcMonth + 1}, selected: ${selectedYear}-${selectedMonth + 1})`);
+                    // Also try parsing as Date object
+                    const pcDate = new Date(pcDateStr);
+                    if (!isNaN(pcDate.getTime())) {
+                        const pcYear = pcDate.getFullYear();
+                        const pcMonth = pcDate.getMonth();
+                        return pcYear === selectedYear && pcMonth === selectedMonth;
                     }
                     
-                    return matches;
+                    return false;
                 } catch (e) {
-                    console.warn('Invalid planned date format:', pc.plannedDate, e);
                     return false;
                 }
             });
-            const totalPlannedConsumption = itemPlannedConsumption.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
+
+            // IMPORTANT: If multiple entries exist for the same month, take the LAST one (most recent)
+            // This prevents summing duplicates
+            let totalPlannedConsumption = 0;
+            if (monthMatchingPlanned.length > 0) {
+                // Sort by date (most recent first) and take the first (most recent) value
+                const sorted = monthMatchingPlanned.sort((a, b) => {
+                    const dateA = new Date(a.plannedDate).getTime();
+                    const dateB = new Date(b.plannedDate).getTime();
+                    return dateB - dateA; // Most recent first
+                });
+                totalPlannedConsumption = sorted[0].quantity || 0;
+                
+                // Debug logging
+                if (item.category === 'packaging_cardboard' && totalPlannedConsumption > 0) {
+                    console.log(`[ProductionPlanning] Item ${item.sku} (id: ${item.id}): found ${totalPlannedConsumption} for ${targetMonthStr}`);
+                    if (monthMatchingPlanned.length > 1) {
+                        console.warn(`[ProductionPlanning] WARNING: Item ${item.sku} has ${monthMatchingPlanned.length} entries for ${targetMonthStr}, using most recent: ${totalPlannedConsumption}`);
+                    }
+                }
+            }
             
             // Debug logging for items with no planned consumption
-            if (item.category === 'packaging_cardboard' && totalPlannedConsumption === 0) {
-                const allItemPlanned = safePlannedConsumption.filter(pc => pc.itemId === item.id);
-                if (allItemPlanned.length > 0) {
-                    console.log(`[Planned Consumption Debug] Item ${item.sku} has ${allItemPlanned.length} planned consumption entries:`, 
-                        allItemPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity}`));
-                    console.log(`[Planned Consumption Debug] Selected month: ${selectedYear}-${selectedMonth + 1}`);
-                }
+            if (item.category === 'packaging_cardboard' && totalPlannedConsumption === 0 && allMatchingPlanned.length > 0) {
+                console.log(`[ProductionPlanning Debug] Item ${item.sku} (id: ${item.id}):`);
+                console.log(`  - Total matching entries: ${allMatchingPlanned.length}`);
+                console.log(`  - Entries:`, allMatchingPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity} (itemId: ${pc.itemId})`));
+                console.log(`  - Selected month: ${targetMonthStr}`);
+                console.log(`  - Month matching entries: ${monthMatchingPlanned.length}`);
             }
 
             // Calculate required order (planned - stock, but not less than 0)
@@ -175,7 +202,7 @@ export default function ProductionPlanning() {
             }
             return b.totalPlannedConsumption - a.totalPlannedConsumption;
         });
-    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth]);
+    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems]);
 
 
     return (

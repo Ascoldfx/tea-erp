@@ -194,12 +194,21 @@ export default function ProductionPlanning() {
         }).filter(() => 
             // Show all items for the selected category (even with 0 stock and 0 planned)
             true
-        ).sort((a, b) => {
-            // Sort by required order (descending), then by planned consumption
-            if (b.requiredOrder !== a.requiredOrder) {
-                return b.requiredOrder - a.requiredOrder;
-            }
-            return b.totalPlannedConsumption - a.totalPlannedConsumption;
+        );
+        
+        // Sort by original order from database (preserve Excel import order)
+        // Items are typically returned in creation order, which matches Excel import order
+        // Create a map of item ID to index in original array to preserve order
+        const itemOrderMap = new Map<string, number>();
+        safeItems.forEach((item, index) => {
+            itemOrderMap.set(item.id, index);
+        });
+        
+        // Sort by original order (lower index = earlier in Excel)
+        return planningData.sort((a, b) => {
+            const orderA = itemOrderMap.get(a.item.id) ?? Infinity;
+            const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
+            return orderA - orderB;
         });
     }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems]);
 

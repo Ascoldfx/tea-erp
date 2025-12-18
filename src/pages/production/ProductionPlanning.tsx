@@ -292,11 +292,15 @@ export default function ProductionPlanning() {
             }
 
             // Calculate previous month difference (remainder from previous month)
-            // Previous month difference = stock at start of previous month - planned consumption of previous month
-            // Since we don't have historical stock data, we use current stock as approximation
-            // This represents what would be left after previous month's consumption
-            // For the first month, we use current stock directly
-            const previousMonthDifference = totalStock - prevMonthPlannedConsumption;
+            // Current stock (totalStock) is the stock at the START of current month
+            // This already reflects the result of previous month's operations:
+            // - Stock at start of previous month
+            // - Plus: planned arrivals during previous month
+            // - Minus: planned consumption during previous month
+            // 
+            // So the remainder from previous month = current stock
+            // (current stock already accounts for previous month's consumption)
+            const previousMonthDifference = totalStock;
 
             // Calculate final difference: previous month remainder + planned arrival - planned consumption
             // This shows what will be left after this month's consumption

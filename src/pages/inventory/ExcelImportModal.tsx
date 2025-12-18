@@ -32,7 +32,7 @@ interface ParsedSupplier {
 }
 
 export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalProps) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'success'>('upload');
     const [parsedData, setParsedData] = useState<ParsedItem[]>([]);
     const [parsedSuppliers, setParsedSuppliers] = useState<ParsedSupplier[]>([]);

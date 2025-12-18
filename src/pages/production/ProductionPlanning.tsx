@@ -388,6 +388,12 @@ export default function ProductionPlanning() {
 
             // Get planned arrival from open orders
             const plannedArrival = plannedArrivalMap.get(item.id) || 0;
+            
+            // Get actual arrival from delivered orders (priority over planned)
+            const actualArrival = actualArrivalMap.get(item.id) || 0;
+            
+            // Get actual consumption from stock_movements (priority over planned)
+            const actualConsumption = actualConsumptionMap.get(item.id) || 0;
 
             // Calculate previous month difference (remainder from previous month)
             // Find planned consumption for previous month

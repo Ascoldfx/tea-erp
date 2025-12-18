@@ -329,6 +329,8 @@ export const inventoryService = {
         }
 
         // 6. Import planned consumption
+        // CRITICAL: We must use the actual item.id (UUID) from the database, not the code
+        // This ensures proper matching when loading data later
         const plannedConsumptionMap = new Map<string, {
             item_id: string;
             planned_date: string;
@@ -340,7 +342,17 @@ export const inventoryService = {
             const code = item.code?.trim();
             if (!code) continue;
 
-            const itemId = skuToIdMap.get(code) || code;
+            // Get the actual database ID (UUID) for this item
+            // If item doesn't exist in database yet, skip planned consumption (item will be created first)
+            const itemId = skuToIdMap.get(code);
+            
+            // CRITICAL: Only save planned consumption if we have a valid UUID from database
+            // If itemId is undefined, it means the item doesn't exist in DB yet
+            // In this case, we should skip planned consumption for this item
+            if (!itemId) {
+                console.warn(`[Import] Skipping planned consumption for code ${code}: item not found in database (will be created, but planned consumption will be skipped)`);
+                continue;
+            }
             
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
@@ -351,12 +363,12 @@ export const inventoryService = {
                         
                         // If duplicate exists, use the last (most recent) value
                         plannedConsumptionMap.set(key, {
-                            item_id: itemId,
+                            item_id: itemId, // Always use UUID, never code
                             planned_date: pc.date,
                             quantity: pc.quantity,
                             notes: `Импортировано из Excel`
                         });
-                        console.log(`[Import] Saving planned consumption: itemId=${itemId} (code=${code}), date=${pc.date}, quantity=${pc.quantity}`);
+                        console.log(`[Import] Saving planned consumption: itemId=${itemId} (UUID, code=${code}), date=${pc.date}, quantity=${pc.quantity}`);
                     }
                 });
             }

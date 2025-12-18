@@ -181,14 +181,15 @@ export default function ProductionPlanning() {
                 }
             }
 
-            // Calculate required order (planned - stock, but not less than 0)
-            const requiredOrder = Math.max(0, totalPlannedConsumption - totalStock);
+            // Calculate difference: stock - planned
+            // Negative = need to order (red), Positive = have surplus (green)
+            const difference = totalStock - totalPlannedConsumption;
 
             return {
                 item,
                 totalStock,
                 totalPlannedConsumption,
-                requiredOrder,
+                difference,
                 stockLevels: itemStock
             };
         }).filter(() => 
@@ -335,7 +336,7 @@ export default function ProductionPlanning() {
                                         <th className="px-4 py-3 text-left">{t('materials.name') || 'Наименование'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.stock') || 'Наличие'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.planned') || 'План'}</th>
-                                        <th className="px-4 py-3 text-right">{t('production.shortage') || 'Не хватает'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.difference') || 'Разница'}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
@@ -358,11 +359,11 @@ export default function ProductionPlanning() {
                                                 </td>
                                                 <td className={clsx(
                                                     "px-4 py-3 text-right font-medium whitespace-nowrap",
-                                                    data.requiredOrder > 0 ? "text-red-400" : "text-slate-400"
+                                                    data.difference < 0 ? "text-red-400" : data.difference > 0 ? "text-green-400" : "text-slate-400"
                                                 )}>
-                                                    {data.requiredOrder > 0 
-                                                        ? `${data.requiredOrder.toLocaleString()} ${data.item.unit || 'шт'}`
-                                                        : '-'
+                                                    {data.difference !== 0 
+                                                        ? `${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        : '0'
                                                     }
                                                 </td>
                                             </tr>

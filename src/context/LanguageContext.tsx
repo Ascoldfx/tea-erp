@@ -106,6 +106,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.stock': 'Наличие',
         'production.required': 'Необходимо',
         'production.shortage': 'Не хватает',
+        'production.difference': 'Разница',
         'production.status': 'Статус',
         'production.critical': 'Критично',
         'production.warning': 'Внимание',

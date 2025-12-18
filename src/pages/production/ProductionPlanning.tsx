@@ -631,8 +631,20 @@ export default function ProductionPlanning() {
                                                         : '-'
                                                     }
                                                 </td>
+                                                <td className="px-4 py-3 text-right text-emerald-400 whitespace-nowrap font-medium">
+                                                    {data.actualArrival > 0 
+                                                        ? `${data.actualArrival.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        : '-'
+                                                    }
+                                                </td>
                                                 <td className="px-4 py-3 text-right text-blue-400 whitespace-nowrap">
                                                     {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-orange-400 whitespace-nowrap font-medium">
+                                                    {data.actualConsumption > 0 
+                                                        ? `${data.actualConsumption.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        : '-'
+                                                    }
                                                 </td>
                                                 <td className={clsx(
                                                     "px-4 py-3 text-right font-medium whitespace-nowrap",

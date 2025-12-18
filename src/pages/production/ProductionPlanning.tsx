@@ -396,33 +396,6 @@ export default function ProductionPlanning() {
             const actualConsumption = actualConsumptionMap.get(item.id) || 0;
 
             // Calculate previous month difference (remainder from previous month)
-            // Find planned consumption for previous month
-            const prevMonthPlanned = safePlannedConsumption.filter(pc => {
-                const pcItemId = String(pc.itemId || '').trim();
-                const itemIdStr = String(item.id || '').trim();
-                
-                if (pcItemId !== itemIdStr || !itemIdStr) {
-                    return false;
-                }
-                
-                try {
-                    const pcDateStr = String(pc.plannedDate || '').trim();
-                    if (pcDateStr.startsWith(prevYearMonth)) {
-                        return true;
-                    }
-                    const pcDate = new Date(pcDateStr);
-                    if (!isNaN(pcDate.getTime())) {
-                        const pcYear = pcDate.getFullYear();
-                        const pcMonth = pcDate.getMonth();
-                        return pcYear === prevYear && pcMonth === prevMonth;
-                    }
-                    return false;
-                } catch (e) {
-                    return false;
-                }
-            });
-
-            // Calculate previous month difference (remainder from previous month)
             // Current stock (totalStock) is the stock at the START of current month
             // This already reflects the result of previous month's operations:
             // - Stock at start of previous month

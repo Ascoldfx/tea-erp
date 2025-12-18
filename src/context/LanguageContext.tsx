@@ -373,6 +373,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.stock': 'Наявність',
         'production.required': 'Необхідно',
         'production.shortage': 'Не вистачає',
+        'production.difference': 'Різниця',
         'production.status': 'Статус',
         'production.critical': 'Критично',
         'production.warning': 'Увага',

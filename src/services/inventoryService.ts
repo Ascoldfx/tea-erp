@@ -329,12 +329,12 @@ export const inventoryService = {
         }
 
         // 6. Import planned consumption
-        const plannedConsumptionInserts: Array<{
+        const plannedConsumptionMap = new Map<string, {
             item_id: string;
             planned_date: string;
             quantity: number;
             notes?: string;
-        }> = [];
+        }>();
 
         for (const item of items) {
             const code = item.code?.trim();
@@ -346,7 +346,11 @@ export const inventoryService = {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
                     // Only save non-zero quantities
                     if (pc.quantity > 0) {
-                        plannedConsumptionInserts.push({
+                        // Use composite key to prevent duplicates: item_id + planned_date
+                        const key = `${itemId}_${pc.date}`;
+                        
+                        // If duplicate exists, use the last (most recent) value
+                        plannedConsumptionMap.set(key, {
                             item_id: itemId,
                             planned_date: pc.date,
                             quantity: pc.quantity,
@@ -358,8 +362,10 @@ export const inventoryService = {
             }
         }
 
+        const plannedConsumptionInserts = Array.from(plannedConsumptionMap.values());
+
         if (plannedConsumptionInserts.length > 0) {
-            console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей...`);
+            console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей (после удаления дубликатов)...`);
             const { error: plannedError } = await supabase
                 .from('planned_consumption')
                 .upsert(plannedConsumptionInserts, { 

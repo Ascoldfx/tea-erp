@@ -7,12 +7,15 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
+import { supabase } from '../../lib/supabase';
 
 interface PlanningDataItem {
     item: InventoryItem;
     totalStock: number;
     totalPlannedConsumption: number;
-    difference: number;
+    plannedArrival: number; // Количество из открытых заказов
+    previousMonthDifference: number; // Остаток с предыдущего месяца
+    difference: number; // Итоговая разница с учетом остатка и прихода
     stockLevels: StockLevel[];
 }
 
@@ -45,10 +48,81 @@ export default function ProductionPlanning() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
     const [refreshKey, setRefreshKey] = useState(0);
+    
+    // State for open orders (for planned arrival calculation)
+    const [openOrders, setOpenOrders] = useState<Array<{
+        id: string;
+        item_id: string;
+        quantity: number;
+        received_quantity: number;
+    }>>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
 
     // Force refresh when component mounts or when refreshKey changes
     useEffect(() => {
         refresh();
+    }, [refreshKey]);
+    
+    // Fetch open orders (not delivered, not cancelled)
+    useEffect(() => {
+        const fetchOpenOrders = async () => {
+            if (!supabase) return;
+            
+            setOrdersLoading(true);
+            try {
+                // Get all open orders (draft, ordered, shipped)
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('id, status')
+                    .in('status', ['draft', 'ordered', 'shipped'])
+                    .order('order_date', { ascending: false });
+                
+                if (ordersError) throw ordersError;
+                
+                if (!ordersData || ordersData.length === 0) {
+                    setOpenOrders([]);
+                    setOrdersLoading(false);
+                    return;
+                }
+                
+                // Get all order items for open orders
+                const orderIds = ordersData.map(o => o.id);
+                const { data: orderItems, error: itemsError } = await supabase
+                    .from('order_items')
+                    .select('id, order_id, item_id, quantity, received_quantity')
+                    .in('order_id', orderIds);
+                
+                if (itemsError) throw itemsError;
+                
+                // Calculate pending quantity (quantity - received_quantity) for each item
+                const itemsMap = new Map<string, number>();
+                (orderItems || []).forEach(item => {
+                    const pending = (item.quantity || 0) - (item.received_quantity || 0);
+                    if (pending > 0) {
+                        const current = itemsMap.get(item.item_id) || 0;
+                        itemsMap.set(item.item_id, current + pending);
+                    }
+                });
+                
+                // Convert to array format
+                const ordersArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
+                    id: '', // Not needed for our use case
+                    item_id,
+                    quantity,
+                    received_quantity: 0
+                }));
+                
+                setOpenOrders(ordersArray);
+                console.log('[ProductionPlanning] Open orders items:', ordersArray.length);
+            } catch (error) {
+                console.error('[ProductionPlanning] Error fetching open orders:', error);
+                setOpenOrders([]);
+            } finally {
+                setOrdersLoading(false);
+            }
+        };
+        
+        fetchOpenOrders();
     }, [refreshKey]);
 
     // Ensure items, stock, and plannedConsumption are arrays
@@ -115,15 +189,24 @@ export default function ProductionPlanning() {
             }
         });
 
+        // Create a map of planned arrival from open orders
+        const plannedArrivalMap = new Map<string, number>();
+        openOrders.forEach(order => {
+            const current = plannedArrivalMap.get(order.item_id) || 0;
+            plannedArrivalMap.set(order.item_id, current + order.quantity);
+        });
+
+        // Calculate previous month
+        const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+        const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+        const prevYearMonth = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}`;
+
         return filteredItems.map(item => {
             // Get stock levels for this item
             const itemStock = safeStock.filter(s => s.itemId === item.id);
             const totalStock = itemStock.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
             // Get planned consumption for this month
-            // COMPLETELY REWRITTEN: Match ONLY by UUID (item.id), not by SKU
-            // All new imports use UUID, old data with SKU should be cleaned up
-            
             // Build target month string for comparison (YYYY-MM-01 format)
             const targetMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -172,32 +255,66 @@ export default function ProductionPlanning() {
                     return dateB - dateA; // Most recent first
                 });
                 totalPlannedConsumption = sorted[0].quantity || 0;
-                
-                // Debug logging
-                if (item.category === 'packaging_cardboard') {
-                    console.log(`[ProductionPlanning] Item ${item.sku} (id: ${item.id}): found ${totalPlannedConsumption} for ${targetMonthStr}`);
-                    if (matchingPlanned.length > 1) {
-                        console.warn(`[ProductionPlanning] WARNING: Item ${item.sku} has ${matchingPlanned.length} entries for ${targetMonthStr}, using most recent: ${totalPlannedConsumption}`);
-                        console.warn(`[ProductionPlanning] All entries:`, matchingPlanned.map(pc => `${pc.plannedDate}: ${pc.quantity}`));
-                    }
-                }
-            } else if (item.category === 'packaging_cardboard') {
-                // Debug: log if we expected to find planned consumption but didn't
-                const allForItem = safePlannedConsumption.filter(pc => String(pc.itemId) === String(item.id));
-                if (allForItem.length > 0) {
-                    console.warn(`[ProductionPlanning] Item ${item.sku} (id: ${item.id}) has ${allForItem.length} planned consumption entries, but none match month ${targetMonthStr}`);
-                    console.warn(`[ProductionPlanning] Available dates:`, allForItem.map(pc => pc.plannedDate));
-                }
             }
 
-            // Calculate difference: stock - planned
-            // Negative = need to order (red), Positive = have surplus (green)
-            const difference = totalStock - totalPlannedConsumption;
+            // Get planned arrival from open orders
+            const plannedArrival = plannedArrivalMap.get(item.id) || 0;
+
+            // Calculate previous month difference (remainder from previous month)
+            // Find planned consumption for previous month
+            const prevMonthPlanned = safePlannedConsumption.filter(pc => {
+                const pcItemId = String(pc.itemId || '').trim();
+                const itemIdStr = String(item.id || '').trim();
+                
+                if (pcItemId !== itemIdStr || !itemIdStr) {
+                    return false;
+                }
+                
+                try {
+                    const pcDateStr = String(pc.plannedDate || '').trim();
+                    if (pcDateStr.startsWith(prevYearMonth)) {
+                        return true;
+                    }
+                    const pcDate = new Date(pcDateStr);
+                    if (!isNaN(pcDate.getTime())) {
+                        const pcYear = pcDate.getFullYear();
+                        const pcMonth = pcDate.getMonth();
+                        return pcYear === prevYear && pcMonth === prevMonth;
+                    }
+                    return false;
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            let prevMonthPlannedConsumption = 0;
+            if (prevMonthPlanned.length > 0) {
+                const sorted = prevMonthPlanned.sort((a, b) => {
+                    const dateA = new Date(a.plannedDate).getTime();
+                    const dateB = new Date(b.plannedDate).getTime();
+                    return dateB - dateA;
+                });
+                prevMonthPlannedConsumption = sorted[0].quantity || 0;
+            }
+
+            // Calculate previous month difference (remainder from previous month)
+            // Previous month difference = stock at start of previous month - planned consumption of previous month
+            // Since we don't have historical stock data, we use current stock as approximation
+            // This represents what would be left after previous month's consumption
+            // For the first month, we use current stock directly
+            const previousMonthDifference = totalStock - prevMonthPlannedConsumption;
+
+            // Calculate final difference: previous month remainder + planned arrival - planned consumption
+            // This shows what will be left after this month's consumption
+            // Formula: (remainder from previous month + planned arrival) - planned consumption
+            const difference = previousMonthDifference + plannedArrival - totalPlannedConsumption;
 
             return {
                 item,
                 totalStock,
                 totalPlannedConsumption,
+                plannedArrival,
+                previousMonthDifference,
                 difference,
                 stockLevels: itemStock
             };
@@ -220,7 +337,7 @@ export default function ProductionPlanning() {
             const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
             return orderA - orderB;
         });
-    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems]);
+    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems, openOrders]);
 
 
     return (
@@ -344,6 +461,7 @@ export default function ProductionPlanning() {
                                         <th className="px-4 py-3 text-left">{t('materials.code') || 'Артикул'}</th>
                                         <th className="px-4 py-3 text-left">{t('materials.name') || 'Наименование'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.stock') || 'Наличие'}</th>
+                                        <th className="px-4 py-3 text-right">{t('production.plannedArrival') || 'Планируемый приход'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.planned') || 'План'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.difference') || 'Разница'}</th>
                                     </tr>
@@ -362,6 +480,12 @@ export default function ProductionPlanning() {
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-slate-300 whitespace-nowrap">
                                                     {data.totalStock.toLocaleString()} {data.item.unit || 'шт'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-amber-400 whitespace-nowrap">
+                                                    {data.plannedArrival > 0 
+                                                        ? `${data.plannedArrival.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        : '-'
+                                                    }
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-blue-400 whitespace-nowrap">
                                                     {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}

@@ -326,11 +326,6 @@ export default function ProductionPlanning() {
             actualConsumptionMap.set(consumption.item_id, consumption.quantity);
         });
 
-        // Calculate previous month
-        const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-        const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-        const prevYearMonth = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}`;
-
         return filteredItems.map(item => {
             // Get stock levels for this item
             const itemStock = safeStock.filter(s => s.itemId === item.id);

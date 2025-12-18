@@ -201,10 +201,6 @@ export default function ProductionPlanning() {
             if (!supabase) return;
             
             try {
-                const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-                const monthStart = `${targetYearMonth}-01`;
-                const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
-                
                 // Get stock movements with type='out' for selected month
                 // Note: stock_movements uses 'created_at' or 'date' field - check actual schema
                 const { data: movements, error: movementsError } = await supabase
@@ -419,16 +415,6 @@ export default function ProductionPlanning() {
                     return false;
                 }
             });
-
-            let prevMonthPlannedConsumption = 0;
-            if (prevMonthPlanned.length > 0) {
-                const sorted = prevMonthPlanned.sort((a, b) => {
-                    const dateA = new Date(a.plannedDate).getTime();
-                    const dateB = new Date(b.plannedDate).getTime();
-                    return dateB - dateA;
-                });
-                prevMonthPlannedConsumption = sorted[0].quantity || 0;
-            }
 
             // Calculate previous month difference (remainder from previous month)
             // Current stock (totalStock) is the stock at the START of current month

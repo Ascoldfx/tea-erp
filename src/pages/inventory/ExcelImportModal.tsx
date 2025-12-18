@@ -995,30 +995,80 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 </p>
                             )}
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
-                                        <tr>
-                                            <th className="px-3 py-2">{t('materials.code')}</th>
-                                            <th className="px-3 py-2">{t('materials.name')}</th>
-                                            <th className="px-3 py-2">{t('materials.category')}</th>
-                                            <th className="px-3 py-2 text-right">1С</th>
-                                            <th className="px-3 py-2 text-right">ТС</th>
-                                            <th className="px-3 py-2 text-right">Фито</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-700">
-                                        {parsedData.slice(0, 5).map((item, idx) => (
-                                            <tr key={idx} className="text-slate-300">
-                                                <td className="px-3 py-2 font-mono text-xs text-slate-500">{item.code}</td>
-                                                <td className="px-3 py-2">{item.name}</td>
-                                                <td className="px-3 py-2 text-slate-500">{item.category}</td>
-                                                <td className="px-3 py-2 text-right font-medium">{item.stockMain}</td>
-                                                <td className="px-3 py-2 text-right font-medium">{item.stockMai}</td>
-                                                <td className="px-3 py-2 text-right font-medium">{item.stockFito}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                {(() => {
+                                    // Collect all unique months from planned consumption
+                                    const allMonths = new Set<string>();
+                                    parsedData.forEach(item => {
+                                        if (item.plannedConsumption && item.plannedConsumption.length > 0) {
+                                            item.plannedConsumption.forEach(pc => {
+                                                // Extract month from date (YYYY-MM-01 or YYYY-MM-DD)
+                                                const monthMatch = pc.date.match(/^(\d{4})-(\d{2})/);
+                                                if (monthMatch) {
+                                                    const [, year, month] = monthMatch;
+                                                    allMonths.add(`${year}-${month}`);
+                                                }
+                                            });
+                                        }
+                                    });
+                                    const sortedMonths = Array.from(allMonths).sort();
+                                    
+                                    // Helper to format month name
+                                    const formatMonth = (monthStr: string) => {
+                                        const [year, month] = monthStr.split('-');
+                                        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+                                        return date.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
+                                    };
+                                    
+                                    // Helper to get planned consumption for a specific month
+                                    const getPlannedForMonth = (item: ParsedItem, monthStr: string) => {
+                                        if (!item.plannedConsumption || item.plannedConsumption.length === 0) return 0;
+                                        const found = item.plannedConsumption.find(pc => {
+                                            const monthMatch = pc.date.match(/^(\d{4})-(\d{2})/);
+                                            return monthMatch && `${monthMatch[1]}-${monthMatch[2]}` === monthStr;
+                                        });
+                                        return found ? found.quantity : 0;
+                                    };
+                                    
+                                    return (
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
+                                                <tr>
+                                                    <th className="px-3 py-2">{t('materials.code')}</th>
+                                                    <th className="px-3 py-2">{t('materials.name')}</th>
+                                                    <th className="px-3 py-2">{t('materials.category')}</th>
+                                                    <th className="px-3 py-2 text-right">1С</th>
+                                                    <th className="px-3 py-2 text-right">ТС</th>
+                                                    <th className="px-3 py-2 text-right">Фито</th>
+                                                    {sortedMonths.map(monthStr => (
+                                                        <th key={monthStr} className="px-3 py-2 text-right text-blue-400" title={formatMonth(monthStr)}>
+                                                            {formatMonth(monthStr)}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-700">
+                                                {parsedData.slice(0, 5).map((item, idx) => (
+                                                    <tr key={idx} className="text-slate-300">
+                                                        <td className="px-3 py-2 font-mono text-xs text-slate-500">{item.code}</td>
+                                                        <td className="px-3 py-2">{item.name}</td>
+                                                        <td className="px-3 py-2 text-slate-500">{item.category}</td>
+                                                        <td className="px-3 py-2 text-right font-medium">{item.stockMain}</td>
+                                                        <td className="px-3 py-2 text-right font-medium">{item.stockMai}</td>
+                                                        <td className="px-3 py-2 text-right font-medium">{item.stockFito}</td>
+                                                        {sortedMonths.map(monthStr => {
+                                                            const qty = getPlannedForMonth(item, monthStr);
+                                                            return (
+                                                                <td key={monthStr} className="px-3 py-2 text-right font-medium text-blue-400">
+                                                                    {qty > 0 ? qty : '-'}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    );
+                                })()}
                             </div>
                         </div>
                         <div className="flex justify-end gap-3">

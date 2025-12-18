@@ -583,6 +583,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 const plannedConsumption: Array<{ date: string; quantity: number }> = [];
                 
                 // Note: parseMonthToDate is already defined above (line 155), reuse it here
+                // This avoids duplicate function definitions
                 
                 // First, try to find planned consumption columns and link them with month names or dates
                 for (let i = 0; i < headers.length; i++) {

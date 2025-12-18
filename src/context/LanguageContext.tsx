@@ -85,7 +85,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.planning': 'Планирование',
         'production.actual': 'Фактическое производство',
         'production.week': 'Неделя',
-        'production.planned': 'Запланировано',
+        'production.planned': 'запланированый расход',
         'production.produced': 'Произведено',
         'production.completed': 'Завершено',
         'production.inProgress': 'В работе',

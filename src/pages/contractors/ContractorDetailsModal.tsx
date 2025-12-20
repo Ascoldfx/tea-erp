@@ -86,26 +86,35 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
         if (!contractor) return [];
         
         // Find warehouse for this contractor
-        // Contractors have warehouses with type='contractor' and contractor_id matching
+        // Склады подрядчиков имеют ID, совпадающий с ID подрядчика (wh-ts, wh-fito)
+        // Также проверяем type='contractor' или совпадение ID
         const contractorWarehouse = warehouses.find(w => 
-            w.type === 'contractor' && w.contractor_id === contractor.id
+            w.id === contractor.id || 
+            (w.type === 'contractor' && w.contractor_id === contractor.id)
         );
 
-        if (!contractorWarehouse) return [];
+        if (!contractorWarehouse) {
+            console.log(`[ContractorDetailsModal] Warehouse not found for contractor ${contractor.id}. Available warehouses:`, warehouses.map(w => ({ id: w.id, type: w.type, contractor_id: w.contractor_id })));
+            return [];
+        }
 
         // Get stock levels for this warehouse
         const contractorStock = stock.filter(s => s.warehouseId === contractorWarehouse.id);
 
-        return contractorStock.map(s => {
-            const item = items.find(i => i.id === s.itemId);
-            return {
-                itemId: s.itemId,
-                itemName: item?.name || s.itemId,
-                sku: item?.sku || '',
-                quantity: s.quantity,
-                unit: item?.unit || 'шт'
-            };
-        });
+        console.log(`[ContractorDetailsModal] Found ${contractorStock.length} stock items for warehouse ${contractorWarehouse.id}`);
+
+        return contractorStock
+            .filter(s => s.quantity > 0) // Показываем только материалы с остатком > 0
+            .map(s => {
+                const item = items.find(i => i.id === s.itemId);
+                return {
+                    itemId: s.itemId,
+                    itemName: item?.name || s.itemId,
+                    sku: item?.sku || '',
+                    quantity: s.quantity,
+                    unit: item?.unit === 'pcs' ? 'шт' : (item?.unit || 'шт')
+                };
+            });
     };
 
     const materials = getContractorMaterials();

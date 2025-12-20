@@ -36,7 +36,7 @@ export default function Layout() {
             <main className={clsx(
                 "flex-1 overflow-auto p-4 md:p-8 transition-all duration-300",
                 "pt-20 lg:pt-8", // Mobile needs top padding for header
-                "lg:ml-64 ml-0"   // Desktop needs margin for sidebar
+                "lg:ml-16 ml-0"   // Desktop needs margin for collapsed sidebar (w-16)
             )}>
                 <Outlet />
             </main>

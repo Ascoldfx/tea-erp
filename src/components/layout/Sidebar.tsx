@@ -39,11 +39,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
         <div className={clsx(
-            "h-screen w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed left-0 top-0 transition-transform duration-300 z-50",
-            // Mobile: slide in/out based on isOpen. Desktop: always visible (translate-0)
-            isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            "h-screen bg-slate-900 border-r border-slate-800 flex flex-col fixed left-0 top-0 transition-all duration-300 z-50 group",
+            // Mobile: slide in/out based on isOpen
+            // Desktop: collapsed by default (w-16), expanded on hover (lg:w-64)
+            isOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0 lg:w-16 lg:hover:w-64"
         )}>
-            <div className="p-6">
+            <div className="p-6 lg:p-4">
                 <nav className="space-y-2 mt-4">
                     {filteredNavItems.map((item) => (
                         <NavLink
@@ -53,27 +54,30 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             className={({ isActive }) =>
                                 clsx(
                                     'flex items-center gap-3 px-4 py-4 rounded-xl text-base font-medium transition-colors',
+                                    'lg:justify-center lg:group-hover:justify-start',
                                     isActive
                                         ? 'bg-emerald-500/10 text-emerald-500'
                                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                                 )
                             }
                         >
-                            <item.icon className="w-6 h-6" />
-                            {item.label}
+                            <item.icon className="w-6 h-6 flex-shrink-0" />
+                            <span className="lg:hidden lg:group-hover:inline whitespace-nowrap overflow-hidden">
+                                {item.label}
+                            </span>
                         </NavLink>
                     ))}
                 </nav>
             </div>
             <div className="p-4 border-t border-slate-800 mt-auto">
                 {user && (
-                    <div className="flex items-center gap-3 mb-4 px-2">
+                    <div className="flex items-center gap-3 mb-4 px-2 lg:justify-center lg:group-hover:justify-start">
                         <img
                             src={user.avatarUrl}
                             alt={user.name}
-                            className="w-8 h-8 rounded-full bg-slate-700"
+                            className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0"
                         />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 lg:hidden lg:group-hover:block">
                             <p className="text-sm font-medium text-slate-200 truncate">{user.name}</p>
                             <p className="text-xs text-slate-500 truncate">{user.email}</p>
                         </div>
@@ -81,10 +85,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 )}
                 <button
                     onClick={logout}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-red-400 transition-colors"
+                    className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-red-400 transition-colors lg:justify-center lg:group-hover:justify-start"
                 >
-                    <LogOut className="w-5 h-5 transition-transform group-hover:rotate-180" />
-                    {t('nav.logout')}
+                    <LogOut className="w-5 h-5 flex-shrink-0" />
+                    <span className="lg:hidden lg:group-hover:inline whitespace-nowrap">
+                        {t('nav.logout')}
+                    </span>
                 </button>
             </div>
         </div>

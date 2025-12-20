@@ -286,6 +286,40 @@ export default function ProductionPlanning() {
         setSelectedYear(now.getFullYear());
     };
 
+    // Function to shorten material names in the list (same logic as InventoryList)
+    const shortenMaterialName = (name: string): string => {
+        let shortened = name;
+        // Remove common packaging prefixes (order matters - check longer prefixes first)
+        const prefixesToRemove = [
+            'Картонна упаковка на чай ',
+            'Картонная упаковка на чай ',
+            'Коробка для чаю ',
+            'Коробка для чая ',
+            'Упаковка для чая ',
+            'Упаковка для чаю ',
+            'Упаковка на чай ',
+            'Картонна упаковка на чай',
+            'Картонная упаковка на чай',
+            'Коробка для чаю',
+            'Коробка для чая',
+            'Упаковка для чая',
+            'Упаковка для чаю',
+            'Упаковка на чай'
+        ];
+        
+        for (const prefix of prefixesToRemove) {
+            // Check if name starts with prefix (case-insensitive)
+            if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
+                // Remove the prefix - use the length of the matched prefix from original string
+                const matchedLength = prefix.length;
+                shortened = shortened.substring(matchedLength);
+                break;
+            }
+        }
+        
+        return shortened.trim();
+    };
+
     // Calculate planned consumption for selected month
     // Note: We compare by year and month directly, not by date strings
     // This ensures accurate filtering of planned consumption data
@@ -579,7 +613,7 @@ export default function ProductionPlanning() {
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-200 whitespace-nowrap">
                                                     <div className="max-w-md truncate" title={data.item.name}>
-                                                        {data.item.name}
+                                                        {shortenMaterialName(data.item.name)}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-slate-300 whitespace-nowrap">

@@ -47,10 +47,12 @@ export default function ContractorsPage() {
         }
 
         try {
-            // Fetch contractors (Фито, ТС)
+            // Fetch only packaging contractors (Фито, ТС) - exclude suppliers
+            // Подрядчики по фасовке: Фито и ТС
             const { data: contractorsData, error: contractorsError } = await supabase
                 .from('contractors')
                 .select('*')
+                .in('id', ['wh-fito', 'wh-ts'])
                 .order('name');
 
             if (contractorsError) throw contractorsError;

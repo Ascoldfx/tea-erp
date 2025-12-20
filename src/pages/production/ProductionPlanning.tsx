@@ -8,6 +8,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { supabase } from '../../lib/supabase';
+import MaterialDetailsModal from '../inventory/MaterialDetailsModal';
 
 interface PlanningDataItem {
     item: InventoryItem;
@@ -26,7 +27,11 @@ interface PlanningDataItem {
 
 export default function ProductionPlanning() {
     const { t, language } = useLanguage();
-    const { items, stock, plannedConsumption, loading, refresh } = useInventory();
+    const { items, warehouses, stock, plannedConsumption, loading, refresh } = useInventory();
+    
+    // State for material details modal
+    const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     
     // Debug: log planned consumption data
     useEffect(() => {
@@ -320,6 +325,17 @@ export default function ProductionPlanning() {
         return shortened.trim();
     };
 
+    // Handle item click to open details modal
+    const handleItemClick = (data: PlanningDataItem) => {
+        const itemWithStock = {
+            ...data.item,
+            totalStock: data.totalStock,
+            stockLevels: data.stockLevels
+        };
+        setSelectedItem(itemWithStock);
+        setIsDetailsModalOpen(true);
+    };
+
     // Calculate planned consumption for selected month
     // Note: We compare by year and month directly, not by date strings
     // This ensures accurate filtering of planned consumption data
@@ -607,43 +623,67 @@ export default function ProductionPlanning() {
                                 <tbody className="divide-y divide-slate-800">
                                     {planningData.map((data: PlanningDataItem) => {
                                         return (
-                                            <tr key={data.item.id} className="hover:bg-slate-800/50">
-                                                <td className="px-4 py-3 font-mono text-xs text-slate-400">
+                                            <tr key={data.item.id} className="hover:bg-slate-800/50 group">
+                                                <td 
+                                                    className="px-4 py-3 font-mono text-xs text-slate-400 cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.item.sku || '-'}
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-200 whitespace-nowrap">
+                                                <td 
+                                                    className="px-4 py-3 text-slate-200 whitespace-nowrap cursor-pointer group-hover:text-emerald-400 transition-colors"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     <div className="max-w-md truncate" title={data.item.name}>
                                                         {shortenMaterialName(data.item.name)}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-slate-300 whitespace-nowrap">
+                                                <td 
+                                                    className="px-4 py-3 text-right text-slate-300 whitespace-nowrap cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.totalStock.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-amber-400 whitespace-nowrap">
+                                                <td 
+                                                    className="px-4 py-3 text-right text-amber-400 whitespace-nowrap cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.plannedArrival > 0 
                                                         ? `${data.plannedArrival.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-emerald-400 whitespace-nowrap font-medium">
+                                                <td 
+                                                    className="px-4 py-3 text-right text-emerald-400 whitespace-nowrap font-medium cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.actualArrival > 0 
                                                         ? `${data.actualArrival.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-blue-400 whitespace-nowrap">
+                                                <td 
+                                                    className="px-4 py-3 text-right text-blue-400 whitespace-nowrap cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-orange-400 whitespace-nowrap font-medium">
+                                                <td 
+                                                    className="px-4 py-3 text-right text-orange-400 whitespace-nowrap font-medium cursor-pointer"
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.actualConsumption > 0 
                                                         ? `${data.actualConsumption.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td className={clsx(
-                                                    "px-4 py-3 text-right font-medium whitespace-nowrap",
-                                                    data.difference < 0 ? "text-red-400" : data.difference > 0 ? "text-green-400" : "text-slate-400"
-                                                )}>
+                                                <td 
+                                                    className={clsx(
+                                                        "px-4 py-3 text-right font-medium whitespace-nowrap cursor-pointer",
+                                                        data.difference < 0 ? "text-red-400" : data.difference > 0 ? "text-green-400" : "text-slate-400"
+                                                    )}
+                                                    onDoubleClick={() => handleItemClick(data)}
+                                                >
                                                     {data.difference !== 0 
                                                         ? `${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '0'
@@ -658,6 +698,14 @@ export default function ProductionPlanning() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Material Details Modal */}
+            <MaterialDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                item={selectedItem}
+                warehouses={warehouses}
+            />
 
         </div>
     );

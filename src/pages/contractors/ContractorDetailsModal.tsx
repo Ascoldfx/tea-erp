@@ -6,6 +6,8 @@ import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
+import MaterialDetailsModal from '../inventory/MaterialDetailsModal';
+import type { InventoryItem, StockLevel } from '../../types/inventory';
 
 interface Contractor {
     id: string;
@@ -41,6 +43,8 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
     const [completedOrders, setCompletedOrders] = useState<ProductionOrder[]>([]);
     const [loading, setLoading] = useState(false);
     const [materialSearchTerm, setMaterialSearchTerm] = useState('');
+    const [selectedMaterial, setSelectedMaterial] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
+    const [isMaterialDetailsModalOpen, setIsMaterialDetailsModalOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen && contractor) {
@@ -375,23 +379,42 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                                         {formatCategoryName(category)}
                                     </h4>
                                     <div className="grid grid-cols-1 gap-2">
-                                        {categoryMaterials.map(mat => (
-                                            <div key={mat.itemId} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                        <p className="text-slate-200 text-sm font-medium">{mat.itemName}</p>
-                                                        {mat.sku && (
-                                                            <p className="text-xs text-slate-400 mt-1 font-mono">{mat.sku}</p>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-right ml-3">
-                                                        <p className="text-slate-300 text-sm font-medium">
-                                                            {mat.quantity} {mat.unit}
-                                                        </p>
+                                        {categoryMaterials.map(mat => {
+                                            const materialItem = items.find(i => i.id === mat.itemId);
+                                            const materialStockLevels = stock.filter(s => s.itemId === mat.itemId);
+                                            const totalStock = materialStockLevels.reduce((sum, s) => sum + s.quantity, 0);
+                                            
+                                            return (
+                                                <div 
+                                                    key={mat.itemId} 
+                                                    className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 cursor-pointer hover:border-emerald-500/50 transition-colors group"
+                                                    onDoubleClick={() => {
+                                                        if (materialItem) {
+                                                            setSelectedMaterial({
+                                                                ...materialItem,
+                                                                totalStock,
+                                                                stockLevels: materialStockLevels
+                                                            });
+                                                            setIsMaterialDetailsModalOpen(true);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1">
+                                                            <p className="text-slate-200 text-sm font-medium group-hover:text-emerald-400 transition-colors">{mat.itemName}</p>
+                                                            {mat.sku && (
+                                                                <p className="text-xs text-slate-400 mt-1 font-mono">{mat.sku}</p>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-right ml-3">
+                                                            <p className="text-slate-300 text-sm font-medium">
+                                                                {mat.quantity} {mat.unit}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
@@ -407,6 +430,17 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                     )}
                 </div>
             </div>
+
+            {/* Material Details Modal */}
+            <MaterialDetailsModal
+                isOpen={isMaterialDetailsModalOpen}
+                onClose={() => {
+                    setIsMaterialDetailsModalOpen(false);
+                    setSelectedMaterial(null);
+                }}
+                item={selectedMaterial}
+                warehouses={warehouses}
+            />
         </Modal>
     );
 }

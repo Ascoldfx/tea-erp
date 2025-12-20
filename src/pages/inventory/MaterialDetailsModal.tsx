@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import type { InventoryItem, StockLevel, Warehouse } from '../../types/inventory';
 import { MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { History, Play, CheckCircle, Copy, Check } from 'lucide-react';
+import { History, Play, CheckCircle, Copy, Check, Package } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../context/LanguageContext';
+import { MOCK_RECIPES } from '../../data/mockProduction';
+import { useInventory } from '../../hooks/useInventory';
 
 interface MaterialDetailsModalProps {
     item: (InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null;
@@ -16,6 +18,7 @@ interface MaterialDetailsModalProps {
 
 export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses = [] }: MaterialDetailsModalProps) {
     const { t } = useLanguage();
+    const { items: allItems } = useInventory();
     const [movementHistory, setMovementHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -53,6 +56,46 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
             console.error('Failed to copy:', err);
         }
     };
+
+    // Find finished goods (SKU) that use this material
+    const finishedGoodsUsingMaterial = useMemo(() => {
+        if (!item) return [];
+
+        // Find recipes that use this material
+        const recipesUsingMaterial = MOCK_RECIPES.filter(recipe =>
+            recipe.ingredients.some(ing => ing.itemId === item.id)
+        );
+
+        // Get unique finished goods from these recipes
+        const finishedGoodsMap = new Map<string, {
+            recipeName: string;
+            sku: string;
+            name: string;
+            quantity: number; // Normalized quantity per output
+        }>();
+
+        recipesUsingMaterial.forEach(recipe => {
+            const ingredient = recipe.ingredients.find(ing => ing.itemId === item.id);
+            if (!ingredient) return;
+
+            const finishedGood = allItems.find(i => i.id === recipe.outputItemId);
+            const sku = finishedGood?.sku || recipe.outputItemId;
+            const name = finishedGood?.name || recipe.name;
+
+            // Use existing entry or create new
+            const key = sku;
+            if (!finishedGoodsMap.has(key)) {
+                finishedGoodsMap.set(key, {
+                    recipeName: recipe.name,
+                    sku,
+                    name,
+                    quantity: ingredient.quantity
+                });
+            }
+        });
+
+        return Array.from(finishedGoodsMap.values());
+    }, [item, allItems]);
 
     if (!item) return null;
 
@@ -117,6 +160,36 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                 <p className="text-slate-500 text-sm col-span-2">Нет данных о размещении.</p>
                             )}
                         </div>
+
+                        {/* Finished Goods Using This Material */}
+                        {finishedGoodsUsingMaterial.length > 0 && (
+                            <>
+                                <h4 className="text-sm font-medium text-slate-400 uppercase mt-6 flex items-center gap-2">
+                                    <Package className="w-4 h-4" />
+                                    {t('materials.usedInProducts') || 'Используется в готовой продукции'}
+                                </h4>
+                                <div className="space-y-2">
+                                    {finishedGoodsUsingMaterial.map((fg, idx) => (
+                                        <div key={idx} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-slate-200 text-sm font-medium">{fg.name}</p>
+                                                    <p className="text-xs text-slate-400 mt-1 font-mono">{fg.sku}</p>
+                                                    <p className="text-xs text-slate-500 mt-1 italic">
+                                                        {t('materials.techCard') || 'Техкарта'}: {fg.recipeName}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right ml-3">
+                                                    <p className="text-xs text-slate-400">
+                                                        {t('materials.norm') || 'Норма'}: {fg.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
 
                         <h4 className="text-sm font-medium text-slate-400 uppercase mt-6">Журнал операций</h4>
                         <div className="space-y-3">

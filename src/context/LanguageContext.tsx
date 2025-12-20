@@ -67,6 +67,11 @@ const translations: Record<Language, Record<string, string>> = {
         'contractors.doubleClickToDetails': 'Двойной клик для просмотра деталей',
         'contractors.searchMaterials': 'Поиск по названию или артикулу...',
         'contractors.noMaterialsFound': 'Материалы не найдены',
+        
+        // Materials details
+        'materials.usedInProducts': 'Используется в готовой продукции',
+        'materials.techCard': 'Техкарта',
+        'materials.norm': 'Норма',
         'nav.techCards': 'Тех. карты',
         'nav.users': 'Пользователи',
         'nav.settings': 'Настройки',
@@ -351,6 +356,11 @@ const translations: Record<Language, Record<string, string>> = {
         'contractors.doubleClickToDetails': 'Подвійний клік для перегляду деталей',
         'contractors.searchMaterials': 'Пошук за назвою або артикулом...',
         'contractors.noMaterialsFound': 'Матеріали не знайдені',
+        
+        // Materials details
+        'materials.usedInProducts': 'Використовується в готовій продукції',
+        'materials.techCard': 'Техкарта',
+        'materials.norm': 'Норма',
         'nav.techCards': 'Тех. карти',
         'nav.users': 'Користувачі',
         'nav.settings': 'Налаштування',

@@ -21,6 +21,24 @@ interface MonthData {
 }
 
 /**
+ * Преобразует единицу измерения в читаемый формат для Excel
+ */
+function formatUnit(unit: string | undefined): string {
+    if (!unit) return 'шт';
+    
+    const unitMap: Record<string, string> = {
+        'pcs': 'шт',
+        'шт': 'шт',
+        'kg': 'кг',
+        'g': 'г',
+        'l': 'л',
+        'ml': 'мл'
+    };
+    
+    return unitMap[unit.toLowerCase()] || unit;
+}
+
+/**
  * Генерирует список месяцев для экспорта
  * Начинает с текущего месяца и включает следующие 12 месяцев
  */
@@ -115,7 +133,7 @@ export async function exportTechCardsToExcel(
                 'Група КСМ': material.category || '',
                 'Артикул КСМ': material.sku || '',
                 'Назва КСМ': material.name || '',
-                'Од. вим.': material.unit === 'pcs' ? 'шт' : material.unit || '',
+                'Од. вим.': formatUnit(material.unit),
                 'Еталон': ingredient.quantity
             };
 

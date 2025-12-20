@@ -62,7 +62,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             }
                         >
                             <item.icon className="w-6 h-6 flex-shrink-0" />
-                            <span className="lg:hidden lg:group-hover:inline whitespace-nowrap overflow-hidden">
+                            <span className="lg:opacity-0 lg:group-hover:opacity-100 lg:max-w-0 lg:group-hover:max-w-xs whitespace-nowrap overflow-hidden transition-all duration-300">
                                 {item.label}
                             </span>
                         </NavLink>
@@ -77,7 +77,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             alt={user.name}
                             className="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0"
                         />
-                        <div className="flex-1 min-w-0 lg:hidden lg:group-hover:block">
+                        <div className="flex-1 min-w-0 lg:opacity-0 lg:group-hover:opacity-100 lg:max-w-0 lg:group-hover:max-w-xs overflow-hidden transition-all duration-300">
                             <p className="text-sm font-medium text-slate-200 truncate">{user.name}</p>
                             <p className="text-xs text-slate-500 truncate">{user.email}</p>
                         </div>
@@ -88,7 +88,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-red-400 transition-colors lg:justify-center lg:group-hover:justify-start"
                 >
                     <LogOut className="w-5 h-5 flex-shrink-0" />
-                    <span className="lg:hidden lg:group-hover:inline whitespace-nowrap">
+                    <span className="lg:opacity-0 lg:group-hover:opacity-100 lg:max-w-0 lg:group-hover:max-w-xs whitespace-nowrap overflow-hidden transition-all duration-300">
                         {t('nav.logout')}
                     </span>
                 </button>

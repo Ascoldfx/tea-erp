@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import { Package, Factory, CheckCircle, Clock } from 'lucide-react';
+import { Input } from '../../components/ui/Input';
+import { Package, Factory, CheckCircle, Clock, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useInventory } from '../../hooks/useInventory';
@@ -34,11 +35,12 @@ interface ContractorDetailsModalProps {
 }
 
 export default function ContractorDetailsModal({ isOpen, onClose, contractor }: ContractorDetailsModalProps) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { items, stock, warehouses } = useInventory();
     const [activeOrders, setActiveOrders] = useState<ProductionOrder[]>([]);
     const [completedOrders, setCompletedOrders] = useState<ProductionOrder[]>([]);
     const [loading, setLoading] = useState(false);
+    const [materialSearchTerm, setMaterialSearchTerm] = useState('');
 
     useEffect(() => {
         if (isOpen && contractor) {
@@ -111,13 +113,77 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                     itemId: s.itemId,
                     itemName: item?.name || s.itemId,
                     sku: item?.sku || '',
+                    category: item?.category || 'other',
                     quantity: s.quantity,
                     unit: item?.unit === 'pcs' ? 'шт' : (item?.unit || 'шт')
                 };
             });
     };
 
-    const materials = getContractorMaterials();
+    // Helper function to format category name for display
+    const formatCategoryName = (category: string): string => {
+        const translationKey = `materials.filter.${category}`;
+        const translated = t(translationKey);
+        if (translated !== translationKey) {
+            return translated;
+        }
+        
+        const categoryMap: Record<string, string> = {
+            'envelope': language === 'uk' ? 'Конверти' : 'Конверты',
+            'label': language === 'uk' ? 'Ярлики' : 'Ярлыки',
+            'packaging_consumable': language === 'uk' ? 'Плівка' : 'Пленки',
+            'packaging_crate': language === 'uk' ? 'Гофроящики' : 'Гофроящики',
+            'soft_packaging': language === 'uk' ? 'М\'яка упаковка' : 'Мягкая упаковка',
+            'flavor': language === 'uk' ? 'Ароматизатори' : 'Ароматизаторы',
+            'tea_bulk': language === 'uk' ? 'Чайна сировина' : 'Чайное сырье',
+            'sticker': language === 'uk' ? 'Стікери' : 'Стикеры',
+            'other': language === 'uk' ? 'Інше' : 'Прочее',
+            'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка'
+        };
+        
+        if (categoryMap[category]) {
+            return categoryMap[category];
+        }
+        
+        return category
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+            .trim();
+    };
+
+    // Get all materials and filter by search term
+    const allMaterials = useMemo(() => getContractorMaterials(), [contractor, warehouses, stock, items]);
+    
+    // Filter materials by search term
+    const filteredMaterials = useMemo(() => {
+        if (!materialSearchTerm.trim()) return allMaterials;
+        
+        const searchLower = materialSearchTerm.toLowerCase().trim();
+        return allMaterials.filter(mat => 
+            mat.itemName.toLowerCase().includes(searchLower) ||
+            mat.sku.toLowerCase().includes(searchLower)
+        );
+    }, [allMaterials, materialSearchTerm]);
+
+    // Group materials by category
+    const groupedMaterials = useMemo(() => {
+        const groups = new Map<string, typeof filteredMaterials>();
+        
+        filteredMaterials.forEach(mat => {
+            const category = mat.category || 'other';
+            if (!groups.has(category)) {
+                groups.set(category, []);
+            }
+            groups.get(category)!.push(mat);
+        });
+        
+        // Sort groups by category name
+        const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+            return formatCategoryName(a[0]).localeCompare(formatCategoryName(b[0]));
+        });
+        
+        return sortedGroups;
+    }, [filteredMaterials, formatCategoryName]);
 
     if (!contractor) return null;
 
@@ -281,30 +347,59 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
 
                 {/* Materials at Contractor */}
                 <div>
-                    <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        {t('contractors.materialsAtContractor') || 'Наши материалы на складе подрядчика'}
-                    </h3>
-                    {materials.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-2">
-                            {materials.map(mat => (
-                                <div key={mat.itemId} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <p className="text-slate-200 text-sm font-medium">{mat.itemName}</p>
-                                            {mat.sku && (
-                                                <p className="text-xs text-slate-400 mt-1 font-mono">{mat.sku}</p>
-                                            )}
-                                        </div>
-                                        <div className="text-right ml-3">
-                                            <p className="text-slate-300 text-sm font-medium">
-                                                {mat.quantity} {mat.unit}
-                                            </p>
-                                        </div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                            <Package className="w-4 h-4" />
+                            {t('contractors.materialsAtContractor') || 'Наши материалы на складе подрядчика'}
+                        </h3>
+                    </div>
+                    
+                    {/* Search Filter */}
+                    {allMaterials.length > 0 && (
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                            <Input
+                                placeholder={t('contractors.searchMaterials') || 'Поиск по названию или артикулу...'}
+                                className="pl-10"
+                                value={materialSearchTerm}
+                                onChange={(e) => setMaterialSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    )}
+
+                    {filteredMaterials.length > 0 ? (
+                        <div className="space-y-4">
+                            {groupedMaterials.map(([category, categoryMaterials]) => (
+                                <div key={category}>
+                                    <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">
+                                        {formatCategoryName(category)}
+                                    </h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {categoryMaterials.map(mat => (
+                                            <div key={mat.itemId} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <p className="text-slate-200 text-sm font-medium">{mat.itemName}</p>
+                                                        {mat.sku && (
+                                                            <p className="text-xs text-slate-400 mt-1 font-mono">{mat.sku}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right ml-3">
+                                                        <p className="text-slate-300 text-sm font-medium">
+                                                            {mat.quantity} {mat.unit}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))}
                         </div>
+                    ) : allMaterials.length > 0 ? (
+                        <p className="text-slate-500 text-sm italic">
+                            {t('contractors.noMaterialsFound') || 'Материалы не найдены'}
+                        </p>
                     ) : (
                         <p className="text-slate-500 text-sm italic">
                             {t('contractors.noMaterials') || 'Нет материалов на складе'}

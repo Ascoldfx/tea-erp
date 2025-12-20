@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Search, Plus, FileText, Edit, Download } from 'lucide-react';
+import { Search, Plus, FileText, Edit, Download, Upload } from 'lucide-react';
 import { MOCK_RECIPES } from '../../data/mockProduction';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 import { exportTechCardsToExcel } from '../../services/techCardsExportService';
+import TechCardsImportModal from './TechCardsImportModal';
+import type { Recipe } from '../../types/production';
 
 export default function TechCardsList() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const navigate = useNavigate();
     const { items, plannedConsumption } = useInventory();
 
-    const filteredRecipes = MOCK_RECIPES.filter(r =>
+    // Инициализируем тех.карты из MOCK_RECIPES
+    useEffect(() => {
+        setRecipes([...MOCK_RECIPES]);
+    }, []);
+
+    const filteredRecipes = recipes.filter(r =>
         r.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -25,11 +34,17 @@ export default function TechCardsList() {
 
     const handleExport = async () => {
         try {
-            await exportTechCardsToExcel(MOCK_RECIPES, items, plannedConsumption);
+            await exportTechCardsToExcel(recipes, items, plannedConsumption);
         } catch (error) {
             console.error('Ошибка при экспорте:', error);
             alert('Ошибка при экспорте техкарт');
         }
+    };
+
+    const handleImport = (importedRecipes: Recipe[]) => {
+        setRecipes(prev => [...prev, ...importedRecipes]);
+        // TODO: В будущем сохранять в базу данных
+        console.log('Импортировано тех.карт:', importedRecipes.length);
     };
 
     return (
@@ -47,6 +62,14 @@ export default function TechCardsList() {
                     >
                         <Download className="w-4 h-4 mr-2" />
                         Экспорт в Excel
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="border-slate-600 hover:bg-slate-800"
+                    >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Импорт из Excel
                     </Button>
                     <Button onClick={() => navigate('/production/recipes/new')}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -107,6 +130,12 @@ export default function TechCardsList() {
                     ))}
                 </div>
             )}
+
+            <TechCardsImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImport}
+            />
         </div>
     );
 }

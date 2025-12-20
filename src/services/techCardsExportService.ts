@@ -202,3 +202,150 @@ export async function exportTechCardsToExcel(
     XLSX.writeFile(wb, fileName);
 }
 
+/**
+ * Парсит единицу измерения из Excel формата
+ */
+function parseUnit(unitStr: string | undefined): string {
+    if (!unitStr) return 'pcs';
+    
+    const unitMap: Record<string, string> = {
+        'шт': 'pcs',
+        'кг': 'kg',
+        'г': 'g',
+        'л': 'l',
+        'мл': 'ml',
+        'pcs': 'pcs',
+        'kg': 'kg',
+        'g': 'g',
+        'l': 'l',
+        'ml': 'ml'
+    };
+    
+    return unitMap[unitStr.toLowerCase().trim()] || 'pcs';
+}
+
+/**
+ * Импортирует техкарты из Excel файла
+ */
+export interface ImportedTechCard {
+    gpSku: string;
+    gpName: string;
+    ingredients: Array<{
+        materialSku: string;
+        materialName: string;
+        materialCategory: string;
+        unit: string;
+        norm: number;
+    }>;
+}
+
+export function parseTechCardsFromExcel(
+    workbook: XLSX.WorkBook,
+    sheetName: string
+): ImportedTechCard[] {
+    const ws = workbook.Sheets[sheetName];
+    if (!ws) {
+        throw new Error(`Лист "${sheetName}" не найден`);
+    }
+
+    // Читаем данные как массив массивов
+    const rawData = XLSX.utils.sheet_to_json(ws, {
+        defval: '',
+        raw: false,
+        header: 1
+    }) as any[][];
+
+    if (!rawData || rawData.length === 0) {
+        throw new Error('Файл пуст или не содержит данных');
+    }
+
+    // Находим строку заголовков
+    let headerRowIndex = 0;
+    const headerKeywords = ['артикул гп', 'назва гп', 'название гп', 'артикул ксм', 'назва ксм', 'эталон'];
+    
+    for (let i = 0; i < Math.min(10, rawData.length); i++) {
+        const row = rawData[i];
+        if (!row) continue;
+        
+        const rowText = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
+        const hasHeader = headerKeywords.some(keyword => rowText.includes(keyword));
+        
+        if (hasHeader) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+
+    const headerRow = rawData[headerRowIndex] || [];
+    const headers = headerRow.map((h: any) => String(h || '').trim());
+
+    // Находим индексы нужных колонок
+    const gpSkuIndex = headers.findIndex(h => 
+        /артикул\s*гп|артикул\s*г\.п\.|sku\s*гп/i.test(h)
+    );
+    const gpNameIndex = headers.findIndex(h => 
+        /назва\s*гп|название\s*гп|наименование\s*гп|name\s*гп/i.test(h)
+    );
+    const materialCategoryIndex = headers.findIndex(h => 
+        /група\s*ксм|группа\s*ксм|категория/i.test(h)
+    );
+    const materialSkuIndex = headers.findIndex(h => 
+        /артикул\s*ксм|артикул\s*к\.с\.м\.|sku\s*ксм/i.test(h)
+    );
+    const materialNameIndex = headers.findIndex(h => 
+        /назва\s*ксм|название\s*ксм|наименование\s*ксм|name\s*ксм/i.test(h)
+    );
+    const unitIndex = headers.findIndex(h => 
+        /од\.?\s*вим|единица|unit/i.test(h)
+    );
+    const normIndex = headers.findIndex(h => 
+        /эталон|норма|norm/i.test(h)
+    );
+
+    if (gpSkuIndex === -1 || gpNameIndex === -1 || materialSkuIndex === -1 || materialNameIndex === -1 || normIndex === -1) {
+        throw new Error('Не найдены обязательные колонки: Артикул ГП, Назва ГП, Артикул КСМ, Назва КСМ, Еталон');
+    }
+
+    // Группируем строки по готовой продукции
+    const techCardsMap = new Map<string, ImportedTechCard>();
+
+    for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row) continue;
+
+        const gpSku = String(row[gpSkuIndex] || '').trim();
+        const gpName = String(row[gpNameIndex] || '').trim();
+        const materialSku = String(row[materialSkuIndex] || '').trim();
+        const materialName = String(row[materialNameIndex] || '').trim();
+        const materialCategory = materialCategoryIndex >= 0 ? String(row[materialCategoryIndex] || '').trim() : '';
+        const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
+        const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
+
+        // Пропускаем пустые строки
+        if (!gpSku || !gpName || !materialSku || !materialName || norm === 0) {
+            continue;
+        }
+
+        const key = `${gpSku}|${gpName}`;
+
+        if (!techCardsMap.has(key)) {
+            techCardsMap.set(key, {
+                gpSku,
+                gpName,
+                ingredients: []
+            });
+        }
+
+        const techCard = techCardsMap.get(key)!;
+        techCard.ingredients.push({
+            materialSku,
+            materialName,
+            materialCategory,
+            unit: parseUnit(unit),
+            norm
+        });
+    }
+
+    return Array.from(techCardsMap.values());
+}
+

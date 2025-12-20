@@ -44,7 +44,6 @@ export default function TechCardsList() {
                         variant="outline" 
                         onClick={handleExport}
                         className="border-slate-600 hover:bg-slate-800"
-                        disabled={MOCK_RECIPES.length === 0}
                     >
                         <Download className="w-4 h-4 mr-2" />
                         Экспорт в Excel

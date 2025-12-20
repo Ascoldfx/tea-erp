@@ -40,16 +40,15 @@ export default function TechCardsList() {
                     <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 пачку)</p>
                 </div>
                 <div className="flex gap-3">
-                    {MOCK_RECIPES.length > 0 && (
-                        <Button 
-                            variant="outline" 
-                            onClick={handleExport}
-                            className="border-slate-600 hover:bg-slate-800"
-                        >
-                            <Download className="w-4 h-4 mr-2" />
-                            Экспорт в Excel
-                        </Button>
-                    )}
+                    <Button 
+                        variant="outline" 
+                        onClick={handleExport}
+                        className="border-slate-600 hover:bg-slate-800"
+                        disabled={MOCK_RECIPES.length === 0}
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Экспорт в Excel
+                    </Button>
                     <Button onClick={() => navigate('/production/recipes/new')}>
                         <Plus className="w-4 h-4 mr-2" />
                         Создать карту

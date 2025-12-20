@@ -2,21 +2,35 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Search, Plus, FileText, Edit } from 'lucide-react';
+import { Search, Plus, FileText, Edit, Download } from 'lucide-react';
 import { MOCK_RECIPES } from '../../data/mockProduction';
-import { MOCK_ITEMS } from '../../data/mockInventory';
 import { useNavigate } from 'react-router-dom';
+import { useInventory } from '../../hooks/useInventory';
+import { exportTechCardsToExcel } from '../../services/techCardsExportService';
 
 export default function TechCardsList() {
     const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
+    const { items, plannedConsumption } = useInventory();
 
     const filteredRecipes = MOCK_RECIPES.filter(r =>
         r.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const getItemName = (id: string) => MOCK_ITEMS.find(i => i.id === id)?.name || id;
-    const getItemUnit = (id: string) => MOCK_ITEMS.find(i => i.id === id)?.unit || '';
+    const getItemName = (id: string) => items.find(i => i.id === id)?.name || id;
+    const getItemUnit = (id: string) => {
+        const unit = items.find(i => i.id === id)?.unit || '';
+        return unit === 'pcs' ? 'шт' : unit;
+    };
+
+    const handleExport = async () => {
+        try {
+            await exportTechCardsToExcel(MOCK_RECIPES, items, plannedConsumption);
+        } catch (error) {
+            console.error('Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте техкарт');
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -25,10 +39,22 @@ export default function TechCardsList() {
                     <h1 className="text-3xl font-bold text-slate-100">Технологические Карты</h1>
                     <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1000 пакетиков)</p>
                 </div>
-                <Button onClick={() => navigate('/production/recipes/new')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Создать карту
-                </Button>
+                <div className="flex gap-3">
+                    {MOCK_RECIPES.length > 0 && (
+                        <Button 
+                            variant="outline" 
+                            onClick={handleExport}
+                            className="border-slate-600 hover:bg-slate-800"
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Экспорт в Excel
+                        </Button>
+                    )}
+                    <Button onClick={() => navigate('/production/recipes/new')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Создать карту
+                    </Button>
+                </div>
             </div>
 
             <div className="relative max-w-md">
@@ -41,8 +67,14 @@ export default function TechCardsList() {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {filteredRecipes.map(recipe => (
+            {filteredRecipes.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>Нет техкарт. Создайте первую техкарту.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {filteredRecipes.map(recipe => (
                     <Card key={recipe.id} className="hover:border-emerald-500/50 transition-colors">
                         <CardHeader className="pb-3 flex flex-row items-center justify-between">
                             <CardTitle className="text-lg font-bold text-slate-100 flex items-center gap-2">
@@ -74,8 +106,9 @@ export default function TechCardsList() {
                             </div>
                         </CardContent>
                     </Card>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

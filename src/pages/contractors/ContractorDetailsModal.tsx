@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import { Package, Factory, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Package, Factory, CheckCircle, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useInventory } from '../../hooks/useInventory';
@@ -116,17 +116,18 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={
-                <div className="flex items-center gap-3">
+            title={`${contractor.name} (${contractor.code})`}
+        >
+            <div className="space-y-6">
+                {/* Contractor Header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-700">
                     <Factory className="w-5 h-5 text-blue-400" />
-                    <span>{contractor.name}</span>
+                    <span className="text-lg font-semibold text-slate-200">{contractor.name}</span>
                     <span className="px-2 py-1 bg-slate-800 text-slate-400 text-xs rounded font-mono">
                         {contractor.code}
                     </span>
                 </div>
-            }
-        >
-            <div className="space-y-6">
+
                 {/* Contact Info */}
                 {(contractor.contact_person || contractor.phone || contractor.email) && (
                     <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">

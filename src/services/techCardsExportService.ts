@@ -1,7 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { Recipe } from '../types/production';
 import type { InventoryItem, PlannedConsumption } from '../types/inventory';
-import { supabase } from '../lib/supabase';
 
 interface TechCardExportRow {
     'Артикул ГП': string;
@@ -70,9 +69,7 @@ function generateMonths(): MonthData[] {
  * В будущем это может быть из базы данных с историей изменений норм
  */
 function getNormForMonth(
-    recipe: Recipe,
-    ingredient: { itemId: string; quantity: number },
-    monthDate: string
+    ingredient: { itemId: string; quantity: number }
 ): number {
     // Пока возвращаем стандартную норму из техкарты
     // В будущем можно добавить логику изменения норм по месяцам
@@ -139,7 +136,7 @@ export async function exportTechCardsToExcel(
 
             // Добавляем столбцы с нормами по месяцам (даты)
             for (const month of months) {
-                const norm = getNormForMonth(recipe, ingredient, month.date);
+                const norm = getNormForMonth(ingredient);
                 row[month.dateFormatted] = norm;
             }
 

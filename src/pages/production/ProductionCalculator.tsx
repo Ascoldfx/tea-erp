@@ -25,10 +25,10 @@ export default function ProductionCalculator() {
                 .filter(s => s.itemId === ing.itemId)
                 .reduce((acc, curr) => acc + curr.quantity, 0);
 
-            const requiredPerBatch = ing.quantity; // amount for Recipe base (usually 1 batch or X units)
-            // For simplicity, assume MOCK_RECIPE defines requirements for 1000 packs (batch).
+            const requiredPerBatch = ing.quantity; // amount for Recipe base (1 pack)
+            // Recipe defines requirements for 1 pack.
             // We need to know how many "packs" total can be made.
-            // Recipe: "outputQuantity" = 1000. "ing.quantity" is for 1000.
+            // Recipe: "outputQuantity" = 1. "ing.quantity" is for 1 pack.
 
             const maxBatches = requiredPerBatch > 0 ? Math.floor(totalStock / requiredPerBatch) : 999999;
             const maxTotalUnits = maxBatches * recipe.outputQuantity;
@@ -159,9 +159,8 @@ export default function ProductionCalculator() {
                                     <div>
                                         <p className="text-xs text-slate-400 uppercase">Штук (Пачек)</p>
                                         <p className="text-xl font-bold text-slate-100">
-                                            {/* Mock: 1 pack = 0.1kg implied? No, let's assume recipe outputQuantity is 'units per batch'. 
-                                                We need a conversion factor. For MVP, let's assume 1 Batch = 100kg = 1000 packs.
-                                                So 1 kg = 10 packs.
+                                            {/* Recipe outputQuantity = 1 pack.
+                                                Conversion: 1 kg = 10 packs (example conversion factor).
                                             */}
                                             {(targetQuantity * 10).toLocaleString()} шт
                                         </p>

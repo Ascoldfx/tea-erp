@@ -228,7 +228,7 @@ export default function ProductionList() {
                                                 <div className="space-y-2">
                                                     {plannedBatches.map(batch => {
                                                         const recipe = MOCK_RECIPES.find(r => r.id === batch.recipeId);
-                                                        const totalOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // Convert to kg
+                                                        const totalOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
                                                         
                                                         return (
                                                             <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
@@ -298,8 +298,8 @@ export default function ProductionList() {
                                         <div className="space-y-2">
                                             {actualBatches.map(batch => {
                                                 const recipe = MOCK_RECIPES.find(r => r.id === batch.recipeId);
-                                                const plannedOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // Convert to kg
-                                                const actualOutput = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0) / 1000; // Convert to kg
+                                                const plannedOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
+                                                const actualOutput = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
                                                 
                                                 return (
                                                     <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">

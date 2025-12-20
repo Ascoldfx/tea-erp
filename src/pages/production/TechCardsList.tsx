@@ -37,7 +37,7 @@ export default function TechCardsList() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-100">Технологические Карты</h1>
-                    <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1000 пакетиков)</p>
+                    <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 пачку)</p>
                 </div>
                 <div className="flex gap-3">
                     {MOCK_RECIPES.length > 0 && (

@@ -19,7 +19,7 @@ export default function RecipeEditor() {
         name: '',
         description: '',
         outputItemId: '',
-        outputQuantity: 1000,
+        outputQuantity: 1,
         ingredients: []
     });
 

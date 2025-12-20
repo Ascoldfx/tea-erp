@@ -39,8 +39,8 @@ export function ContractorsList() {
             if (!recipe) return;
 
             // Mock conversion: 1 Batch = 100kg (example for MVP simplicity)
-            // Real app would use recipe.outputQuantity (e.g. 1000 units) and unit weight.
-            // Let's assume recipe units are defined for "1 Standard Batch".
+            // Real app would use recipe.outputQuantity (1 pack) and unit weight.
+            // Recipe units are defined for 1 pack.
             // We need to scale ingredients.
             // For this MVP, let's treat quantityKg directly proportional to batch size 
             // assuming standard batch = 100kg.

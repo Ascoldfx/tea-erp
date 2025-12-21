@@ -293,7 +293,6 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                             }
                                                         })()}
                                                     </td>
-                                                    )}
                                                 </tr>
                                             );
                                         })}

@@ -168,7 +168,7 @@ export const recipesService = {
                         
                         return {
                             recipe_id: recipe.id,
-                            item_id: itemId || 'temp-placeholder', // Временное значение для FK, если нужно
+                            item_id: itemId || undefined, // NULL для временных материалов
                             quantity: ing.quantity,
                             tolerance: ing.tolerance || null,
                             is_duplicate_sku: ing.isDuplicateSku || false,
@@ -178,30 +178,20 @@ export const recipesService = {
                         };
                     });
 
-                    // ВАЖНО: Проверяем, есть ли ингредиенты с валидными item_id
-                    const ingredientsWithValidItemId = ingredientsData.filter(ing => ing.item_id && !ing.item_id.startsWith('temp-'));
-                    
-                    if (ingredientsWithValidItemId.length > 0) {
-                        const { error: ingredientsError } = await supabase
-                            .from('recipe_ingredients')
-                            .insert(ingredientsWithValidItemId);
+                    // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
+                    const { error: ingredientsError } = await supabase
+                        .from('recipe_ingredients')
+                        .insert(ingredientsData);
 
-                        if (ingredientsError) {
-                            console.error('[RecipesService] Error saving ingredients:', ingredientsError);
-                            console.error('[RecipesService] Ingredients data:', ingredientsWithValidItemId);
-                            return false;
-                        }
-                        
-                        console.log(`[RecipesService] Saved ${ingredientsWithValidItemId.length} ingredients for recipe "${recipe.name}"`);
-                    } else {
-                        console.warn(`[RecipesService] No valid ingredients to save for recipe "${recipe.name}" (all have temp IDs)`);
+                    if (ingredientsError) {
+                        console.error('[RecipesService] Error saving ingredients:', ingredientsError);
+                        console.error('[RecipesService] Ingredients data:', ingredientsData);
+                        return false;
                     }
                     
-                    // Сохраняем информацию о временных ингредиентах отдельно
-                    const tempIngredients = ingredientsData.filter(ing => ing.item_id && ing.item_id.startsWith('temp-'));
-                    if (tempIngredients.length > 0) {
-                        console.warn(`[RecipesService] Recipe "${recipe.name}" has ${tempIngredients.length} ingredients with temp IDs (not saved to DB, but info preserved)`);
-                    }
+                    const validCount = ingredientsData.filter(ing => ing.item_id).length;
+                    const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
+                    console.log(`[RecipesService] Saved ${ingredientsData.length} ingredients for recipe "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
                 } else {
                     console.warn(`[RecipesService] Recipe "${recipe.name}" has no valid ingredients to save`);
                 }

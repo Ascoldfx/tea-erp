@@ -513,6 +513,8 @@ export function parseTechCardsFromExcel(
             if (!isDuplicate) {
                 // ВАЖНО: Сохраняем monthlyNorms даже если они все равны 0 или пустые
                 // Это нужно для отображения структуры норм по месяцам
+                // ВАЖНО: Сохраняем monthlyNorms даже если они все равны 0
+                // Это нужно для отображения структуры норм по месяцам
                 const ingredient = {
                     materialSku: materialSku || '',
                     materialName: materialName || materialSku || 'Без названия',
@@ -523,9 +525,11 @@ export function parseTechCardsFromExcel(
                 };
                 
                 if (monthlyNorms.length > 0) {
-                    console.log(`[parseTechCardsFromExcel] ✅ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has ${monthlyNorms.length} monthly norms:`, monthlyNorms);
+                    console.log(`[parseTechCardsFromExcel] ✅ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has ${monthlyNorms.length} monthly norms:`, JSON.stringify(monthlyNorms));
                 } else {
-                    console.warn(`[parseTechCardsFromExcel] ⚠️ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has NO monthly norms! Check if date columns are found.`);
+                    console.warn(`[parseTechCardsFromExcel] ⚠️ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has NO monthly norms!`);
+                    console.warn(`[parseTechCardsFromExcel] ⚠️ Check if date columns (01.12.2025, 01.01.2026, etc.) are found in headers.`);
+                    console.warn(`[parseTechCardsFromExcel] ⚠️ Headers checked:`, headers.slice(0, 20).join(', '));
                 }
                 
                 currentTechCard.ingredients.push(ingredient);

@@ -25,12 +25,10 @@ export default function TechCardsList() {
     // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
     useEffect(() => {
         // Очищаем старые техкарты при первой загрузке (одноразово)
-        const hasCleared = localStorage.getItem('techCardsCleared');
-        if (!hasCleared) {
-            localStorage.removeItem('techCards');
-            localStorage.setItem('techCardsCleared', 'true');
-            console.log('[TechCards] Старые техкарты очищены');
-        }
+        // Очищаем localStorage с техкартами при загрузке (для полной очистки)
+        localStorage.removeItem('techCards');
+        localStorage.removeItem('techCardsCleared');
+        console.log('[TechCards] localStorage очищен');
         
         const savedRecipes = localStorage.getItem('techCards');
         if (savedRecipes) {

@@ -381,53 +381,54 @@ export function parseTechCardsFromExcel(
         const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
 
         // Парсим нормы по месяцам из колонок с датами (формат DD.MM.YYYY)
+        // ВАЖНО: Проверяем заголовки из headerRow, который был найден ранее
         const monthlyNorms: Array<{ date: string; quantity: number }> = [];
-        const datePattern = /\d{2}\.\d{2}\.\d{4}/;
+        const datePattern = /(\d{2})\.(\d{2})\.(\d{4})/; // Более точный паттерн для DD.MM.YYYY
         
-        console.log(`[parseTechCardsFromExcel] 🔍 Parsing monthly norms for row ${i + 1}, checking ${headerRow.length} columns`);
+        console.log(`[parseTechCardsFromExcel] 🔍 Parsing monthly norms for row ${i + 1}`);
+        console.log(`[parseTechCardsFromExcel] Header row has ${headerRow.length} columns`);
+        console.log(`[parseTechCardsFromExcel] First 15 headers:`, headerRow.slice(0, 15).map((h, idx) => `[${idx}]: "${String(h || '').trim()}"`).join(', '));
         
         for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
             const header = String(headerRow[colIdx] || '').trim();
             
-            // Логируем все заголовки для отладки
-            if (colIdx < 10) {
-                console.log(`[parseTechCardsFromExcel] Column ${colIdx}: "${header}"`);
-            }
-            
+            // Проверяем паттерн даты DD.MM.YYYY (например, 01.12.2025)
             const dateMatch = header.match(datePattern);
             
             if (dateMatch) {
-                console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}"`);
+                const [, dayStr, monthStr, yearStr] = dateMatch;
+                const day = parseInt(dayStr);
+                const month = parseInt(monthStr);
+                const year = parseInt(yearStr);
                 
-                // Парсим дату из заголовка (DD.MM.YYYY)
-                const dateParts = dateMatch[0].split('.');
-                if (dateParts.length === 3) {
-                    const day = parseInt(dateParts[0]);
-                    const month = parseInt(dateParts[1]);
-                    const year = parseInt(dateParts[2]);
+                if (!isNaN(day) && !isNaN(month) && !isNaN(year) && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                    // Нормализуем дату к первому числу месяца (YYYY-MM-01)
+                    const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
                     
-                    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                        // Нормализуем дату к первому числу месяца (YYYY-MM-01)
-                        const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
-                        const rowValue = (row as any[])[colIdx];
-                        const emptyKey = `__EMPTY_${colIdx}`;
-                        const value = rowValue || (row as any)[emptyKey];
-                        
-                        console.log(`[parseTechCardsFromExcel] Column ${colIdx} value:`, value, `(type: ${typeof value})`);
-                        
-                        // Парсим значение, даже если оно 0 (но не если ячейка пустая)
-                        let quantity = 0;
-                        if (value !== null && value !== undefined && value !== '') {
-                            const parsed = parseFloat(String(value).replace(',', '.').replace(/\s/g, ''));
+                    // Получаем значение из текущей строки данных
+                    const rowValue = (row as any[])[colIdx];
+                    const emptyKey = `__EMPTY_${colIdx}`;
+                    const value = rowValue !== undefined ? rowValue : (row as any)[emptyKey];
+                    
+                    console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}" -> ${monthDate}, value:`, value, `(type: ${typeof value})`);
+                    
+                    // Парсим значение, даже если оно 0 (но не если ячейка пустая)
+                    let quantity = 0;
+                    if (value !== null && value !== undefined && value !== '') {
+                        const strValue = String(value).replace(',', '.').replace(/\s/g, '').trim();
+                        if (strValue !== '') {
+                            const parsed = parseFloat(strValue);
                             if (!isNaN(parsed)) {
                                 quantity = parsed;
                             }
                         }
-                        
-                        // Сохраняем все нормы, включая 0 (это важно для отображения)
-                        monthlyNorms.push({ date: monthDate, quantity });
-                        console.log(`[parseTechCardsFromExcel] ✅ Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName || 'UNKNOWN'}`);
                     }
+                    
+                    // Сохраняем все нормы, включая 0 (это важно для отображения)
+                    monthlyNorms.push({ date: monthDate, quantity });
+                    console.log(`[parseTechCardsFromExcel] ✅ Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName || 'UNKNOWN'}`);
+                } else {
+                    console.warn(`[parseTechCardsFromExcel] ⚠️ Invalid date in header "${header}": day=${day}, month=${month}, year=${year}`);
                 }
             }
         }

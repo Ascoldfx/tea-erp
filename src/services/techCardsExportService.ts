@@ -363,6 +363,9 @@ export function parseTechCardsFromExcel(
 
     // Группируем строки по готовой продукции
     const techCardsMap = new Map<string, ImportedTechCard>();
+    let lastTechCard: ImportedTechCard | null = null; // Отслеживаем последнюю техкарту для продолжения
+
+    console.log(`[parseTechCardsFromExcel] Начинаем парсинг с строки ${headerRowIndex + 1}, всего строк: ${rawData.length}`);
 
     for (let i = headerRowIndex + 1; i < rawData.length; i++) {
         const row = rawData[i];
@@ -376,54 +379,66 @@ export function parseTechCardsFromExcel(
         const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
         const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
 
-        // Пропускаем только полностью пустые строки
-        // ВАЖНО: Не пропускаем строки с norm === 0, так как это может быть валидное значение
-        if (!gpSku && !gpName) {
-            continue; // Пропускаем только если нет ни SKU, ни названия ГП
+        // Пропускаем только полностью пустые строки (нет ни ГП, ни материала)
+        if (!gpSku && !gpName && !materialSku && !materialName) {
+            continue;
         }
 
-        // Если нет SKU или названия ГП, но есть материал - это продолжение предыдущей техкарты
-        // В этом случае используем последнюю техкарту из map
+        // Определяем текущую техкарту
         let currentTechCard: ImportedTechCard | null = null;
         
-        if (gpSku && gpName) {
-            // Новая техкарта
-            const key = `${gpSku}|${gpName}`;
+        if (gpSku || gpName) {
+            // Есть SKU или название ГП - это новая техкарта или существующая
+            // Используем SKU как основной идентификатор, если нет - используем название
+            const key = gpSku ? `${gpSku}|${gpName || gpSku}` : `|${gpName}`;
+            
             if (!techCardsMap.has(key)) {
                 techCardsMap.set(key, {
-                    gpSku,
-                    gpName,
+                    gpSku: gpSku || '',
+                    gpName: gpName || gpSku || 'Без названия',
                     ingredients: []
                 });
+                console.log(`[parseTechCardsFromExcel] Создана новая техкарта: SKU=${gpSku || 'нет'}, Name=${gpName || 'нет'}`);
             }
             currentTechCard = techCardsMap.get(key)!;
+            lastTechCard = currentTechCard; // Обновляем последнюю техкарту
+        } else if (lastTechCard) {
+            // Нет SKU и названия ГП, но есть последняя техкарта - это продолжение
+            currentTechCard = lastTechCard;
         } else {
-            // Продолжение предыдущей техкарты - берем последнюю добавленную
-            const lastKey = Array.from(techCardsMap.keys()).pop();
-            if (lastKey) {
-                currentTechCard = techCardsMap.get(lastKey)!;
-            }
+            // Нет ни ГП, ни последней техкарты - пропускаем строку
+            console.warn(`[parseTechCardsFromExcel] Строка ${i + 1}: пропущена (нет ГП и нет предыдущей техкарты)`);
+            continue;
         }
 
         // Добавляем ингредиент только если есть материал и техкарта
-        if (currentTechCard && materialSku && materialName) {
+        if (currentTechCard && (materialSku || materialName)) {
             // Проверяем, не добавлен ли уже этот материал (избегаем дубликатов)
             const isDuplicate = currentTechCard.ingredients.some(
-                ing => ing.materialSku === materialSku && ing.materialName === materialName
+                ing => (ing.materialSku && ing.materialSku === materialSku) || 
+                       (ing.materialName && ing.materialName === materialName)
             );
             
             if (!isDuplicate) {
                 currentTechCard.ingredients.push({
-                    materialSku,
-                    materialName,
+                    materialSku: materialSku || '',
+                    materialName: materialName || materialSku || 'Без названия',
                     materialCategory,
                     unit: parseUnit(unit),
                     norm: norm || 0 // Разрешаем norm === 0
                 });
+            } else {
+                console.log(`[parseTechCardsFromExcel] Пропущен дубликат материала: ${materialSku || materialName}`);
             }
         }
     }
 
-    return Array.from(techCardsMap.values());
+    const result = Array.from(techCardsMap.values());
+    console.log(`[parseTechCardsFromExcel] Импортировано техкарт: ${result.length}`);
+    result.forEach((tc, idx) => {
+        console.log(`[parseTechCardsFromExcel] Техкарта ${idx + 1}: SKU=${tc.gpSku}, Name=${tc.gpName}, Ингредиентов=${tc.ingredients.length}`);
+    });
+
+    return result;
 }
 

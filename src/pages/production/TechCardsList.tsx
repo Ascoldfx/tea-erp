@@ -55,17 +55,31 @@ export default function TechCardsList() {
             let sku = finishedGood?.sku || '';
             
             // Если не нашли по ID, извлекаем SKU из description
-            // Формат: "Артикул: 282157"
+            // Формат: "Артикул: 282157" или просто "282157" в начале description
             if (!sku && recipe.description) {
                 const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
                 if (skuMatch) {
                     sku = skuMatch[1];
+                } else {
+                    // Попробуем найти SKU в начале description (только цифры)
+                    const directSkuMatch = recipe.description.match(/^(\d+)/);
+                    if (directSkuMatch) {
+                        sku = directSkuMatch[1];
+                    }
                 }
             }
             
             // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
-            if (!sku && recipe.outputItemId && recipe.outputItemId.startsWith('temp-')) {
-                sku = recipe.outputItemId.replace(/^temp-/, '');
+            if (!sku && recipe.outputItemId) {
+                if (recipe.outputItemId.startsWith('temp-')) {
+                    sku = recipe.outputItemId.replace(/^temp-/, '');
+                } else {
+                    // Если outputItemId сам по себе является SKU (только цифры)
+                    const outputSkuMatch = recipe.outputItemId.match(/^(\d+)$/);
+                    if (outputSkuMatch) {
+                        sku = outputSkuMatch[1];
+                    }
+                }
             }
             
             // Проверяем, есть ли этот SKU в топ-25
@@ -74,6 +88,9 @@ export default function TechCardsList() {
             // Логирование для отладки
             if (isPriority) {
                 console.log(`[Priority] Recipe "${recipe.name}" is priority (SKU: ${sku})`);
+            } else if (sku) {
+                // Логируем только если SKU найден, но не в топ-25 (для отладки)
+                console.log(`[Priority] Recipe "${recipe.name}" SKU: ${sku} (not in TOP-25)`);
             }
             
             return isPriority;

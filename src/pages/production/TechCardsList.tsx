@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Search, Plus, FileText, Download, Upload, Hash, Star } from 'lucide-react';
-import { MOCK_RECIPES } from '../../data/mockProduction';
+// MOCK_RECIPES больше не используется - все техкарты загружаются из localStorage или импортируются
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 import { exportTechCardsToExcel } from '../../services/techCardsExportService';
@@ -37,19 +37,29 @@ export default function TechCardsList() {
     const navigate = useNavigate();
     const { items, plannedConsumption } = useInventory();
 
-    // Инициализируем тех.карты из MOCK_RECIPES и localStorage
+    // Инициализируем тех.карты из localStorage
+    // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
     useEffect(() => {
+        // Очищаем старые техкарты при первой загрузке (одноразово)
+        const hasCleared = localStorage.getItem('techCardsCleared');
+        if (!hasCleared) {
+            localStorage.removeItem('techCards');
+            localStorage.setItem('techCardsCleared', 'true');
+            console.log('[TechCards] Старые техкарты очищены');
+        }
+        
         const savedRecipes = localStorage.getItem('techCards');
         if (savedRecipes) {
             try {
                 const parsed = JSON.parse(savedRecipes);
-                setRecipes([...MOCK_RECIPES, ...parsed]);
+                setRecipes(parsed);
+                console.log(`[TechCards] Загружено ${parsed.length} техкарт из localStorage`);
             } catch (e) {
                 console.error('Ошибка при загрузке тех.карт из localStorage:', e);
-                setRecipes([...MOCK_RECIPES]);
+                setRecipes([]);
             }
         } else {
-            setRecipes([...MOCK_RECIPES]);
+            setRecipes([]);
         }
     }, []);
 

@@ -80,7 +80,7 @@ export const inventoryService = {
         const skus = items.map(i => i.code).filter(Boolean);
         const { data: existingItems, error: fetchError } = await supabase
             .from('items')
-            .select('id, sku')
+            .select('id, sku, name, category')
             .in('sku', skus);
 
         if (fetchError) {
@@ -88,15 +88,23 @@ export const inventoryService = {
             throw new Error(`Ошибка при проверке существующих материалов: ${fetchError.message}`);
         }
 
-        // Create a map: SKU -> ID
+        // Create a map: SKU -> ID and track existing items for logging
         const skuToIdMap = new Map<string, string>();
+        const existingItemsMap = new Map<string, { id: string; name: string; category: string }>();
         if (existingItems) {
             existingItems.forEach(item => {
                 if (item.sku) {
                     skuToIdMap.set(item.sku, item.id);
+                    existingItemsMap.set(item.sku, {
+                        id: item.id,
+                        name: item.name || '',
+                        category: item.category || 'other'
+                    });
                 }
             });
         }
+        
+        console.log(`[Import] Found ${existingItemsMap.size} existing items that may be updated`);
 
         // 2. Prepare items for upsert
         // Strategy: Use code as ID if it's valid, otherwise generate UUID
@@ -128,21 +136,49 @@ export const inventoryService = {
             // If we already have this ID, keep the last one (or you could merge data)
             // This removes duplicates before upsert
             // IMPORTANT: Always use the category from the current import to ensure correct grouping
+            // This ensures that new imports take priority and clarify/update existing data
             const category = i.category || 'other';
+            
+            // Check if this is an update to existing material
+            const existingItem = existingItemsMap.get(code);
+            if (existingItem) {
+                const isCategoryChange = existingItem.category !== category;
+                const isNameChange = existingItem.name !== (i.name?.trim() || 'Без названия');
+                
+                if (isCategoryChange || isNameChange) {
+                    console.log(`[Import] Updating existing material: ${code} (${existingItem.name})`);
+                    if (isCategoryChange) {
+                        console.log(`[Import] Category change: ${existingItem.category} -> ${category}`);
+                    }
+                    if (isNameChange) {
+                        console.log(`[Import] Name change: "${existingItem.name}" -> "${i.name?.trim() || 'Без названия'}"`);
+                    }
+                } else {
+                    console.log(`[Import] Updating existing material: ${code} (${existingItem.name}) - same category and name`);
+                }
+            } else {
+                console.log(`[Import] New material: ${code} (${i.name?.trim() || 'Без названия'}) - category: ${category}`);
+            }
+            
             if (category === 'flavor') {
                 console.log(`[Category Debug] Material "${i.name}" assigned to flavor category`);
             }
+            if (category === 'packaging_cardboard') {
+                console.log(`[Category Debug] Material "${i.name}" assigned to packaging_cardboard category`);
+            }
+            
             // Normalize unit: convert pcs to шт
             let normalizedUnit = i.unit || 'шт';
             if (normalizedUnit.toLowerCase() === 'pcs') {
                 normalizedUnit = 'шт';
             }
             
+            // IMPORTANT: Always use the category from the NEW import (priority to new data)
             itemsMap.set(itemId, {
                 id: itemId,
                 sku: code,
                 name: i.name?.trim() || 'Без названия',
-                category: category, // Always use the category from import
+                category: category, // Always use the category from import (new data takes priority)
                 unit: normalizedUnit,
                 min_stock_level: 0,
                 storage_location: i.storageLocation || null

@@ -251,25 +251,34 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     <td className="py-2 px-3 text-slate-400">
                                                         {unit}
                                                     </td>
-                                                    {recipe.ingredients.some(ing => ing.monthlyNorms && ing.monthlyNorms.length > 0) && (
-                                                        <td className="py-2 px-3 text-slate-300">
-                                                            {ing.monthlyNorms && ing.monthlyNorms.length > 0 ? (
+                                                    <td className="py-2 px-3 text-slate-300">
+                                                        {ing.monthlyNorms && ing.monthlyNorms.length > 0 ? (
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {ing.monthlyNorms
                                                                         .sort((a, b) => a.date.localeCompare(b.date))
                                                                         .map((norm, normIdx) => {
-                                                                            const date = new Date(norm.date);
-                                                                            const monthName = date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
-                                                                            return (
-                                                                                <span 
-                                                                                    key={normIdx}
-                                                                                    className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700"
-                                                                                    title={`${monthName}: ${norm.quantity.toFixed(4)}`}
-                                                                                >
-                                                                                    {monthName}: {norm.quantity.toFixed(4)}
-                                                                                </span>
-                                                                            );
-                                                                        })}
+                                                                            try {
+                                                                                const date = new Date(norm.date);
+                                                                                if (isNaN(date.getTime())) {
+                                                                                    console.warn('[RecipeDetailsModal] Invalid date:', norm.date);
+                                                                                    return null;
+                                                                                }
+                                                                                const monthName = date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
+                                                                                return (
+                                                                                    <span 
+                                                                                        key={normIdx}
+                                                                                        className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700"
+                                                                                        title={`${monthName}: ${norm.quantity.toFixed(4)}`}
+                                                                                    >
+                                                                                        {monthName}: {norm.quantity.toFixed(4)}
+                                                                                    </span>
+                                                                                );
+                                                                            } catch (e) {
+                                                                                console.error('[RecipeDetailsModal] Error formatting norm:', e, norm);
+                                                                                return null;
+                                                                            }
+                                                                        })
+                                                                        .filter(Boolean)}
                                                                 </div>
                                                             ) : (
                                                                 <span className="text-slate-500 text-xs">—</span>

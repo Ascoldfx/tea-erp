@@ -86,8 +86,29 @@ export const recipesService = {
                     };
                     
                     // Загружаем нормы по месяцам, если они есть
-                    if (ing.monthly_norms && Array.isArray(ing.monthly_norms)) {
-                        ingredient.monthlyNorms = ing.monthly_norms;
+                    if (ing.monthly_norms) {
+                        // PostgreSQL JSONB может вернуть объект или массив
+                        let monthlyNormsArray: Array<{ date: string; quantity: number }> | null = null;
+                        
+                        if (Array.isArray(ing.monthly_norms)) {
+                            monthlyNormsArray = ing.monthly_norms;
+                        } else if (typeof ing.monthly_norms === 'object' && ing.monthly_norms !== null) {
+                            // Если это объект, пытаемся преобразовать в массив
+                            try {
+                                monthlyNormsArray = JSON.parse(JSON.stringify(ing.monthly_norms));
+                                if (!Array.isArray(monthlyNormsArray)) {
+                                    monthlyNormsArray = null;
+                                }
+                            } catch (e) {
+                                console.warn('[RecipesService] Error parsing monthly_norms:', e);
+                                monthlyNormsArray = null;
+                            }
+                        }
+                        
+                        if (monthlyNormsArray && monthlyNormsArray.length > 0) {
+                            ingredient.monthlyNorms = monthlyNormsArray;
+                            console.log(`[RecipesService] Loaded ${monthlyNormsArray.length} monthly norms for ingredient ${ing.temp_material_sku || ing.item_id}`);
+                        }
                     }
                     
                     ingredientsMap.get(ing.recipe_id)!.push(ingredient);
@@ -205,7 +226,9 @@ export const recipesService = {
                             is_auto_created: ing.isAutoCreated || false,
                             temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined),
                             temp_material_name: ing.tempMaterial?.name || undefined,
-                            monthly_norms: ing.monthlyNorms && ing.monthlyNorms.length > 0 ? ing.monthlyNorms : undefined
+                            monthly_norms: ing.monthlyNorms && ing.monthlyNorms.length > 0 
+                                ? (ing.monthlyNorms as any) // JSONB в PostgreSQL принимает массив напрямую
+                                : null
                         });
                     });
 

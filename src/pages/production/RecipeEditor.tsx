@@ -82,9 +82,12 @@ export default function RecipeEditor() {
             const success = await recipesService.saveRecipe(recipe);
             
             if (success) {
+                console.log('[RecipeEditor] Тех.карта успешно сохранена в базу данных');
                 alert('Технологическая карта успешно сохранена!');
+                // Навигация обновит список техкарт автоматически (useEffect в TechCardsList)
                 navigate('/production/recipes');
             } else {
+                console.error('[RecipeEditor] Ошибка при сохранении тех.карты');
                 alert('Ошибка при сохранении техкарты. Проверьте консоль для деталей.');
             }
         } catch (error) {

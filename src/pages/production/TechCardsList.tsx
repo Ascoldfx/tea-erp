@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Search, Plus, FileText, Download, Upload, Hash, Star } from 'lucide-react';
-// MOCK_RECIPES больше не используется - все техкарты загружаются из localStorage или импортируются
+// MOCK_RECIPES больше не используется - все техкарты загружаются из базы данных или импортируются
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 import { exportTechCardsToExcel } from '../../services/techCardsExportService';
 import TechCardsImportModal from './TechCardsImportModal';
 import RecipeDetailsModal from './RecipeDetailsModal';
 import { TOP_25_SKUS } from '../../data/top25Skus';
+import { recipesService } from '../../services/recipesService';
 import type { Recipe } from '../../types/production';
 
 export default function TechCardsList() {
@@ -145,43 +146,28 @@ export default function TechCardsList() {
         }
     };
 
-    const handleImport = (importedRecipes: Recipe[]) => {
+    const handleImport = async (importedRecipes: Recipe[]) => {
         // Логируем детали импортированных тех.карт
         console.log('[TechCardsList] === ИМПОРТ ТЕХ.КАРТ ===');
         console.log(`[TechCardsList] Импортировано тех.карт: ${importedRecipes.length}`);
-        importedRecipes.forEach((recipe, idx) => {
-            console.log(`[TechCardsList] Тех.карта ${idx + 1}: "${recipe.name}"`);
+        importedRecipes.forEach((recipe) => {
+            console.log(`[TechCardsList] Тех.карта: "${recipe.name}"`);
             console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients.length}`);
-            console.log(`[TechCardsList]   - Ингредиенты:`, recipe.ingredients.map(ing => {
-                const item = items.find(i => i.id === ing.itemId);
-                return `${item?.sku || ing.itemId} - ${item?.name || ing.itemId} (${ing.quantity})`;
-            }));
         });
         
-        setRecipes(prev => {
-            const updated = [...prev, ...importedRecipes];
-            // Сохраняем в localStorage для сохранения между перезагрузками
-            try {
-                // Сохраняем только импортированные тех.карты (не MOCK_RECIPES)
-                const savedRecipes = localStorage.getItem('techCards');
-                const existing = savedRecipes ? JSON.parse(savedRecipes) : [];
-                const allSaved = [...existing, ...importedRecipes];
-                localStorage.setItem('techCards', JSON.stringify(allSaved));
-                console.log('[TechCardsList] Тех.карты сохранены в localStorage:', allSaved.length);
-                
-                // Проверяем, что все ингредиенты сохранились
-                allSaved.forEach((recipe: Recipe) => {
-                    if (recipe.ingredients && recipe.ingredients.length > 0) {
-                        console.log(`[TechCardsList] Сохранена тех.карта "${recipe.name}": ${recipe.ingredients.length} ингредиентов`);
-                    } else {
-                        console.warn(`[TechCardsList] ⚠️ Тех.карта "${recipe.name}" сохранена БЕЗ ингредиентов!`);
-                    }
-                });
-            } catch (e) {
-                console.error('[TechCardsList] Ошибка при сохранении тех.карт в localStorage:', e);
-            }
-            return updated;
-        });
+        // Сохраняем в базу данных
+        try {
+            const savedCount = await recipesService.saveRecipes(importedRecipes);
+            console.log(`[TechCardsList] Сохранено ${savedCount} из ${importedRecipes.length} тех.карт в базу данных`);
+            
+            // Обновляем список
+            const loadedRecipes = await recipesService.getRecipes();
+            setRecipes(loadedRecipes);
+        } catch (error) {
+            console.error('[TechCardsList] Ошибка при сохранении тех.карт в базу данных:', error);
+            // Все равно обновляем локальный список
+            setRecipes(prev => [...prev, ...importedRecipes]);
+        }
     };
 
     return (

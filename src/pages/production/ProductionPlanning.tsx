@@ -500,6 +500,9 @@ export default function ProductionPlanning() {
                     return dateB - dateA; // Most recent first
                 });
                 totalPlannedConsumption = sorted[0].quantity || 0;
+                console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): planned consumption = ${totalPlannedConsumption} for ${targetYearMonth}`);
+            } else {
+                console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): NO planned consumption for ${targetYearMonth}`);
             }
 
             // Get planned arrival from open orders
@@ -510,6 +513,10 @@ export default function ProductionPlanning() {
             
             // Get actual consumption from stock_movements (priority over planned)
             const actualConsumption = actualConsumptionMap.get(item.id) || 0;
+            
+            if (actualConsumption > 0) {
+                console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): actual consumption = ${actualConsumption} for ${targetYearMonth}`);
+            }
 
             // Calculate previous month difference (remainder from previous month)
             // Current stock (totalStock) is the stock at the START of current month

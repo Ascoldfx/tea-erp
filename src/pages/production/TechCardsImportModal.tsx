@@ -318,6 +318,19 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                             });
                             materialsCreatedCount++;
                             console.log(`[Import] Материал создан и добавлен: "${searchSku}" - "${searchName}"`);
+                            
+                            // ВАЖНО: Добавляем созданный материал в currentItems для использования в следующих техкартах
+                            const normalizedUnit = unit.toLowerCase() === 'pcs' || unit === 'шт' ? 'pcs' : 
+                                                  unit.toLowerCase() === 'kg' || unit === 'кг' ? 'kg' : 
+                                                  unit.toLowerCase() === 'g' || unit === 'г' ? 'g' : 'pcs';
+                            currentItems.push({
+                                id: createdId,
+                                sku: searchSku,
+                                name: searchName,
+                                category: category,
+                                unit: normalizedUnit,
+                                minStockLevel: 0
+                            } as any);
                         } else {
                             // Если не удалось создать, все равно добавляем с временным ID
                             const tempId = `temp-${searchSku}`;
@@ -333,8 +346,11 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     }
                 }
 
-                // Создаем тех.карту, даже если не все материалы найдены (но хотя бы один должен быть)
+                // ВАЖНО: Создаем тех.карту со ВСЕМИ ингредиентами из импортируемого документа
+                // Приоритет - импортируемый документ, все материалы должны быть включены
+                // Даже если некоторые материалы не найдены, они добавляются с временным ID
                 if (ingredients.length > 0) {
+                    console.log(`[Import] Создана тех.карта "${techCard.gpName}" с ${ingredients.length} ингредиентами из ${techCard.ingredients.length} в Excel`);
                     recipes.push({
                         id: `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         name: techCard.gpName,
@@ -344,7 +360,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         ingredients
                     });
                 } else {
-                    console.warn(`Тех.карта "${techCard.gpName}" не создана: не найдено ни одного материала`);
+                    console.warn(`[Import] ⚠️ Тех.карта "${techCard.gpName}" не создана: не найдено ни одного материала из ${techCard.ingredients.length} в Excel`);
                 }
             }
 

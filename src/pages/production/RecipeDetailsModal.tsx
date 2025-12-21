@@ -153,7 +153,8 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                     <thead>
                                         <tr className="border-b border-slate-700">
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
-                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Количество</th>
+                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Еталон</th>
+                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма текущего месяца</th>
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Нормы по месяцам</th>
                                         </tr>
@@ -256,6 +257,15 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
                                                         {ing.quantity.toFixed(4)}
+                                                    </td>
+                                                    <td className="py-2 px-3 text-right text-slate-200 font-medium">
+                                                        {(() => {
+                                                            const currentNorm = getCurrentMonthNorm(ing.monthlyNorms);
+                                                            if (currentNorm !== null) {
+                                                                return <span className="text-emerald-400">{currentNorm.toFixed(4)}</span>;
+                                                            }
+                                                            return <span className="text-slate-500 text-xs">—</span>;
+                                                        })()}
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400">
                                                         {unit}

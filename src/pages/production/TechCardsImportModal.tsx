@@ -342,11 +342,18 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 }
             }
 
+            // Обновляем список материалов после создания новых
+            if (materialsCreatedCount > 0) {
+                console.log(`[Import] Обновляем список материалов после создания ${materialsCreatedCount} новых...`);
+                await refresh();
+                console.log(`[Import] Список материалов обновлен`);
+            }
+            
             // Логируем статистику
             console.log(`[Import] === СТАТИСТИКА ИМПОРТА ТЕХ.КАРТ ===`);
-            console.log(`[Import] Всего тех.карт обработано: ${techCards.length}`);
+            console.log(`[Import] Всего тех.карт обработано: ${parsedData.length}`);
             console.log(`[Import] Тех.карт создано: ${recipes.length}`);
-            console.log(`[Import] Найдено материалов: ${foundMaterials.length}, не найдено: ${missingMaterials.length}`);
+            console.log(`[Import] Найдено материалов: ${foundMaterials.length}, создано новых: ${materialsCreatedCount}, не найдено: ${missingMaterials.length}`);
             
             if (foundMaterials.length > 0) {
                 console.log('[Import] Найденные материалы:', foundMaterials.slice(0, 10));

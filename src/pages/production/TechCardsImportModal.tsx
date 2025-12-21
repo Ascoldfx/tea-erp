@@ -3,7 +3,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Upload, FileSpreadsheet, Check, AlertTriangle, Loader2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { parseTechCardsFromExcel, ImportedTechCard } from '../../services/techCardsExportService';
+import { parseTechCardsFromExcel } from '../../services/techCardsExportService';
+import type { ImportedTechCard } from '../../services/techCardsExportService';
 import { useInventory } from '../../hooks/useInventory';
 import type { Recipe, RecipeIngredient } from '../../types/production';
 
@@ -211,7 +212,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                     {sheetNames.map(sheet => (
                                         <Button
                                             key={sheet}
-                                            variant={selectedSheet === sheet ? 'default' : 'outline'}
+                                            variant={selectedSheet === sheet ? 'primary' : 'outline'}
                                             onClick={() => handleSheetSelect(sheet)}
                                             className="justify-start"
                                         >

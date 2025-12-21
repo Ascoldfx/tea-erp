@@ -406,20 +406,44 @@ export function parseTechCardsFromExcel(
                     const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
                     
                     // Получаем значение из текущей строки данных
-                    const rowValue = (row as any[])[colIdx];
-                    const emptyKey = `__EMPTY_${colIdx}`;
-                    const value = rowValue !== undefined ? rowValue : (row as any)[emptyKey];
+                    // XLSX может хранить значения в разных форматах
+                    let rowValue = (row as any[])[colIdx];
                     
-                    console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}" -> ${monthDate}, value:`, value, `(type: ${typeof value})`);
+                    // Если значение не найдено, пробуем альтернативные ключи
+                    if (rowValue === undefined || rowValue === null) {
+                        const emptyKey = `__EMPTY_${colIdx}`;
+                        rowValue = (row as any)[emptyKey];
+                    }
+                    
+                    // Если все еще нет, пробуем получить по индексу через XLSX utils
+                    if (rowValue === undefined || rowValue === null) {
+                        // Пробуем получить через альтернативные способы
+                        const cellAddress = XLSX.utils.encode_cell({ r: i, c: colIdx });
+                        const cell = worksheet[cellAddress];
+                        if (cell && cell.v !== undefined) {
+                            rowValue = cell.v;
+                        }
+                    }
+                    
+                    const value = rowValue;
+                    console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}" -> ${monthDate}, value:`, value, `(type: ${typeof value}, raw: ${JSON.stringify(value)})`);
                     
                     // Парсим значение, даже если оно 0 (но не если ячейка пустая)
                     let quantity = 0;
                     if (value !== null && value !== undefined && value !== '') {
-                        const strValue = String(value).replace(',', '.').replace(/\s/g, '').trim();
-                        if (strValue !== '') {
+                        // Обрабатываем разные форматы чисел
+                        let strValue = String(value);
+                        // Заменяем запятую на точку (украинский/русский формат)
+                        strValue = strValue.replace(',', '.');
+                        // Убираем пробелы
+                        strValue = strValue.replace(/\s/g, '').trim();
+                        
+                        if (strValue !== '' && strValue !== '-') {
                             const parsed = parseFloat(strValue);
                             if (!isNaN(parsed)) {
                                 quantity = parsed;
+                            } else {
+                                console.warn(`[parseTechCardsFromExcel] ⚠️ Cannot parse value "${value}" as number for column ${colIdx}`);
                             }
                         }
                     }

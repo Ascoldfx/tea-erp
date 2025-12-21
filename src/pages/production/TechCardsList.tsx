@@ -135,6 +135,18 @@ export default function TechCardsList() {
     };
 
     const handleImport = (importedRecipes: Recipe[]) => {
+        // Логируем детали импортированных тех.карт
+        console.log('[TechCardsList] === ИМПОРТ ТЕХ.КАРТ ===');
+        console.log(`[TechCardsList] Импортировано тех.карт: ${importedRecipes.length}`);
+        importedRecipes.forEach((recipe, idx) => {
+            console.log(`[TechCardsList] Тех.карта ${idx + 1}: "${recipe.name}"`);
+            console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients.length}`);
+            console.log(`[TechCardsList]   - Ингредиенты:`, recipe.ingredients.map(ing => {
+                const item = items.find(i => i.id === ing.itemId);
+                return `${item?.sku || ing.itemId} - ${item?.name || ing.itemId} (${ing.quantity})`;
+            }));
+        });
+        
         setRecipes(prev => {
             const updated = [...prev, ...importedRecipes];
             // Сохраняем в localStorage для сохранения между перезагрузками
@@ -144,13 +156,21 @@ export default function TechCardsList() {
                 const existing = savedRecipes ? JSON.parse(savedRecipes) : [];
                 const allSaved = [...existing, ...importedRecipes];
                 localStorage.setItem('techCards', JSON.stringify(allSaved));
-                console.log('Тех.карты сохранены в localStorage:', allSaved.length);
+                console.log('[TechCardsList] Тех.карты сохранены в localStorage:', allSaved.length);
+                
+                // Проверяем, что все ингредиенты сохранились
+                allSaved.forEach((recipe: Recipe, idx: number) => {
+                    if (recipe.ingredients && recipe.ingredients.length > 0) {
+                        console.log(`[TechCardsList] Сохранена тех.карта "${recipe.name}": ${recipe.ingredients.length} ингредиентов`);
+                    } else {
+                        console.warn(`[TechCardsList] ⚠️ Тех.карта "${recipe.name}" сохранена БЕЗ ингредиентов!`);
+                    }
+                });
             } catch (e) {
-                console.error('Ошибка при сохранении тех.карт в localStorage:', e);
+                console.error('[TechCardsList] Ошибка при сохранении тех.карт в localStorage:', e);
             }
             return updated;
         });
-        console.log('Импортировано тех.карт:', importedRecipes.length);
     };
 
     return (

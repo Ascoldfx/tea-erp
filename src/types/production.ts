@@ -2,6 +2,9 @@ export interface RecipeIngredient {
     itemId: string;
     quantity: number; // Amount required per 1 box (ящик)
     tolerance?: number; // +/- percent allowed variation (optional)
+    isDuplicateSku?: boolean; // True if multiple materials share the same SKU
+    isAutoCreated?: boolean; // True if material was auto-created during import
+    tempMaterial?: { sku: string; name: string }; // Temporary material info if not yet in DB
 }
 
 export interface Recipe {

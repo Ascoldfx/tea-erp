@@ -7,6 +7,7 @@ import { parseTechCardsFromExcel } from '../../services/techCardsExportService';
 import type { ImportedTechCard } from '../../services/techCardsExportService';
 import { useInventory } from '../../hooks/useInventory';
 import type { Recipe, RecipeIngredient } from '../../types/production';
+import { supabase } from '../../lib/supabase';
 
 interface TechCardsImportModalProps {
     isOpen: boolean;
@@ -118,7 +119,57 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             const recipes: Recipe[] = [];
 
             const missingMaterials: Array<{ sku: string; name: string }> = [];
-            const foundMaterials: Array<{ sku: string; name: string }> = [];
+            const foundMaterials: Array<{ sku: string; name: string; foundAs?: string; isMultiple?: boolean }> = [];
+            
+            // Функция для определения категории по группе КСМ
+            const mapCategory = (group: string): string => {
+                const groupLower = (group || '').toLowerCase().trim();
+                if (groupLower.includes('сировина') || groupLower.includes('сырье')) return 'tea_bulk';
+                if (groupLower.includes('суміш') || groupLower.includes('смесь')) return 'tea_bulk';
+                if (groupLower.includes('картон') || groupLower.includes('упаковка')) return 'packaging_cardboard';
+                if (groupLower.includes('ярлик') || groupLower.includes('этикетка') || groupLower.includes('label')) return 'label';
+                if (groupLower.includes('г/я') || groupLower.includes('гофро') || groupLower.includes('ящик')) return 'packaging_crate';
+                return 'other';
+            };
+
+            // Функция для создания материала в базе данных
+            const createMaterial = async (sku: string, name: string, category: string, unit: string): Promise<string | null> => {
+                if (!supabase || !sku) return null;
+                
+                try {
+                    // Используем SKU как ID
+                    const itemId = sku.trim();
+                    const normalizedUnit = unit.toLowerCase() === 'pcs' || unit === 'шт' ? 'pcs' : 
+                                          unit.toLowerCase() === 'kg' || unit === 'кг' ? 'kg' : 
+                                          unit.toLowerCase() === 'g' || unit === 'г' ? 'g' : 'pcs';
+                    
+                    const { data, error } = await supabase
+                        .from('items')
+                        .upsert({
+                            id: itemId,
+                            sku: sku.trim(),
+                            name: name.trim(),
+                            category: category,
+                            unit: normalizedUnit,
+                            min_stock_level: 0
+                        }, {
+                            onConflict: 'id'
+                        })
+                        .select('id')
+                        .single();
+                    
+                    if (error) {
+                        console.error(`[Import] Ошибка при создании материала ${sku}:`, error);
+                        return null;
+                    }
+                    
+                    console.log(`[Import] Материал создан: ${sku} - ${name} (категория: ${category})`);
+                    return data?.id || itemId;
+                } catch (e) {
+                    console.error(`[Import] Исключение при создании материала ${sku}:`, e);
+                    return null;
+                }
+            };
 
             for (const techCard of parsedData) {
                 // Находим готовую продукцию по SKU или создаем новую
@@ -148,23 +199,29 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     const searchSku = ing.materialSku?.trim() || '';
                     const searchName = ing.materialName?.trim() || '';
                     
-                    // Находим материал по SKU (точное совпадение, без учета регистра)
-                    let material = items.find(i => {
+                    if (!searchSku && !searchName) {
+                        console.warn(`[Import] Пропущен ингредиент без SKU и названия`);
+                        continue;
+                    }
+                    
+                    // Находим ВСЕ материалы по SKU (точное совпадение, без учета регистра)
+                    // Это важно, так как один артикул может соответствовать нескольким материалам
+                    let matchingMaterials = items.filter(i => {
                         const itemSku = (i.sku || '').trim();
                         return itemSku && itemSku.toLowerCase() === searchSku.toLowerCase();
                     });
                     
                     // Если не найдено по SKU, ищем по названию (точное совпадение, без учета регистра)
-                    if (!material && searchName) {
-                        material = items.find(i => {
+                    if (matchingMaterials.length === 0 && searchName) {
+                        matchingMaterials = items.filter(i => {
                             const itemName = (i.name || '').trim();
                             return itemName.toLowerCase() === searchName.toLowerCase();
                         });
                     }
 
                     // Если не найдено, ищем по частичному совпадению названия (более гибко)
-                    if (!material && searchName) {
-                        material = items.find(i => {
+                    if (matchingMaterials.length === 0 && searchName) {
+                        matchingMaterials = items.filter(i => {
                             const itemName = (i.name || '').trim().toLowerCase();
                             const searchNameLower = searchName.toLowerCase();
                             
@@ -196,8 +253,8 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     }
 
                     // Если не найдено, ищем по частичному совпадению SKU
-                    if (!material && searchSku) {
-                        material = items.find(i => {
+                    if (matchingMaterials.length === 0 && searchSku) {
+                        matchingMaterials = items.filter(i => {
                             const itemSku = (i.sku || '').trim().toLowerCase();
                             return itemSku && (
                                 itemSku.includes(searchSku.toLowerCase()) ||
@@ -206,23 +263,65 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         });
                     }
 
-                    if (material) {
-                        ingredients.push({
-                            itemId: material.id,
-                            quantity: ing.norm
+                    // Если материалы найдены, добавляем их все (один артикул может соответствовать нескольким материалам)
+                    if (matchingMaterials.length > 0) {
+                        // Если найдено несколько материалов с одинаковым артикулом - это нужно отметить
+                        if (matchingMaterials.length > 1) {
+                            console.warn(`[Import] ⚠️ Найдено ${matchingMaterials.length} материалов с артикулом "${searchSku}":`, 
+                                matchingMaterials.map(m => `${m.sku} - ${m.name}`)
+                            );
+                        }
+                        
+                        // Добавляем все найденные материалы в техкарту
+                        matchingMaterials.forEach(material => {
+                            ingredients.push({
+                                itemId: material.id,
+                                quantity: ing.norm,
+                                // Добавляем флаг, если это один из нескольких материалов с одинаковым артикулом
+                                isDuplicateSku: matchingMaterials.length > 1
+                            });
+                            foundMaterials.push({ 
+                                sku: ing.materialSku, 
+                                name: ing.materialName,
+                                foundAs: `${material.sku} - ${material.name}`,
+                                isMultiple: matchingMaterials.length > 1
+                            });
                         });
-                        foundMaterials.push({ 
-                            sku: ing.materialSku, 
-                            name: ing.materialName,
-                            foundAs: `${material.sku} - ${material.name}`
-                        });
-                        console.log(`[Import] Материал найден: "${ing.materialSku}" - "${ing.materialName}" → "${material.sku}" - "${material.name}"`);
+                        
+                        console.log(`[Import] Материал найден: "${ing.materialSku}" - "${ing.materialName}" → ${matchingMaterials.length} материал(ов)`);
                     } else {
-                        missingMaterials.push({ sku: ing.materialSku, name: ing.materialName });
-                        console.warn(`[Import] Материал НЕ найден: SKU="${ing.materialSku}", Name="${ing.materialName}"`);
-                        console.warn(`[Import] Доступные материалы в базе (первые 5):`, 
-                            items.slice(0, 5).map(i => `${i.sku} - ${i.name}`)
-                        );
+                        // Материал не найден - создаем его автоматически
+                        const category = mapCategory(ing.materialCategory || '');
+                        const unit = ing.unit || 'pcs';
+                        
+                        // Создаем материал сразу
+                        const createdId = await createMaterial(searchSku, searchName, category, unit);
+                        
+                        if (createdId) {
+                            // Добавляем созданный материал в техкарту
+                            ingredients.push({
+                                itemId: createdId,
+                                quantity: ing.norm,
+                                isAutoCreated: true
+                            });
+                            foundMaterials.push({ 
+                                sku: ing.materialSku, 
+                                name: ing.materialName,
+                                foundAs: `[СОЗДАН] ${searchSku} - ${searchName}`
+                            });
+                            console.log(`[Import] Материал создан и добавлен: "${searchSku}" - "${searchName}"`);
+                        } else {
+                            // Если не удалось создать, все равно добавляем с временным ID
+                            const tempId = `temp-${searchSku}`;
+                            ingredients.push({
+                                itemId: tempId,
+                                quantity: ing.norm,
+                                isAutoCreated: true,
+                                tempMaterial: { sku: searchSku, name: searchName }
+                            });
+                            missingMaterials.push({ sku: ing.materialSku, name: ing.materialName });
+                            console.warn(`[Import] Материал создан с временным ID: "${searchSku}" - "${searchName}"`);
+                        }
                     }
                 }
 

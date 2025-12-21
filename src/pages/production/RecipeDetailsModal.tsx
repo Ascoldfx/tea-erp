@@ -156,19 +156,65 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                     <tbody className="divide-y divide-slate-800">
                                         {recipe.ingredients.map((ing, idx) => {
                                             const materialSku = getItemSku(ing.itemId);
+                                            const materialName = getItemName(ing.itemId);
+                                            const isDuplicate = ing.isDuplicateSku;
+                                            const isAutoCreated = ing.isAutoCreated;
+                                            const tempMaterial = ing.tempMaterial;
+                                            
+                                            // Определяем, есть ли другие ингредиенты с таким же SKU
+                                            const sameSkuCount = recipe.ingredients.filter(otherIng => {
+                                                const otherSku = getItemSku(otherIng.itemId);
+                                                return otherSku && otherSku === materialSku && otherIng !== ing;
+                                            }).length;
+                                            
                                             return (
-                                                <tr key={idx} className="hover:bg-slate-800/50">
+                                                <tr 
+                                                    key={idx} 
+                                                    className={`hover:bg-slate-800/50 ${
+                                                        isDuplicate || sameSkuCount > 0 
+                                                            ? 'bg-yellow-500/10 border-l-2 border-yellow-500' 
+                                                            : ''
+                                                    } ${
+                                                        isAutoCreated 
+                                                            ? 'bg-blue-500/10 border-l-2 border-blue-500' 
+                                                            : ''
+                                                    }`}
+                                                >
                                                     <td className="py-2 px-3 text-slate-200">
-                                                        {getItemName(ing.itemId)}
+                                                        <div className="flex items-center gap-2">
+                                                            {tempMaterial ? (
+                                                                <span className="text-slate-400 italic">
+                                                                    {tempMaterial.name}
+                                                                </span>
+                                                            ) : (
+                                                                <span>{materialName}</span>
+                                                            )}
+                                                            {isAutoCreated && (
+                                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                                                                    Создан при импорте
+                                                                </span>
+                                                            )}
+                                                            {(isDuplicate || sameSkuCount > 0) && (
+                                                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
+                                                                    Дубликат артикула ({sameSkuCount + 1} шт.)
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400 font-mono text-xs">
-                                                        {materialSku || '-'}
+                                                        {tempMaterial ? (
+                                                            <span className="text-slate-500 italic">
+                                                                {tempMaterial.sku} (временный)
+                                                            </span>
+                                                        ) : (
+                                                            materialSku || '-'
+                                                        )}
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
                                                         {ing.quantity}
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400">
-                                                        {getItemUnit(ing.itemId)}
+                                                        {tempMaterial ? '-' : getItemUnit(ing.itemId)}
                                                     </td>
                                                 </tr>
                                             );

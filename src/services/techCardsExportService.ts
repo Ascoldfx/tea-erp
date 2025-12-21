@@ -418,10 +418,15 @@ export function parseTechCardsFromExcel(
                     // Если все еще нет, пробуем получить по индексу через XLSX utils
                     if (rowValue === undefined || rowValue === null) {
                         // Пробуем получить через альтернативные способы
-                        const cellAddress = XLSX.utils.encode_cell({ r: i, c: colIdx });
-                        const cell = worksheet[cellAddress];
-                        if (cell && cell.v !== undefined) {
-                            rowValue = cell.v;
+                        try {
+                            const cellAddress = XLSX.utils.encode_cell({ r: i, c: colIdx });
+                            const cell = ws[cellAddress];
+                            if (cell && cell.v !== undefined) {
+                                rowValue = cell.v;
+                                console.log(`[parseTechCardsFromExcel] Got value from cell ${cellAddress}:`, rowValue);
+                            }
+                        } catch (e) {
+                            // Игнорируем ошибки при чтении ячейки
                         }
                     }
                     

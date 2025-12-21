@@ -35,6 +35,7 @@ export default function ProductionPlanning() {
         console.log('[ProductionPlanning] Items:', items.length);
         console.log('[ProductionPlanning] Planned consumption entries:', plannedConsumption.length);
         console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, selectedYear);
+        console.log('[ProductionPlanning] Actual consumptions:', actualConsumptions.length);
         
         if (plannedConsumption.length > 0) {
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -44,14 +45,30 @@ export default function ProductionPlanning() {
             });
             console.log(`[ProductionPlanning] Matching planned consumption for ${targetYearMonth}:`, matching.length);
             if (matching.length > 0) {
-                console.log('[ProductionPlanning] Sample matching entries:', matching.slice(0, 3).map(pc => ({
+                console.log('[ProductionPlanning] Sample matching entries:', matching.slice(0, 5).map(pc => ({
                     itemId: pc.itemId,
                     date: pc.plannedDate,
-                    quantity: pc.quantity
+                    quantity: pc.quantity,
+                    itemSku: items.find(i => i.id === pc.itemId)?.sku || 'NOT FOUND'
                 })));
+            } else {
+                // Показываем все доступные месяцы
+                const allMonths = [...new Set(plannedConsumption.map(pc => {
+                    const dateStr = String(pc.plannedDate || '').trim();
+                    return dateStr.substring(0, 7); // YYYY-MM
+                }))].sort();
+                console.log('[ProductionPlanning] Available months in planned consumption:', allMonths);
             }
         }
-    }, [items.length, plannedConsumption.length, selectedMonth, selectedYear]);
+        
+        if (actualConsumptions.length > 0) {
+            console.log('[ProductionPlanning] Sample actual consumptions:', actualConsumptions.slice(0, 5).map(ac => ({
+                item_id: ac.item_id,
+                quantity: ac.quantity,
+                itemSku: items.find(i => i.id === ac.item_id)?.sku || 'NOT FOUND'
+            })));
+        }
+    }, [items.length, plannedConsumption.length, actualConsumptions.length, selectedMonth, selectedYear]);
     
     // State for material details modal
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
@@ -799,4 +816,5 @@ export default function ProductionPlanning() {
         </div>
     );
 }
+
 

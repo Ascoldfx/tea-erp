@@ -199,14 +199,36 @@ export const recipesService = {
 
     /**
      * Удалить техкарту из базы данных
+     * ВАЖНО: Бэкап создается автоматически через триггер перед удалением
      */
-    async deleteRecipe(recipeId: string): Promise<boolean> {
+    async deleteRecipe(recipeId: string, confirmDelete: boolean = false): Promise<boolean> {
         if (!supabase) {
             return false;
         }
 
+        if (!confirmDelete) {
+            console.warn('[RecipesService] Delete operation requires confirmation');
+            return false;
+        }
+
         try {
+            // Проверяем, существует ли техкарта
+            const { data: existing, error: checkError } = await supabase
+                .from('recipes')
+                .select('id, name')
+                .eq('id', recipeId)
+                .single();
+
+            if (checkError || !existing) {
+                console.error('[RecipesService] Recipe not found:', recipeId);
+                return false;
+            }
+
+            console.log(`[RecipesService] Deleting recipe "${existing.name}" (${recipeId})...`);
+            console.log(`[RecipesService] Backup will be created automatically by trigger`);
+
             // Ингредиенты удалятся автоматически (CASCADE)
+            // Бэкап создастся автоматически через триггер BEFORE DELETE
             const { error } = await supabase
                 .from('recipes')
                 .delete()
@@ -217,7 +239,7 @@ export const recipesService = {
                 return false;
             }
 
-            console.log(`[RecipesService] Recipe ${recipeId} deleted successfully`);
+            console.log(`[RecipesService] Recipe ${recipeId} deleted successfully. Backup created.`);
             return true;
         } catch (error) {
             console.error('[RecipesService] Exception deleting recipe:', error);

@@ -75,7 +75,7 @@ export default function TechCardsList() {
             }
             
             // Проверяем, есть ли этот SKU в топ-25
-            const isPriority = sku && TOP_25_SKUS.includes(sku);
+            const isPriority = Boolean(sku && TOP_25_SKUS.includes(sku));
             
             // Логирование для отладки
             if (isPriority) {

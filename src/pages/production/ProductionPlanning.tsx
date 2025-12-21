@@ -473,10 +473,21 @@ export default function ProductionPlanning() {
                 difference,
                 stockLevels: itemStock
             };
-        }).filter(() => 
-            // Show all items for the selected category (even with 0 stock and 0 planned)
-            true
-        );
+        }).filter((data: PlanningDataItem) => {
+            // Определяем, является ли выбранный месяц прошедшим
+            const now = new Date();
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const selectedMonthDate = new Date(selectedYear, selectedMonth, 1);
+            const isPastMonth = selectedMonthDate < currentMonth;
+            
+            // Для прошедших месяцев: скрывать материалы с 0 фактическим расходом
+            if (isPastMonth) {
+                return data.actualConsumption > 0;
+            }
+            
+            // Для текущего и будущих месяцев: скрывать материалы с 0 планируемым расходом
+            return data.totalPlannedConsumption > 0;
+        });
         
         // Sort by original order from database (preserve Excel import order)
         // Items are typically returned in creation order, which matches Excel import order

@@ -399,7 +399,9 @@ export function parseTechCardsFromExcel(
                     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
                         // Нормализуем дату к первому числу месяца (YYYY-MM-01)
                         const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
-                        const value = row[colIdx] || row[`__EMPTY_${colIdx}`];
+                        const rowValue = (row as any[])[colIdx];
+                        const emptyKey = `__EMPTY_${colIdx}`;
+                        const value = rowValue || (row as any)[emptyKey];
                         const quantity = parseFloat(String(value || '0').replace(',', '.')) || 0;
                         
                         if (quantity > 0) {

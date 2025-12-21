@@ -1,28 +1,43 @@
 -- Migration: Clear All Data for Fresh Import
--- Description: Удаляет все материалы, планирование и связанные данные
+-- Description: Удаляет все материалы, техкарты, планирование и связанные данные
 -- ВНИМАНИЕ: Это удалит ВСЕ данные! Используйте только для полной очистки перед новым импортом.
 -- 
 -- ИНСТРУКЦИЯ:
 -- 1. Выполните этот SQL скрипт в Supabase SQL Editor
--- 2. Откройте приложение в браузере и перезагрузите страницу (localStorage будет очищен автоматически)
+-- 2. Откройте приложение в браузере и перезагрузите страницу
 -- 3. Начните импорт в следующем порядке:
 --    - Сначала техкарты (импорт из Excel)
 --    - Потом общий список материалов (импорт из Excel)
 --    - Потом картонная упаковка отдельно (импорт из Excel)
 --
--- ПРИМЕЧАНИЕ: Техкарты (recipes) хранятся только в localStorage, не в базе данных.
--- Они будут очищены автоматически при загрузке страницы.
+-- ПРИМЕЧАНИЕ: Техкарты теперь хранятся в базе данных в таблице recipes.
+-- Бэкапы техкарт хранятся в таблице recipes_backup (не удаляются).
 
--- 1. Удаляем все движения материалов (stock_movements)
+-- 1. Удаляем все техкарты (recipes) - сначала ингредиенты, потом техкарты
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipe_ingredients') THEN
+        DELETE FROM recipe_ingredients;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipes') THEN
+        DELETE FROM recipes;
+    END IF;
+    -- Бэкапы не удаляем - они нужны для восстановления
+EXCEPTION
+    WHEN undefined_table THEN
+        NULL;
+END $$;
+
+-- 2. Удаляем все движения материалов (stock_movements)
 DELETE FROM stock_movements;
 
--- 2. Удаляем все остатки на складах (stock_levels)
+-- 3. Удаляем все остатки на складах (stock_levels)
 DELETE FROM stock_levels;
 
--- 3. Удаляем все плановые расходы (planned_consumption)
+-- 4. Удаляем все плановые расходы (planned_consumption)
 DELETE FROM planned_consumption;
 
--- 4. Удаляем все передачи материалов подрядчикам (material_transfers) - если таблица существует
+-- 5. Удаляем все передачи материалов подрядчикам (material_transfers) - если таблица существует
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'material_transfers') THEN
@@ -33,7 +48,7 @@ EXCEPTION
         NULL;
 END $$;
 
--- 5. Удаляем все заказы на производство (production_orders) - если таблица существует
+-- 6. Удаляем все заказы на производство (production_orders) - если таблица существует
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'production_orders') THEN
@@ -44,7 +59,7 @@ EXCEPTION
         NULL;
 END $$;
 
--- 6. Удаляем все позиции заказов (order_items) - если таблица существует
+-- 7. Удаляем все позиции заказов (order_items) - если таблица существует
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'order_items') THEN
@@ -55,7 +70,7 @@ EXCEPTION
         NULL;
 END $$;
 
--- 7. Удаляем все заказы (orders) - если таблица существует
+-- 8. Удаляем все заказы (orders) - если таблица существует
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') THEN
@@ -66,12 +81,19 @@ EXCEPTION
         NULL;
 END $$;
 
--- 8. Удаляем все материалы (items) - В ПОСЛЕДНЮЮ ОЧЕРЕДЬ
+-- 9. Удаляем все материалы (items) - В ПОСЛЕДНЮЮ ОЧЕРЕДЬ
 -- Это нужно делать последним, так как другие таблицы ссылаются на items
 DELETE FROM items;
 
 -- Проверка: показываем количество записей после удаления
 SELECT 
+    (SELECT 
+        CASE 
+            WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipes') 
+            THEN (SELECT COUNT(*) FROM recipes)
+            ELSE 0
+        END
+    ) as recipes_count,
     (SELECT COUNT(*) FROM items) as items_count,
     (SELECT COUNT(*) FROM stock_levels) as stock_levels_count,
     (SELECT COUNT(*) FROM stock_movements) as stock_movements_count,
@@ -105,5 +127,5 @@ SELECT
         END
     ) as order_items_count;
 
--- Все должно быть 0 после выполнения
--- Техкарты хранятся в localStorage и будут очищены автоматически при загрузке страницы
+-- Все должно быть 0 после выполнения (кроме recipes_backup - бэкапы не удаляются)
+-- Бэкапы техкарт остаются в таблице recipes_backup для возможности восстановления

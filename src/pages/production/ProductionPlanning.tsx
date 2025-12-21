@@ -33,6 +33,9 @@ export default function ProductionPlanning() {
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    
     // Debug: log planned consumption data
     useEffect(() => {
         if (plannedConsumption.length > 0) {
@@ -53,9 +56,6 @@ export default function ProductionPlanning() {
             console.log(`[ProductionPlanning] Entries for ${targetYearMonth}:`, matchingEntries.length, matchingEntries);
         }
     }, [plannedConsumption, selectedMonth, selectedYear]);
-    
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
     const [refreshKey, setRefreshKey] = useState(0);
     

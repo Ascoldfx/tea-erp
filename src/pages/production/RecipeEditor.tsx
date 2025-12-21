@@ -19,7 +19,7 @@ export default function RecipeEditor() {
         name: '',
         description: '',
         outputItemId: '',
-        outputQuantity: 1,
+        outputQuantity: 1, // 1 ящик
         ingredients: []
     });
 
@@ -95,7 +95,7 @@ export default function RecipeEditor() {
                                 required
                             />
                             <div className="pt-8 text-sm text-slate-500">
-                                Базовая единица: пак/шт
+                                Базовая единица: ящик
                             </div>
                         </div>
                     </CardContent>

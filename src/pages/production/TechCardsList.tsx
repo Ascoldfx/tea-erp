@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Search, Plus, FileText, Edit, Download, Upload } from 'lucide-react';
+import { Search, Plus, FileText, Download, Upload } from 'lucide-react';
 import { MOCK_RECIPES } from '../../data/mockProduction';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
@@ -32,6 +32,27 @@ export default function TechCardsList() {
         return unit === 'pcs' ? 'шт' : unit;
     };
 
+    // Парсинг количества пачек в ящике из названия (формат: название (число))
+    const parsePacksPerBox = (name: string): number | null => {
+        const match = name.match(/\((\d+)\)\s*$/);
+        return match ? parseInt(match[1]) : null;
+    };
+
+    // Форматирование названия с выделением количества пачек в ящике
+    const formatItemName = (name: string): { displayName: string; packsPerBox: number | null } => {
+        const packsPerBox = parsePacksPerBox(name);
+        if (packsPerBox) {
+            // Убираем (число) из конца названия для отображения
+            const baseName = name.replace(/\s*\(\d+\)\s*$/, '');
+            return { displayName: baseName, packsPerBox };
+        }
+        return { displayName: name, packsPerBox: null };
+    };
+
+    const handleCardDoubleClick = (recipe: Recipe) => {
+        navigate(`/production/recipes/${recipe.id}`);
+    };
+
     const handleExport = async () => {
         try {
             await exportTechCardsToExcel(recipes, items, plannedConsumption);
@@ -52,7 +73,7 @@ export default function TechCardsList() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-100">Технологические Карты</h1>
-                    <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 пачку)</p>
+                    <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 ящик)</p>
                 </div>
                 <div className="flex gap-3">
                     <Button 
@@ -95,39 +116,49 @@ export default function TechCardsList() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {filteredRecipes.map(recipe => (
-                    <Card key={recipe.id} className="hover:border-emerald-500/50 transition-colors">
-                        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                            <CardTitle className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-emerald-500" />
-                                {recipe.name}
-                            </CardTitle>
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/production/recipes/${recipe.id}`)}>
-                                <Edit className="w-4 h-4" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
+                    {filteredRecipes.map(recipe => {
+                        const { displayName, packsPerBox } = formatItemName(recipe.name);
+                        
+                        return (
+                            <Card 
+                                key={recipe.id} 
+                                className="hover:border-emerald-500/50 transition-colors cursor-pointer"
+                                onDoubleClick={() => handleCardDoubleClick(recipe)}
+                            >
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                        <FileText className="w-5 h-5 text-emerald-500" />
+                                        <span>{displayName}</span>
+                                        {packsPerBox && (
+                                            <span className="text-emerald-400 font-normal text-base">
+                                                ({packsPerBox})
+                                            </span>
+                                        )}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
 
-                            <div className="bg-slate-950/50 rounded-lg p-3">
-                                <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Основные ингредиенты:</h4>
-                                <ul className="space-y-1 text-sm">
-                                    {recipe.ingredients.slice(0, 5).map((ing, idx) => (
-                                        <li key={idx} className="flex justify-between text-slate-300">
-                                            <span>{getItemName(ing.itemId)}</span>
-                                            <span className="text-slate-500">{ing.quantity} {getItemUnit(ing.itemId)}</span>
-                                        </li>
-                                    ))}
-                                    {recipe.ingredients.length > 5 && (
-                                        <li className="text-xs text-center text-slate-500 pt-1">
-                                            + еще {recipe.ingredients.length - 5}
-                                        </li>
-                                    )}
-                                </ul>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    ))}
+                                    <div className="bg-slate-950/50 rounded-lg p-3">
+                                        <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">
+                                            Ингредиенты ({recipe.ingredients.length}):
+                                        </h4>
+                                        <ul className="space-y-1 text-sm max-h-60 overflow-y-auto">
+                                            {recipe.ingredients.map((ing, idx) => (
+                                                <li key={idx} className="flex justify-between text-slate-300">
+                                                    <span>{getItemName(ing.itemId)}</span>
+                                                    <span className="text-slate-500">{ing.quantity} {getItemUnit(ing.itemId)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-3 italic text-center">
+                                        Двойной клик для просмотра деталей
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 

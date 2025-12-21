@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
     -- Один материал может быть в одной техкарте только один раз
+    -- ВАЖНО: Один и тот же материал (item_id) может использоваться в разных техкартах (разные recipe_id)
+    -- Это нормально - ингредиенты часто общие для нескольких SKU готовой продукции
     UNIQUE(recipe_id, item_id)
 );
 

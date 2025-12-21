@@ -172,7 +172,8 @@ export const recipesService = {
                 });
 
                 if (validIngredients.length > 0) {
-                    // ВАЖНО: Убираем дубликаты перед сохранением
+                    // ВАЖНО: Убираем дубликаты ТОЛЬКО в рамках одной техкарты (recipe_id)
+                    // Один и тот же материал (item_id) может использоваться в разных техкартах - это нормально
                     // Группируем по (recipe_id, item_id) и берем последний (самый актуальный)
                     const ingredientsMap = new Map<string, RecipeIngredientDB>();
                     

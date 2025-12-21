@@ -144,7 +144,8 @@ export const recipesService = {
                 return false;
             }
 
-            // Удаляем старые ингредиенты
+            // Удаляем старые ингредиенты ПЕРЕД вставкой новых
+            // ВАЖНО: Это должно происходить до вставки, чтобы избежать конфликтов UNIQUE
             const { error: deleteError } = await supabase
                 .from('recipe_ingredients')
                 .delete()
@@ -152,7 +153,8 @@ export const recipesService = {
 
             if (deleteError) {
                 console.error('[RecipesService] Error deleting old ingredients:', deleteError);
-                // Продолжаем, даже если не удалось удалить старые
+                // НЕ продолжаем, если не удалось удалить старые - это может привести к дубликатам
+                return false;
             }
 
             // Сохраняем новые ингредиенты
@@ -170,12 +172,22 @@ export const recipesService = {
                 });
 
                 if (validIngredients.length > 0) {
-                    const ingredientsData: RecipeIngredientDB[] = validIngredients.map(ing => {
+                    // ВАЖНО: Убираем дубликаты перед сохранением
+                    // Группируем по (recipe_id, item_id) и берем последний (самый актуальный)
+                    const ingredientsMap = new Map<string, RecipeIngredientDB>();
+                    
+                    validIngredients.forEach(ing => {
                         // Если itemId начинается с temp-, используем null для item_id
                         // Но сохраняем информацию в temp_material_sku и temp_material_name
                         const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
                         
-                        return {
+                        // Создаем ключ для уникальности: recipe_id + item_id (или temp_material_sku для NULL)
+                        const uniqueKey = itemId 
+                            ? `${recipe.id}_${itemId}` 
+                            : `${recipe.id}_null_${ing.tempMaterial?.sku || ing.itemId}`;
+                        
+                        // Если уже есть такой ингредиент, заменяем его (берем последний)
+                        ingredientsMap.set(uniqueKey, {
                             recipe_id: recipe.id,
                             item_id: itemId, // NULL для временных материалов, string для существующих
                             quantity: ing.quantity,
@@ -184,11 +196,13 @@ export const recipesService = {
                             is_auto_created: ing.isAutoCreated || false,
                             temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined),
                             temp_material_name: ing.tempMaterial?.name || undefined
-                        };
+                        });
                     });
 
+                    const ingredientsData = Array.from(ingredientsMap.values());
+
                     // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
-                    console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}"`);
+                    console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}" (после удаления дубликатов из ${validIngredients.length})`);
                     const { error: ingredientsError, data: insertedIngredients } = await supabase
                         .from('recipe_ingredients')
                         .insert(ingredientsData)

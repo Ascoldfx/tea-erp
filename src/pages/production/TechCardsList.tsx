@@ -35,11 +35,24 @@ export default function TechCardsList() {
         const savedRecipes = localStorage.getItem('techCards');
         if (savedRecipes) {
             try {
-                const parsed = JSON.parse(savedRecipes);
+                const parsed = JSON.parse(savedRecipes) as Recipe[];
+                console.log('[TechCardsList] === ЗАГРУЗКА ТЕХ.КАРТ ИЗ LOCALSTORAGE ===');
+                console.log(`[TechCardsList] Загружено тех.карт: ${parsed.length}`);
+                parsed.forEach((recipe, idx) => {
+                    console.log(`[TechCardsList] Тех.карта ${idx + 1}: "${recipe.name}"`);
+                    console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients?.length || 0}`);
+                    if (recipe.ingredients && recipe.ingredients.length > 0) {
+                        console.log(`[TechCardsList]   - Ингредиенты:`, recipe.ingredients.map(ing => {
+                            const item = items.find(i => i.id === ing.itemId);
+                            return `${item?.sku || ing.itemId} - ${item?.name || ing.itemId} (${ing.quantity})`;
+                        }));
+                    } else {
+                        console.warn(`[TechCardsList] ⚠️ Тех.карта "${recipe.name}" загружена БЕЗ ингредиентов!`);
+                    }
+                });
                 setRecipes(parsed);
-                console.log(`[TechCards] Загружено ${parsed.length} техкарт из localStorage`);
             } catch (e) {
-                console.error('Ошибка при загрузке тех.карт из localStorage:', e);
+                console.error('[TechCardsList] Ошибка при загрузке тех.карт из localStorage:', e);
                 setRecipes([]);
             }
         } else {

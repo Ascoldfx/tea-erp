@@ -285,12 +285,52 @@ export default function TechCardsList() {
                                             Ингредиенты ({recipe.ingredients.length}):
                                         </h4>
                                         <ul className="space-y-1 text-sm max-h-60 overflow-y-auto">
-                                            {recipe.ingredients.map((ing, idx) => (
-                                                <li key={idx} className="flex justify-between text-slate-300">
-                                                    <span>{getItemName(ing.itemId)}</span>
-                                                    <span className="text-slate-500">{ing.quantity} {getItemUnit(ing.itemId)}</span>
-                                                </li>
-                                            ))}
+                                            {recipe.ingredients.map((ing, idx) => {
+                                                const materialSku = items.find(i => i.id === ing.itemId)?.sku || '';
+                                                const isDuplicate = ing.isDuplicateSku;
+                                                const isAutoCreated = ing.isAutoCreated;
+                                                const tempMaterial = ing.tempMaterial;
+                                                
+                                                // Определяем, есть ли другие ингредиенты с таким же SKU
+                                                const sameSkuCount = recipe.ingredients.filter(otherIng => {
+                                                    const otherSku = items.find(i => i.id === otherIng.itemId)?.sku || '';
+                                                    return otherSku && otherSku === materialSku && otherIng !== ing;
+                                                }).length;
+                                                
+                                                return (
+                                                    <li 
+                                                        key={idx} 
+                                                        className={`flex justify-between text-slate-300 ${
+                                                            (isDuplicate || sameSkuCount > 0) ? 'text-yellow-400' : ''
+                                                        } ${
+                                                            isAutoCreated ? 'text-blue-400' : ''
+                                                        }`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            {tempMaterial ? (
+                                                                <span className="italic text-slate-500">
+                                                                    {tempMaterial.name}
+                                                                </span>
+                                                            ) : (
+                                                                <span>{getItemName(ing.itemId)}</span>
+                                                            )}
+                                                            {(isDuplicate || sameSkuCount > 0) && (
+                                                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded">
+                                                                    {sameSkuCount + 1}
+                                                                </span>
+                                                            )}
+                                                            {isAutoCreated && (
+                                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                                                                    нов
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className="text-slate-500">
+                                                            {ing.quantity} {tempMaterial ? '-' : getItemUnit(ing.itemId)}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                     </div>
                                     <p className="text-xs text-slate-500 mt-3 italic text-center">

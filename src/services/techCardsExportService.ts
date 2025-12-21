@@ -279,31 +279,86 @@ export function parseTechCardsFromExcel(
     const headerRow = rawData[headerRowIndex] || [];
     const headers = headerRow.map((h: any) => String(h || '').trim());
 
-    // Находим индексы нужных колонок
-    const gpSkuIndex = headers.findIndex(h => 
-        /артикул\s*гп|артикул\s*г\.п\.|sku\s*гп/i.test(h)
-    );
-    const gpNameIndex = headers.findIndex(h => 
-        /назва\s*гп|название\s*гп|наименование\s*гп|name\s*гп/i.test(h)
-    );
-    const materialCategoryIndex = headers.findIndex(h => 
-        /група\s*ксм|группа\s*ксм|категория/i.test(h)
-    );
-    const materialSkuIndex = headers.findIndex(h => 
-        /артикул\s*ксм|артикул\s*к\.с\.м\.|sku\s*ксм/i.test(h)
-    );
-    const materialNameIndex = headers.findIndex(h => 
-        /назва\s*ксм|название\s*ксм|наименование\s*ксм|name\s*ксм/i.test(h)
-    );
-    const unitIndex = headers.findIndex(h => 
-        /од\.?\s*вим|единица|unit/i.test(h)
-    );
-    const normIndex = headers.findIndex(h => 
-        /эталон|норма|norm/i.test(h)
-    );
+    // Helper function to find column index by multiple possible names (case-insensitive, flexible)
+    const findColumnIndex = (possibleNames: string[]): number => {
+        for (const name of possibleNames) {
+            const nameLower = name.toLowerCase().trim();
+            for (let i = 0; i < headers.length; i++) {
+                const header = String(headers[i] || '').trim();
+                const headerLower = header.toLowerCase();
+                
+                // Exact match
+                if (headerLower === nameLower) {
+                    return i;
+                }
+                // Partial match (header contains the name or vice versa)
+                if (headerLower.includes(nameLower) || nameLower.includes(headerLower)) {
+                    return i;
+                }
+                // Regex match for patterns like "артикул гп" with spaces
+                const regex = new RegExp(nameLower.replace(/\s+/g, '\\s*'), 'i');
+                if (regex.test(headerLower)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    };
 
-    if (gpSkuIndex === -1 || gpNameIndex === -1 || materialSkuIndex === -1 || materialNameIndex === -1 || normIndex === -1) {
-        throw new Error('Не найдены обязательные колонки: Артикул ГП, Назва ГП, Артикул КСМ, Назва КСМ, Еталон');
+    // Находим индексы нужных колонок с гибким поиском
+    const gpSkuIndex = findColumnIndex([
+        'Артикул ГП', 'Артикул Г.П.', 'Артикул ГП', 'Артикул ГП', 'SKU ГП', 'SKU Г.П.',
+        'Артикул готовой продукции', 'Артикул ГП', 'Артикул ГП', 'Артикул ГП',
+        'артикул гп', 'артикул г.п.', 'sku гп', 'артикул готовой продукции'
+    ]);
+    const gpNameIndex = findColumnIndex([
+        'Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Назва Г.П.',
+        'Название готовой продукции', 'Назва готовой продукции', 'Наименование готовой продукции',
+        'назва гп', 'название гп', 'наименование гп', 'name гп'
+    ]);
+    const materialCategoryIndex = findColumnIndex([
+        'Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category',
+        'група ксм', 'группа ксм', 'категория ксм', 'група', 'группа', 'category'
+    ]);
+    const materialSkuIndex = findColumnIndex([
+        'Артикул КСМ', 'Артикул К.С.М.', 'Артикул КСМ', 'SKU КСМ', 'SKU К.С.М.',
+        'Артикул материала', 'Артикул КСМ', 'Артикул КСМ',
+        'артикул ксм', 'артикул к.с.м.', 'sku ксм', 'артикул материала'
+    ]);
+    const materialNameIndex = findColumnIndex([
+        'Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Назва К.С.М.',
+        'Название материала', 'Назва материала', 'Наименование материала',
+        'назва ксм', 'название ксм', 'наименование ксм', 'name ксм', 'название материала'
+    ]);
+    const unitIndex = findColumnIndex([
+        'Од. вим.', 'Од. вим', 'Единица измерения', 'Единица', 'Unit', 'Од. вим.',
+        'од. вим.', 'од. вим', 'единица измерения', 'единица', 'unit'
+    ]);
+    const normIndex = findColumnIndex([
+        'Еталон', 'Эталон', 'Норма', 'Norm', 'Базовая норма', 'Базова норма',
+        'эталон', 'эталон', 'норма', 'norm', 'базовая норма', 'базова норма'
+    ]);
+
+    // Формируем список отсутствующих колонок для более информативного сообщения об ошибке
+    const missingColumns: string[] = [];
+    if (gpSkuIndex === -1) missingColumns.push('Артикул ГП');
+    if (gpNameIndex === -1) missingColumns.push('Назва ГП');
+    if (materialSkuIndex === -1) missingColumns.push('Артикул КСМ');
+    if (materialNameIndex === -1) missingColumns.push('Назва КСМ');
+    if (normIndex === -1) missingColumns.push('Еталон');
+
+    if (missingColumns.length > 0) {
+        const foundHeaders = headers.filter(h => h && !h.startsWith('__EMPTY')).slice(0, 10).join(', ');
+        throw new Error(
+            `Не найдены обязательные колонки: ${missingColumns.join(', ')}\n\n` +
+            `Найденные колонки: ${foundHeaders}${headers.length > 10 ? '...' : ''}\n\n` +
+            `Убедитесь, что в файле есть колонки с названиями:\n` +
+            `- Артикул ГП (или Артикул Г.П., SKU ГП)\n` +
+            `- Назва ГП (или Название ГП, Наименование ГП)\n` +
+            `- Артикул КСМ (или Артикул К.С.М., SKU КСМ)\n` +
+            `- Назва КСМ (или Название КСМ, Наименование КСМ)\n` +
+            `- Еталон (или Эталон, Норма, Базовая норма)`
+        );
     }
 
     // Группируем строки по готовой продукции

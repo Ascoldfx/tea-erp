@@ -384,11 +384,21 @@ export function parseTechCardsFromExcel(
         const monthlyNorms: Array<{ date: string; quantity: number }> = [];
         const datePattern = /\d{2}\.\d{2}\.\d{4}/;
         
+        console.log(`[parseTechCardsFromExcel] 🔍 Parsing monthly norms for row ${i + 1}, checking ${headerRow.length} columns`);
+        
         for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
             const header = String(headerRow[colIdx] || '').trim();
+            
+            // Логируем все заголовки для отладки
+            if (colIdx < 10) {
+                console.log(`[parseTechCardsFromExcel] Column ${colIdx}: "${header}"`);
+            }
+            
             const dateMatch = header.match(datePattern);
             
             if (dateMatch) {
+                console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}"`);
+                
                 // Парсим дату из заголовка (DD.MM.YYYY)
                 const dateParts = dateMatch[0].split('.');
                 if (dateParts.length === 3) {
@@ -402,6 +412,8 @@ export function parseTechCardsFromExcel(
                         const rowValue = (row as any[])[colIdx];
                         const emptyKey = `__EMPTY_${colIdx}`;
                         const value = rowValue || (row as any)[emptyKey];
+                        
+                        console.log(`[parseTechCardsFromExcel] Column ${colIdx} value:`, value, `(type: ${typeof value})`);
                         
                         // Парсим значение, даже если оно 0 (но не если ячейка пустая)
                         let quantity = 0;
@@ -419,6 +431,8 @@ export function parseTechCardsFromExcel(
                 }
             }
         }
+        
+        console.log(`[parseTechCardsFromExcel] 📊 Total monthly norms parsed: ${monthlyNorms.length}`, monthlyNorms);
 
         // Пропускаем только полностью пустые строки (нет ни ГП, ни материала)
         if (!gpSku && !gpName && !materialSku && !materialName) {

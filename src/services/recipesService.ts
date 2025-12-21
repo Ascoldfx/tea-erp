@@ -232,7 +232,9 @@ export const recipesService = {
                             // ВАЖНО: Сохраняем tempMaterial даже для существующих материалов, чтобы название было доступно
                             temp_material_sku: tempSku,
                             temp_material_name: tempName,
-                            monthly_norms: ing.monthlyNorms && ing.monthlyNorms.length > 0 
+                            // ВАЖНО: Сохраняем monthly_norms даже если они все равны 0
+                            // Это нужно для отображения структуры норм по месяцам
+                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0 
                                 ? (ing.monthlyNorms as any) // JSONB в PostgreSQL принимает массив напрямую
                                 : null
                         });

@@ -120,6 +120,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
             const missingMaterials: Array<{ sku: string; name: string }> = [];
             const foundMaterials: Array<{ sku: string; name: string; foundAs?: string; isMultiple?: boolean }> = [];
+            let materialsCreatedCount = 0;
             
             // Функция для определения категории по группе КСМ
             const mapCategory = (group: string): string => {
@@ -309,6 +310,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 name: ing.materialName,
                                 foundAs: `[СОЗДАН] ${searchSku} - ${searchName}`
                             });
+                            materialsCreatedCount++;
                             console.log(`[Import] Материал создан и добавлен: "${searchSku}" - "${searchName}"`);
                         } else {
                             // Если не удалось создать, все равно добавляем с временным ID

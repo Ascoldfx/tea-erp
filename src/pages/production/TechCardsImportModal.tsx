@@ -199,14 +199,30 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
                 const ingredients: RecipeIngredient[] = [];
 
+                // ВАЖНО: Обрабатываем ВСЕ ингредиенты из Excel, даже если они не найдены в базе
+                console.log(`[Import] Обработка тех.карты "${techCard.gpName}": ${techCard.ingredients.length} ингредиентов из Excel`);
+                
                 for (const ing of techCard.ingredients) {
                     const searchSku = ing.materialSku?.trim() || '';
                     const searchName = ing.materialName?.trim() || '';
                     
                     if (!searchSku && !searchName) {
-                        console.warn(`[Import] Пропущен ингредиент без SKU и названия`);
+                        console.warn(`[Import] Пропущен ингредиент без SKU и названия для тех.карты "${techCard.gpName}"`);
+                        // ВАЖНО: Даже если нет SKU и названия, добавляем с временным ID, если есть норма
+                        if (ing.norm > 0) {
+                            const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            ingredients.push({
+                                itemId: tempId,
+                                quantity: ing.norm,
+                                isAutoCreated: true,
+                                tempMaterial: { sku: 'UNKNOWN', name: 'Неизвестный материал' }
+                            });
+                            console.warn(`[Import] Добавлен ингредиент с временным ID (нет SKU/названия): норма=${ing.norm}`);
+                        }
                         continue;
                     }
+                    
+                    console.log(`[Import] Обработка ингредиента: "${searchSku}" - "${searchName}" (норма: ${ing.norm})`);
                     
                     // Находим ВСЕ материалы по SKU (точное совпадение, без учета регистра)
                     // Это важно, так как один артикул может соответствовать нескольким материалам

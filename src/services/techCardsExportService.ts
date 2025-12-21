@@ -376,29 +376,52 @@ export function parseTechCardsFromExcel(
         const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
         const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
 
-        // Пропускаем пустые строки
-        if (!gpSku || !gpName || !materialSku || !materialName || norm === 0) {
-            continue;
+        // Пропускаем только полностью пустые строки
+        // ВАЖНО: Не пропускаем строки с norm === 0, так как это может быть валидное значение
+        if (!gpSku && !gpName) {
+            continue; // Пропускаем только если нет ни SKU, ни названия ГП
         }
 
-        const key = `${gpSku}|${gpName}`;
-
-        if (!techCardsMap.has(key)) {
-            techCardsMap.set(key, {
-                gpSku,
-                gpName,
-                ingredients: []
-            });
+        // Если нет SKU или названия ГП, но есть материал - это продолжение предыдущей техкарты
+        // В этом случае используем последнюю техкарту из map
+        let currentTechCard: ImportedTechCard | null = null;
+        
+        if (gpSku && gpName) {
+            // Новая техкарта
+            const key = `${gpSku}|${gpName}`;
+            if (!techCardsMap.has(key)) {
+                techCardsMap.set(key, {
+                    gpSku,
+                    gpName,
+                    ingredients: []
+                });
+            }
+            currentTechCard = techCardsMap.get(key)!;
+        } else {
+            // Продолжение предыдущей техкарты - берем последнюю добавленную
+            const lastKey = Array.from(techCardsMap.keys()).pop();
+            if (lastKey) {
+                currentTechCard = techCardsMap.get(lastKey)!;
+            }
         }
 
-        const techCard = techCardsMap.get(key)!;
-        techCard.ingredients.push({
-            materialSku,
-            materialName,
-            materialCategory,
-            unit: parseUnit(unit),
-            norm
-        });
+        // Добавляем ингредиент только если есть материал и техкарта
+        if (currentTechCard && materialSku && materialName) {
+            // Проверяем, не добавлен ли уже этот материал (избегаем дубликатов)
+            const isDuplicate = currentTechCard.ingredients.some(
+                ing => ing.materialSku === materialSku && ing.materialName === materialName
+            );
+            
+            if (!isDuplicate) {
+                currentTechCard.ingredients.push({
+                    materialSku,
+                    materialName,
+                    materialCategory,
+                    unit: parseUnit(unit),
+                    norm: norm || 0 // Разрешаем norm === 0
+                });
+            }
+        }
     }
 
     return Array.from(techCardsMap.values());

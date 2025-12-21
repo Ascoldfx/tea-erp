@@ -38,11 +38,14 @@ export default function ProductionPlanning() {
     
     // Debug: log planned consumption data
     useEffect(() => {
+        console.log('[ProductionPlanning] Planned consumption data updated:', {
+            totalEntries: plannedConsumption.length,
+            selectedMonth: selectedMonth + 1,
+            selectedYear: selectedYear,
+            sampleEntries: plannedConsumption.slice(0, 5)
+        });
+        
         if (plannedConsumption.length > 0) {
-            console.log('[ProductionPlanning] Total planned consumption entries:', plannedConsumption.length);
-            console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, 'Selected year:', selectedYear);
-            console.log('[ProductionPlanning] Sample planned consumption entries:', plannedConsumption.slice(0, 5));
-            
             // Log entries for selected month
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
             const matchingEntries = plannedConsumption.filter(pc => {
@@ -53,7 +56,20 @@ export default function ProductionPlanning() {
                     return false;
                 }
             });
-            console.log(`[ProductionPlanning] Entries for ${targetYearMonth}:`, matchingEntries.length, matchingEntries);
+            console.log(`[ProductionPlanning] Entries for ${targetYearMonth}:`, matchingEntries.length);
+            if (matchingEntries.length > 0) {
+                console.log('[ProductionPlanning] Sample matching entries:', matchingEntries.slice(0, 3));
+            } else {
+                console.warn('[ProductionPlanning] No matching entries found for selected month!');
+                // Log all unique months in planned consumption
+                const allMonths = [...new Set(plannedConsumption.map(pc => {
+                    const dateStr = String(pc.plannedDate || '').trim();
+                    return dateStr.substring(0, 7); // YYYY-MM
+                }))].sort();
+                console.log('[ProductionPlanning] Available months in data:', allMonths);
+            }
+        } else {
+            console.warn('[ProductionPlanning] No planned consumption data loaded!');
         }
     }, [plannedConsumption, selectedMonth, selectedYear]);
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');

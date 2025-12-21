@@ -14,18 +14,45 @@
 -- Бэкапы техкарт хранятся в таблице recipes_backup (не удаляются).
 
 -- 1. Удаляем все техкарты (recipes) - сначала ингредиенты, потом техкарты
+-- Временно отключаем триггеры бэкапа, чтобы избежать ошибок при массовом удалении
 DO $$
 BEGIN
+    -- Отключаем триггеры бэкапа перед удалением
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipes') THEN
+        ALTER TABLE recipes DISABLE TRIGGER recipes_backup_on_delete;
+        ALTER TABLE recipes DISABLE TRIGGER recipes_backup_on_update;
+    END IF;
+    
+    -- Удаляем ингредиенты
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipe_ingredients') THEN
         DELETE FROM recipe_ingredients;
     END IF;
+    
+    -- Удаляем техкарты
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipes') THEN
         DELETE FROM recipes;
+        
+        -- Включаем триггеры обратно
+        ALTER TABLE recipes ENABLE TRIGGER recipes_backup_on_delete;
+        ALTER TABLE recipes ENABLE TRIGGER recipes_backup_on_update;
     END IF;
+    
     -- Бэкапы не удаляем - они нужны для восстановления
 EXCEPTION
     WHEN undefined_table THEN
         NULL;
+    WHEN OTHERS THEN
+        -- Включаем триггеры обратно даже при ошибке
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipes') THEN
+                ALTER TABLE recipes ENABLE TRIGGER recipes_backup_on_delete;
+                ALTER TABLE recipes ENABLE TRIGGER recipes_backup_on_update;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                NULL;
+        END;
+        RAISE;
 END $$;
 
 -- 2. Удаляем все движения материалов (stock_movements)

@@ -217,6 +217,11 @@ export const recipesService = {
                             : `${recipe.id}_null_${ing.tempMaterial?.sku || ing.itemId}`;
                         
                         // Если уже есть такой ингредиент, заменяем его (берем последний)
+                        // ВАЖНО: Всегда сохраняем temp_material_name и temp_material_sku, даже если материал найден в БД
+                        // Это нужно для отображения правильных названий
+                        const tempSku = ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined);
+                        const tempName = ing.tempMaterial?.name || undefined;
+                        
                         ingredientsMap.set(uniqueKey, {
                             recipe_id: recipe.id,
                             item_id: itemId, // NULL для временных материалов, string для существующих
@@ -224,12 +229,20 @@ export const recipesService = {
                             tolerance: ing.tolerance || undefined,
                             is_duplicate_sku: ing.isDuplicateSku || false,
                             is_auto_created: ing.isAutoCreated || false,
-                            temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined),
-                            temp_material_name: ing.tempMaterial?.name || undefined,
+                            // ВАЖНО: Сохраняем tempMaterial даже для существующих материалов, чтобы название было доступно
+                            temp_material_sku: tempSku,
+                            temp_material_name: tempName,
                             monthly_norms: ing.monthlyNorms && ing.monthlyNorms.length > 0 
                                 ? (ing.monthlyNorms as any) // JSONB в PostgreSQL принимает массив напрямую
                                 : null
                         });
+                        
+                        if (tempName) {
+                            console.log(`[RecipesService] Saving ingredient with tempMaterial: ${tempName} (${tempSku})`);
+                        }
+                        if (ing.monthlyNorms && ing.monthlyNorms.length > 0) {
+                            console.log(`[RecipesService] Saving ingredient with ${ing.monthlyNorms.length} monthly norms`);
+                        }
                     });
 
                     const ingredientsData = Array.from(ingredientsMap.values());

@@ -168,23 +168,36 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                             let materialSku = '';
                                             let materialName = '';
                                             
-                                            if (tempMaterial) {
-                                                // Временный материал
-                                                materialSku = tempMaterial.sku;
+                                            // ВАЖНО: Сначала проверяем tempMaterial (для временных материалов)
+                                            if (tempMaterial && tempMaterial.name) {
+                                                // Временный материал - используем данные из tempMaterial
+                                                materialSku = tempMaterial.sku || '';
                                                 materialName = tempMaterial.name;
+                                                console.log(`[RecipeDetailsModal] Using tempMaterial: ${materialName} (${materialSku})`);
                                             } else {
-                                                // Ищем в базе данных
+                                                // Ищем в базе данных по itemId
                                                 const foundItem = items.find(i => i.id === ing.itemId);
-                                                if (foundItem) {
+                                                if (foundItem && foundItem.name) {
                                                     materialSku = foundItem.sku || '';
-                                                    materialName = foundItem.name || ing.itemId;
+                                                    materialName = foundItem.name;
+                                                    console.log(`[RecipeDetailsModal] Found in items: ${materialName} (${materialSku})`);
                                                 } else {
-                                                    // Если не найден, используем itemId как fallback
-                                                    materialSku = ing.itemId.startsWith('temp-') 
-                                                        ? ing.itemId.replace(/^temp-/, '') 
-                                                        : ing.itemId;
-                                                    materialName = ing.itemId;
+                                                    // Если не найден, пытаемся извлечь из itemId
+                                                    if (ing.itemId.startsWith('temp-')) {
+                                                        const tempSku = ing.itemId.replace(/^temp-/, '');
+                                                        materialSku = tempSku;
+                                                        materialName = `Материал ${tempSku}`; // Fallback название
+                                                    } else {
+                                                        materialSku = ing.itemId;
+                                                        materialName = ing.itemId; // Fallback
+                                                    }
+                                                    console.warn(`[RecipeDetailsModal] Material not found for itemId: ${ing.itemId}, using fallback: ${materialName}`);
                                                 }
+                                            }
+                                            
+                                            // Если название все еще пустое, используем SKU
+                                            if (!materialName && materialSku) {
+                                                materialName = `Материал ${materialSku}`;
                                             }
                                             
                                             const isDuplicate = ing.isDuplicateSku;

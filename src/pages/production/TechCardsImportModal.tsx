@@ -326,12 +326,15 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         
                         if (createdId) {
                             // Добавляем созданный материал в техкарту
+                            // ВАЖНО: Сохраняем tempMaterial даже для созданных материалов, чтобы название было доступно
                             ingredients.push({
                                 itemId: createdId,
                                 quantity: ing.norm,
                                 isAutoCreated: true,
                                 // Сохраняем нормы по месяцам, если они есть
-                                monthlyNorms: ing.monthlyNorms
+                                monthlyNorms: ing.monthlyNorms,
+                                // Сохраняем tempMaterial для отображения названия
+                                tempMaterial: { sku: searchSku, name: searchName }
                             });
                             foundMaterials.push({ 
                                 sku: ing.materialSku, 

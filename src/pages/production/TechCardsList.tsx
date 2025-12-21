@@ -24,24 +24,26 @@ export default function TechCardsList() {
 
     // Инициализируем тех.карты из localStorage
     // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
-    // Загружаем техкарты из базы данных при монтировании компонента
-    // Техкарты хранятся стабильно в базе данных и не требуют периодической перезагрузки
-    useEffect(() => {
-        const loadRecipes = async () => {
-            try {
-                const loadedRecipes = await recipesService.getRecipes();
-                console.log(`[TechCardsList] Загружено ${loadedRecipes.length} тех.карт из базы данных`);
-                if (loadedRecipes.length > 0) {
-                    setRecipes(loadedRecipes);
-                } else {
-                    console.warn('[TechCardsList] База данных пуста - техкарты не найдены');
-                }
-            } catch (error) {
-                console.error('[TechCardsList] Ошибка при загрузке тех.карт:', error);
-                // Не очищаем список при ошибке, оставляем существующие техкарты
+    // Функция для загрузки техкарт из базы данных
+    // Техкарты хранятся стабильно в базе данных и загружаются только при необходимости
+    const loadRecipes = async () => {
+        try {
+            const loadedRecipes = await recipesService.getRecipes();
+            console.log(`[TechCardsList] Загружено ${loadedRecipes.length} тех.карт из базы данных`);
+            if (loadedRecipes.length > 0) {
+                setRecipes(loadedRecipes);
+            } else {
+                console.warn('[TechCardsList] База данных пуста - техкарты не найдены');
+                setRecipes([]);
             }
-        };
+        } catch (error) {
+            console.error('[TechCardsList] Ошибка при загрузке тех.карт:', error);
+            // Не очищаем список при ошибке, оставляем существующие техкарты
+        }
+    };
 
+    // Загружаем техкарты из базы данных при монтировании компонента
+    useEffect(() => {
         loadRecipes();
     }, []);
 

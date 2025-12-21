@@ -118,22 +118,88 @@ export default function TechCardsList() {
         };
     }, [items]);
 
+    // Функция для получения индекса SKU в топ-25 (для сортировки)
+    const getTop25Index = useMemo(() => {
+        return (recipe: Recipe): number => {
+            // Сначала пытаемся найти готовый продукт по outputItemId
+            const finishedGood = items.find(i => i.id === recipe.outputItemId);
+            let sku = finishedGood?.sku || '';
+            
+            // Если не нашли по ID, извлекаем SKU из description
+            if (!sku && recipe.description) {
+                const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+                if (skuMatch) {
+                    sku = skuMatch[1];
+                } else {
+                    const directSkuMatch = recipe.description.match(/^(\d+)/);
+                    if (directSkuMatch) {
+                        sku = directSkuMatch[1];
+                    }
+                }
+            }
+            
+            // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
+            if (!sku && recipe.outputItemId) {
+                if (recipe.outputItemId.startsWith('temp-')) {
+                    const tempMatch = recipe.outputItemId.match(/^temp-(.+)$/);
+                    if (tempMatch) {
+                        const tempValue = tempMatch[1];
+                        if (/^\d+$/.test(tempValue)) {
+                            sku = tempValue;
+                        }
+                    }
+                } else {
+                    const outputSkuMatch = recipe.outputItemId.match(/^(\d+)$/);
+                    if (outputSkuMatch) {
+                        sku = outputSkuMatch[1];
+                    }
+                }
+            }
+            
+            // ВАЖНО: Если все еще нет SKU и есть description с артикулом, извлекаем оттуда
+            if (!sku && recipe.description) {
+                const descSkuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+                if (descSkuMatch) {
+                    sku = descSkuMatch[1];
+                }
+            }
+            
+            // Находим индекс в TOP_25_SKUS
+            if (sku) {
+                const index = TOP_25_SKUS.indexOf(sku);
+                return index >= 0 ? index : Infinity; // Если не в топ-25, возвращаем Infinity
+            }
+            
+            return Infinity; // Если SKU не найден, не приоритетный
+        };
+    }, [items]);
+
     // Сортировка и фильтрация техкарт
     const filteredAndSortedRecipes = useMemo(() => {
         const filtered = recipes.filter(r =>
-        r.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+            r.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
-        // Сортируем: приоритетные сверху, затем остальные
+        // Сортируем: приоритетные сверху в порядке TOP_25_SKUS, затем остальные
         return filtered.sort((a, b) => {
             const aIsPriority = isPriorityRecipe(a);
             const bIsPriority = isPriorityRecipe(b);
             
+            // Если оба приоритетные, сортируем по порядку в TOP_25_SKUS
+            if (aIsPriority && bIsPriority) {
+                const aIndex = getTop25Index(a);
+                const bIndex = getTop25Index(b);
+                return aIndex - bIndex; // Сортируем по индексу в списке
+            }
+            
+            // Если только один приоритетный, он идет первым
             if (aIsPriority && !bIsPriority) return -1;
             if (!aIsPriority && bIsPriority) return 1;
-            return 0; // Сохраняем исходный порядок для одинакового приоритета
+            
+            // Если оба не приоритетные, сохраняем исходный порядок
+            return 0;
         });
-    }, [recipes, searchTerm, isPriorityRecipe]);
+    }, [recipes, searchTerm, isPriorityRecipe, getTop25Index]);
 
     const getItemName = (id: string) => items.find(i => i.id === id)?.name || id;
     const getItemUnit = (id: string) => {

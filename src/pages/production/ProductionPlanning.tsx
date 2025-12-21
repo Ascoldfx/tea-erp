@@ -290,10 +290,17 @@ export default function ProductionPlanning() {
                 // Filter by month - prefer 'date' field if available, otherwise use 'created_at'
                 const filteredMovements = (movements || []).filter(movement => {
                     // Try 'date' field first (used for imported actual consumption)
+                    // Date is stored as YYYY-MM-15 (15th of month) for imported data
                     if (movement.date) {
                         const movementDate = new Date(movement.date);
                         if (!isNaN(movementDate.getTime())) {
-                            return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                            const movementYear = movementDate.getFullYear();
+                            const movementMonth = movementDate.getMonth();
+                            const matches = movementYear === selectedYear && movementMonth === selectedMonth;
+                            if (matches) {
+                                console.log(`[ProductionPlanning] Matched actual consumption: item_id=${movement.item_id}, date=${movement.date}, quantity=${movement.quantity}`);
+                            }
+                            return matches;
                         }
                     }
                     
@@ -307,6 +314,8 @@ export default function ProductionPlanning() {
                     
                     return false;
                 });
+                
+                console.log(`[ProductionPlanning] Filtered ${filteredMovements.length} actual consumption movements for ${selectedYear}-${selectedMonth + 1} from ${movements?.length || 0} total`);
                 
                 if (movementsError) throw movementsError;
                 

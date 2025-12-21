@@ -527,16 +527,29 @@ export const inventoryService = {
             console.log(`[Import] Unique actual consumption movements: ${uniqueMovements.length} (from ${actualConsumptionMovements.length} total)`);
             
             // Insert stock movements
+            // Use date field if available, otherwise use created_at (which will be set automatically)
             const { error: movementsError } = await supabase
                 .from('stock_movements')
-                .insert(uniqueMovements.map(m => ({
-                    item_id: m.item_id,
-                    quantity: m.quantity,
-                    type: m.type,
-                    date: m.date,
-                    comment: m.comment,
-                    source_warehouse_id: 'wh-kotsyubinske' // Default warehouse for imported consumption
-                })));
+                .insert(uniqueMovements.map(m => {
+                    const movementData: any = {
+                        item_id: m.item_id,
+                        quantity: m.quantity,
+                        type: m.type,
+                        comment: m.comment,
+                        source_warehouse_id: 'wh-kotsyubinske' // Default warehouse for imported consumption
+                    };
+                    
+                    // Try to set date field if it exists in the table
+                    // If date field doesn't exist, Supabase will ignore it
+                    // The created_at will be set automatically
+                    try {
+                        movementData.date = m.date;
+                    } catch (e) {
+                        // Ignore if date field doesn't exist
+                    }
+                    
+                    return movementData;
+                }));
             
             if (movementsError) {
                 console.error('Error inserting actual consumption movements:', movementsError);

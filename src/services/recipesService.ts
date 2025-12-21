@@ -5,7 +5,7 @@ export interface RecipeDB {
     id: string;
     name: string;
     description?: string;
-    output_item_id: string;
+    output_item_id: string | null; // Может быть NULL для временных техкарт
     output_quantity: number;
     actual_quantity?: number;
     materials_handover_date?: string;
@@ -91,7 +91,7 @@ export const recipesService = {
                 id: r.id,
                 name: r.name,
                 description: r.description || undefined,
-                outputItemId: r.output_item_id,
+                outputItemId: r.output_item_id || `temp-${r.id}`, // Если NULL, используем временный ID
                 outputQuantity: r.output_quantity,
                 actualQuantity: r.actual_quantity,
                 materialsHandoverDate: r.materials_handover_date,

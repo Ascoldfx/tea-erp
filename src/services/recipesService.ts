@@ -236,6 +236,16 @@ export const recipesService = {
 
                     // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
                     console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}" (после удаления дубликатов из ${validIngredients.length})`);
+                    
+                    // Логируем нормы по месяцам перед сохранением
+                    ingredientsData.forEach((ingData, idx) => {
+                        if (ingData.monthly_norms) {
+                            console.log(`[RecipesService] Ингредиент ${idx + 1} имеет ${Array.isArray(ingData.monthly_norms) ? ingData.monthly_norms.length : 0} норм по месяцам:`, ingData.monthly_norms);
+                        } else {
+                            console.log(`[RecipesService] Ингредиент ${idx + 1} НЕ имеет норм по месяцам`);
+                        }
+                    });
+                    
                     const { error: ingredientsError, data: insertedIngredients } = await supabase
                         .from('recipe_ingredients')
                         .insert(ingredientsData)

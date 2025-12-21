@@ -414,7 +414,7 @@ export function parseTechCardsFromExcel(
                         
                         // Сохраняем все нормы, включая 0 (это важно для отображения)
                         monthlyNorms.push({ date: monthDate, quantity });
-                        console.log(`[parseTechCardsFromExcel] Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName}`);
+                        console.log(`[parseTechCardsFromExcel] ✅ Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName || 'UNKNOWN'}`);
                     }
                 }
             }

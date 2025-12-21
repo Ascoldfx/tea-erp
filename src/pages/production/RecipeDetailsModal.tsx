@@ -287,9 +287,9 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         {(() => {
                                                             // Логируем для отладки
                                                             if (ing.monthlyNorms) {
-                                                                console.log(`[RecipeDetailsModal] Ingredient ${materialSku || materialName} has ${ing.monthlyNorms.length} monthly norms:`, ing.monthlyNorms);
+                                                                console.log(`[RecipeDetailsModal] ✅ Ingredient "${materialName}" (${materialSku}) has ${ing.monthlyNorms.length} monthly norms:`, JSON.stringify(ing.monthlyNorms));
                                                             } else {
-                                                                console.log(`[RecipeDetailsModal] Ingredient ${materialSku || materialName} has NO monthly norms`);
+                                                                console.warn(`[RecipeDetailsModal] ❌ Ingredient "${materialName}" (${materialSku}) has NO monthly norms!`);
                                                             }
                                                             
                                                             if (ing.monthlyNorms && ing.monthlyNorms.length > 0) {

@@ -476,14 +476,24 @@ export function parseTechCardsFromExcel(
             );
             
             if (!isDuplicate) {
-                currentTechCard.ingredients.push({
+                // ВАЖНО: Сохраняем monthlyNorms даже если они все равны 0 или пустые
+                // Это нужно для отображения структуры норм по месяцам
+                const ingredient = {
                     materialSku: materialSku || '',
                     materialName: materialName || materialSku || 'Без названия',
                     materialCategory,
                     unit: parseUnit(unit),
                     norm: norm || 0, // Разрешаем norm === 0
                     monthlyNorms: monthlyNorms.length > 0 ? monthlyNorms : undefined
-                });
+                };
+                
+                if (monthlyNorms.length > 0) {
+                    console.log(`[parseTechCardsFromExcel] ✅ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has ${monthlyNorms.length} monthly norms:`, monthlyNorms);
+                } else {
+                    console.warn(`[parseTechCardsFromExcel] ⚠️ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has NO monthly norms! Check if date columns are found.`);
+                }
+                
+                currentTechCard.ingredients.push(ingredient);
             } else {
                 console.log(`[parseTechCardsFromExcel] Пропущен дубликат материала: ${materialSku || materialName}`);
             }

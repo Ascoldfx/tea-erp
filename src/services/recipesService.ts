@@ -253,9 +253,10 @@ export const recipesService = {
                     // Логируем нормы по месяцам перед сохранением
                     ingredientsData.forEach((ingData, idx) => {
                         if (ingData.monthly_norms) {
-                            console.log(`[RecipesService] Ингредиент ${idx + 1} имеет ${Array.isArray(ingData.monthly_norms) ? ingData.monthly_norms.length : 0} норм по месяцам:`, ingData.monthly_norms);
+                            const normsCount = Array.isArray(ingData.monthly_norms) ? ingData.monthly_norms.length : 0;
+                            console.log(`[RecipesService] ✅ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) имеет ${normsCount} норм по месяцам:`, JSON.stringify(ingData.monthly_norms));
                         } else {
-                            console.log(`[RecipesService] Ингредиент ${idx + 1} НЕ имеет норм по месяцам`);
+                            console.warn(`[RecipesService] ❌ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) НЕ имеет норм по месяцам`);
                         }
                     });
                     

@@ -100,8 +100,8 @@ export default function TechCardsList() {
     // Сортировка и фильтрация техкарт
     const filteredAndSortedRecipes = useMemo(() => {
         const filtered = recipes.filter(r =>
-            r.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        r.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
         // Сортируем: приоритетные сверху, затем остальные
         return filtered.sort((a, b) => {
@@ -167,7 +167,9 @@ export default function TechCardsList() {
             console.log(`[TechCardsList] ✅ Сохранено ${savedCount} из ${importedRecipes.length} тех.карт в базу данных`);
             
             if (savedCount !== importedRecipes.length) {
-                console.warn(`[TechCardsList] ⚠️ Не все тех.карты сохранены! Ожидалось: ${importedRecipes.length}, сохранено: ${savedCount}`);
+                const failedCount = importedRecipes.length - savedCount;
+                console.warn(`[TechCardsList] ⚠️ Не все тех.карты сохранены! Ожидалось: ${importedRecipes.length}, сохранено: ${savedCount}, не удалось: ${failedCount}`);
+                alert(`⚠️ Внимание: сохранено только ${savedCount} из ${importedRecipes.length} тех.карт.\n\nПроверьте консоль браузера (F12) для деталей об ошибках.`);
             }
             
             // ВАЖНО: Перезагружаем список из базы данных после сохранения
@@ -177,9 +179,16 @@ export default function TechCardsList() {
             
             // Проверяем результат загрузки
             const currentRecipes = await recipesService.getRecipes();
+            console.log(`[TechCardsList] Загружено из БД: ${currentRecipes.length} тех.карт`);
+            
             if (currentRecipes.length === 0 && savedCount > 0) {
                 console.error('[TechCardsList] ❌ КРИТИЧЕСКАЯ ОШИБКА: После сохранения база данных пуста!');
-                alert('Ошибка: тех.карты не сохранились в базу данных. Проверьте консоль для деталей.');
+                alert('❌ Ошибка: тех.карты не сохранились в базу данных.\n\nПроверьте консоль браузера (F12) для деталей.');
+            } else if (currentRecipes.length < savedCount) {
+                console.warn(`[TechCardsList] ⚠️ Несоответствие: сохранено ${savedCount}, но загружено только ${currentRecipes.length}`);
+                alert(`⚠️ Внимание: сохранено ${savedCount} тех.карт, но загружено только ${currentRecipes.length}.\n\nПроверьте консоль браузера (F12) для деталей.`);
+            } else if (currentRecipes.length > 0) {
+                console.log(`[TechCardsList] ✅ Успешно импортировано и загружено ${currentRecipes.length} тех.карт`);
             }
         } catch (error) {
             console.error('[TechCardsList] ❌ Ошибка при сохранении тех.карт в базу данных:', error);
@@ -228,10 +237,10 @@ export default function TechCardsList() {
                         <Upload className="w-4 h-4 mr-2" />
                         Импорт из Excel
                     </Button>
-                    <Button onClick={() => navigate('/production/recipes/new')}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Создать карту
-                    </Button>
+                <Button onClick={() => navigate('/production/recipes/new')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Создать карту
+                </Button>
                 </div>
             </div>
 
@@ -251,7 +260,7 @@ export default function TechCardsList() {
                     <p>Нет техкарт. Создайте первую техкарту.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {filteredAndSortedRecipes.map(recipe => {
                         const { displayName, packsPerBox } = formatItemName(recipe.name);
                         const finishedGood = items.find(i => i.id === recipe.outputItemId);
@@ -285,17 +294,17 @@ export default function TechCardsList() {
                                                 ТОП-25
                                             </span>
                                         )}
-                                    </CardTitle>
+                            </CardTitle>
                                     {sku && (
                                         <div className="flex items-center gap-2 mt-2 text-sm text-slate-400">
                                             <Hash className="w-4 h-4" />
                                             <span className="font-mono">{sku}</span>
                                         </div>
                                     )}
-                                </CardHeader>
-                                <CardContent>
+                        </CardHeader>
+                        <CardContent>
                                     {recipe.description && (
-                                        <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
+                            <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
                                     )}
 
                                     <div className="bg-slate-950/50 rounded-lg p-3">
@@ -349,16 +358,16 @@ export default function TechCardsList() {
                                                     </li>
                                                 );
                                             })}
-                                        </ul>
-                                    </div>
+                                </ul>
+                            </div>
                                     <p className="text-xs text-slate-500 mt-3 italic text-center">
                                         Двойной клик для просмотра деталей
                                     </p>
-                                </CardContent>
-                            </Card>
+                        </CardContent>
+                    </Card>
                         );
                     })}
-                </div>
+            </div>
             )}
 
             <TechCardsImportModal

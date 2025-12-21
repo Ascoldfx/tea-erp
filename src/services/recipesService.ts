@@ -182,19 +182,22 @@ export const recipesService = {
                     });
 
                     // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
-                    const { error: ingredientsError } = await supabase
+                    console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}"`);
+                    const { error: ingredientsError, data: insertedIngredients } = await supabase
                         .from('recipe_ingredients')
-                        .insert(ingredientsData);
+                        .insert(ingredientsData)
+                        .select();
 
                     if (ingredientsError) {
                         console.error('[RecipesService] Error saving ingredients:', ingredientsError);
-                        console.error('[RecipesService] Ingredients data:', ingredientsData);
+                        console.error('[RecipesService] Ingredients data (first 3):', ingredientsData.slice(0, 3));
+                        console.error('[RecipesService] Full error details:', JSON.stringify(ingredientsError, null, 2));
                         return false;
                     }
                     
                     const validCount = ingredientsData.filter(ing => ing.item_id).length;
                     const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
-                    console.log(`[RecipesService] Saved ${ingredientsData.length} ingredients for recipe "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
+                    console.log(`[RecipesService] ✅ Сохранено ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
                 } else {
                     console.warn(`[RecipesService] Recipe "${recipe.name}" has no valid ingredients to save`);
                 }

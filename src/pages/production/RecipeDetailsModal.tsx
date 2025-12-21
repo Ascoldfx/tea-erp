@@ -21,12 +21,6 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
         return items.find(i => i.id === recipe.outputItemId);
     }, [recipe, items]);
 
-    const getItemName = (id: string) => items.find(i => i.id === id)?.name || id;
-    const getItemUnit = (id: string) => {
-        const unit = items.find(i => i.id === id)?.unit || '';
-        return unit === 'pcs' ? 'шт' : unit === 'kg' ? 'кг' : unit;
-    };
-    const getItemSku = (id: string) => items.find(i => i.id === id)?.sku || '';
 
     // Парсинг количества пачек в ящике из названия
     const parsePacksPerBox = (name: string): number | null => {

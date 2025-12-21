@@ -305,7 +305,12 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 // Добавляем флаг, если это один из нескольких материалов с одинаковым артикулом
                                 isDuplicateSku: matchingMaterials.length > 1,
                                 // Сохраняем нормы по месяцам, если они есть
-                                monthlyNorms: ing.monthlyNorms
+                                monthlyNorms: ing.monthlyNorms,
+                                // ВАЖНО: Сохраняем tempMaterial с оригинальным названием из Excel для правильного отображения
+                                tempMaterial: { 
+                                    sku: ing.materialSku || material.sku || '', 
+                                    name: ing.materialName || material.name || 'Неизвестный материал' 
+                                }
                             });
                             foundMaterials.push({ 
                                 sku: ing.materialSku, 

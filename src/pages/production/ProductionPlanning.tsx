@@ -238,17 +238,33 @@ export default function ProductionPlanning() {
             
             try {
                 // Get stock movements with type='out' for selected month
-                // Note: stock_movements uses 'created_at' or 'date' field - check actual schema
+                // Check both 'date' and 'created_at' fields
                 const { data: movements, error: movementsError } = await supabase
                     .from('stock_movements')
-                    .select('item_id, quantity, created_at')
+                    .select('item_id, quantity, date, created_at')
                     .eq('type', 'out');
                 
-                // Filter by month in JavaScript since we're not sure of the exact date field name
+                if (movementsError) throw movementsError;
+                
+                // Filter by month - prefer 'date' field if available, otherwise use 'created_at'
                 const filteredMovements = (movements || []).filter(movement => {
-                    if (!movement.created_at) return false;
-                    const movementDate = new Date(movement.created_at);
-                    return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                    // Try 'date' field first (used for imported actual consumption)
+                    if (movement.date) {
+                        const movementDate = new Date(movement.date);
+                        if (!isNaN(movementDate.getTime())) {
+                            return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                        }
+                    }
+                    
+                    // Fallback to 'created_at' (for manually created movements)
+                    if (movement.created_at) {
+                        const movementDate = new Date(movement.created_at);
+                        if (!isNaN(movementDate.getTime())) {
+                            return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                        }
+                    }
+                    
+                    return false;
                 });
                 
                 if (movementsError) throw movementsError;

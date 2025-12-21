@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Search, Plus, FileText, Download, Upload, Hash, Star } from 'lucide-react';
+import { Search, Plus, FileText, Download, Upload, Hash, Star, RefreshCw } from 'lucide-react';
 // MOCK_RECIPES больше не используется - все техкарты загружаются из базы данных или импортируются
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';

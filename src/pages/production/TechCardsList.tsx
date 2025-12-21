@@ -9,24 +9,8 @@ import { useInventory } from '../../hooks/useInventory';
 import { exportTechCardsToExcel } from '../../services/techCardsExportService';
 import TechCardsImportModal from './TechCardsImportModal';
 import RecipeDetailsModal from './RecipeDetailsModal';
+import { TOP_25_SKUS } from '../../data/top25Skus';
 import type { Recipe } from '../../types/production';
-
-// Топ-25 приоритетных SKU позиций (из каталога готовой продукции)
-const TOP_25_SKUS = [
-    '282057', // Чай Batik, Гранульований С.Т.С., 110г, м/у
-    '282056', // Чай Batik, Чорний бархатний, 25ф/п* 2г
-    '282151', // Чай Batik, Gold, Цейлон Високогірний, 25ф/п* 2г (ярл)
-    '282157', // (из списка)
-    '282037', // (из списка)
-    '282158', // Чай Batik, Королівський стандарт, 25 ф/п * 2г з ярл.
-    '282066', // Чай Askold, Крупний Лист О.Р.А., 90г
-    '282034', // Чай Batik, Королівський стандарт, 100ф/п* 2г
-    // Добавляем остальные позиции из топ-25 (можно дополнить при необходимости)
-    '282035', '282036', '282038', '282039', '282040',
-    '282041', '282042', '282043', '282044', '282045',
-    '282046', '282047', '282048', '282049', '282050',
-    '282051', '282052', '282053', '282054', '282055'
-];
 
 export default function TechCardsList() {
     const [searchTerm, setSearchTerm] = useState('');

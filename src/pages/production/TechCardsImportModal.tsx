@@ -365,18 +365,48 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 // ВАЖНО: Создаем тех.карту со ВСЕМИ ингредиентами из импортируемого документа
                 // Приоритет - импортируемый документ, все материалы должны быть включены
                 // Даже если некоторые материалы не найдены, они добавляются с временным ID
-                console.log(`[Import] Тех.карта "${techCard.gpName}": обработано ${techCard.ingredients.length} ингредиентов из Excel, добавлено ${ingredients.length} в техкарту`);
+                console.log(`[Import] === ИТОГИ ОБРАБОТКИ ТЕХ.КАРТЫ "${techCard.gpName}" ===`);
+                console.log(`[Import] Ингредиентов в Excel: ${techCard.ingredients.length}`);
+                console.log(`[Import] Ингредиентов добавлено в техкарту: ${ingredients.length}`);
+                console.log(`[Import] Детали ингредиентов из Excel:`, techCard.ingredients.map((ing, idx) => 
+                    `${idx + 1}. ${ing.materialSku || 'NO SKU'} - ${ing.materialName || 'NO NAME'} (норма: ${ing.norm})`
+                ));
                 
                 if (ingredients.length !== techCard.ingredients.length) {
-                    console.warn(`[Import] ⚠️ Тех.карта "${techCard.gpName}": не все ингредиенты добавлены! Из Excel: ${techCard.ingredients.length}, добавлено: ${ingredients.length}`);
-                    console.warn(`[Import] Пропущенные ингредиенты:`, techCard.ingredients.filter((ing, idx) => {
+                    const missing = techCard.ingredients.filter((ing, idx) => {
                         // Проверяем, был ли этот ингредиент добавлен
                         const wasAdded = ingredients.some(added => {
                             const addedSku = added.tempMaterial?.sku || currentItems.find(i => i.id === added.itemId)?.sku;
-                            return addedSku === ing.materialSku || added.itemId === `temp-${ing.materialSku}`;
+                            const addedName = added.tempMaterial?.name || currentItems.find(i => i.id === added.itemId)?.name;
+                            return (addedSku && addedSku === ing.materialSku) || 
+                                   (addedName && addedName === ing.materialName) ||
+                                   added.itemId === `temp-${ing.materialSku}`;
                         });
                         return !wasAdded;
-                    }).map(ing => `${ing.materialSku} - ${ing.materialName}`));
+                    });
+                    
+                    console.warn(`[Import] ⚠️ НЕ ВСЕ ИНГРЕДИЕНТЫ ДОБАВЛЕНЫ!`);
+                    console.warn(`[Import] Пропущено ингредиентов: ${missing.length}`);
+                    console.warn(`[Import] Пропущенные ингредиенты:`, missing.map(ing => 
+                        `"${ing.materialSku || 'NO SKU'}" - "${ing.materialName || 'NO NAME'}" (норма: ${ing.norm})`
+                    ));
+                    
+                    // ВАЖНО: Добавляем пропущенные ингредиенты с временным ID
+                    for (const missingIng of missing) {
+                        const tempId = `temp-${missingIng.materialSku || Date.now()}`;
+                        ingredients.push({
+                            itemId: tempId,
+                            quantity: missingIng.norm || 0,
+                            isAutoCreated: true,
+                            tempMaterial: { 
+                                sku: missingIng.materialSku || 'UNKNOWN', 
+                                name: missingIng.materialName || 'Неизвестный материал' 
+                            }
+                        });
+                        console.log(`[Import] Добавлен пропущенный ингредиент с временным ID: "${missingIng.materialSku}" - "${missingIng.materialName}"`);
+                    }
+                    
+                    console.log(`[Import] После добавления пропущенных: ${ingredients.length} ингредиентов в техкарте`);
                 }
                 
                 if (ingredients.length > 0) {

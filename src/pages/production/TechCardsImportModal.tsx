@@ -219,7 +219,8 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 itemId: tempId,
                                 quantity: ing.norm,
                                 isAutoCreated: true,
-                                tempMaterial: { sku: 'UNKNOWN', name: 'Неизвестный материал' }
+                                tempMaterial: { sku: 'UNKNOWN', name: 'Неизвестный материал' },
+                                monthlyNorms: ing.monthlyNorms
                             });
                             console.warn(`[Import] Добавлен ингредиент с временным ID (нет SKU/названия): норма=${ing.norm}`);
                         }

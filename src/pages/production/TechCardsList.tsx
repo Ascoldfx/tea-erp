@@ -56,9 +56,33 @@ export default function TechCardsList() {
     // Проверка, является ли техкарта приоритетной (топ-25)
     const isPriorityRecipe = useMemo(() => {
         return (recipe: Recipe): boolean => {
+            // Сначала пытаемся найти готовый продукт по outputItemId
             const finishedGood = items.find(i => i.id === recipe.outputItemId);
-            const sku = finishedGood?.sku || '';
-            return TOP_25_SKUS.includes(sku);
+            let sku = finishedGood?.sku || '';
+            
+            // Если не нашли по ID, извлекаем SKU из description
+            // Формат: "Импортировано из Excel. Артикул: 282157"
+            if (!sku && recipe.description) {
+                const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+                if (skuMatch) {
+                    sku = skuMatch[1];
+                }
+            }
+            
+            // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
+            if (!sku && recipe.outputItemId && recipe.outputItemId.startsWith('temp-')) {
+                sku = recipe.outputItemId.replace(/^temp-/, '');
+            }
+            
+            // Проверяем, есть ли этот SKU в топ-25
+            const isPriority = sku && TOP_25_SKUS.includes(sku);
+            
+            // Логирование для отладки
+            if (isPriority) {
+                console.log(`[Priority] Recipe "${recipe.name}" is priority (SKU: ${sku})`);
+            }
+            
+            return isPriority;
         };
     }, [items]);
 

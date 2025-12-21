@@ -179,21 +179,42 @@ export const recipesService = {
 
     /**
      * Сохранить несколько техкарт в базу данных
+     * ВАЖНО: Сохраняет все техкарты, даже если некоторые не удалось сохранить
      */
     async saveRecipes(recipes: Recipe[]): Promise<number> {
         if (!supabase || recipes.length === 0) {
+            console.warn('[RecipesService] No recipes to save or supabase not available');
             return 0;
         }
 
+        console.log(`[RecipesService] Начинаем сохранение ${recipes.length} тех.карт в базу данных...`);
         let savedCount = 0;
-        for (const recipe of recipes) {
-            const success = await this.saveRecipe(recipe);
-            if (success) {
-                savedCount++;
+        const errors: Array<{ recipe: Recipe; error: any }> = [];
+
+        for (let i = 0; i < recipes.length; i++) {
+            const recipe = recipes[i];
+            try {
+                console.log(`[RecipesService] Сохранение тех.карты ${i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
+                const success = await this.saveRecipe(recipe);
+                if (success) {
+                    savedCount++;
+                    console.log(`[RecipesService] ✅ Тех.карта "${recipe.name}" сохранена успешно`);
+                } else {
+                    console.error(`[RecipesService] ❌ Не удалось сохранить тех.карту "${recipe.name}"`);
+                    errors.push({ recipe, error: 'Save returned false' });
+                }
+            } catch (error) {
+                console.error(`[RecipesService] ❌ Ошибка при сохранении тех.карты "${recipe.name}":`, error);
+                errors.push({ recipe, error });
             }
         }
 
-        console.log(`[RecipesService] Saved ${savedCount} of ${recipes.length} recipes`);
+        console.log(`[RecipesService] === ИТОГИ СОХРАНЕНИЯ ===`);
+        console.log(`[RecipesService] Сохранено: ${savedCount} из ${recipes.length} тех.карт`);
+        if (errors.length > 0) {
+            console.error(`[RecipesService] Ошибки при сохранении ${errors.length} тех.карт:`, errors);
+        }
+
         return savedCount;
     },
 

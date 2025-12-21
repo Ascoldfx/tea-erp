@@ -24,20 +24,32 @@ export default function TechCardsList() {
 
     // Инициализируем тех.карты из localStorage
     // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
-    // Загружаем техкарты из базы данных
+    // Загружаем техкарты из базы данных при монтировании и периодически
     useEffect(() => {
         const loadRecipes = async () => {
             try {
                 const loadedRecipes = await recipesService.getRecipes();
                 console.log(`[TechCardsList] Загружено ${loadedRecipes.length} тех.карт из базы данных`);
-                setRecipes(loadedRecipes);
+                if (loadedRecipes.length > 0) {
+                    setRecipes(loadedRecipes);
+                } else {
+                    console.warn('[TechCardsList] База данных пуста - техкарты не найдены');
+                }
             } catch (error) {
                 console.error('[TechCardsList] Ошибка при загрузке тех.карт:', error);
-                setRecipes([]);
+                // Не очищаем список при ошибке, оставляем существующие техкарты
             }
         };
 
         loadRecipes();
+        
+        // Периодически обновляем список техкарт (каждые 30 секунд)
+        // Это гарантирует, что техкарты не пропадут при обновлении страницы
+        const interval = setInterval(() => {
+            loadRecipes();
+        }, 30000); // 30 секунд
+        
+        return () => clearInterval(interval);
     }, []);
 
     // Проверка, является ли техкарта приоритетной (топ-25)
@@ -132,22 +144,49 @@ export default function TechCardsList() {
         console.log('[TechCardsList] === ИМПОРТ ТЕХ.КАРТ ===');
         console.log(`[TechCardsList] Импортировано тех.карт: ${importedRecipes.length}`);
         importedRecipes.forEach((recipe) => {
-            console.log(`[TechCardsList] Тех.карта: "${recipe.name}"`);
+            console.log(`[TechCardsList] Тех.карта: "${recipe.name}" (ID: ${recipe.id})`);
             console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients.length}`);
         });
         
-        // Сохраняем в базу данных
+        // ВАЖНО: Сохраняем в базу данных ПЕРЕД обновлением списка
         try {
+            console.log('[TechCardsList] Начинаем сохранение тех.карт в базу данных...');
             const savedCount = await recipesService.saveRecipes(importedRecipes);
-            console.log(`[TechCardsList] Сохранено ${savedCount} из ${importedRecipes.length} тех.карт в базу данных`);
+            console.log(`[TechCardsList] ✅ Сохранено ${savedCount} из ${importedRecipes.length} тех.карт в базу данных`);
             
-            // Обновляем список
+            if (savedCount !== importedRecipes.length) {
+                console.warn(`[TechCardsList] ⚠️ Не все тех.карты сохранены! Ожидалось: ${importedRecipes.length}, сохранено: ${savedCount}`);
+            }
+            
+            // ВАЖНО: Всегда перезагружаем список из базы данных после сохранения
+            // Это гарантирует, что мы видим актуальные данные
+            console.log('[TechCardsList] Перезагружаем список тех.карт из базы данных...');
             const loadedRecipes = await recipesService.getRecipes();
-            setRecipes(loadedRecipes);
+            console.log(`[TechCardsList] ✅ Загружено ${loadedRecipes.length} тех.карт из базы данных`);
+            
+            if (loadedRecipes.length === 0) {
+                console.error('[TechCardsList] ❌ КРИТИЧЕСКАЯ ОШИБКА: После сохранения база данных пуста!');
+                // Оставляем импортированные техкарты в локальном состоянии
+                setRecipes(prev => {
+                    const combined = [...prev, ...importedRecipes];
+                    // Убираем дубликаты по ID
+                    const unique = Array.from(new Map(combined.map(r => [r.id, r])).values());
+                    return unique;
+                });
+            } else {
+                setRecipes(loadedRecipes);
+            }
         } catch (error) {
-            console.error('[TechCardsList] Ошибка при сохранении тех.карт в базу данных:', error);
-            // Все равно обновляем локальный список
-            setRecipes(prev => [...prev, ...importedRecipes]);
+            console.error('[TechCardsList] ❌ Ошибка при сохранении тех.карт в базу данных:', error);
+            // В случае ошибки добавляем техкарты в локальный список
+            // Но это временное решение - техкарты могут пропасть при обновлении страницы
+            setRecipes(prev => {
+                const combined = [...prev, ...importedRecipes];
+                // Убираем дубликаты по ID
+                const unique = Array.from(new Map(combined.map(r => [r.id, r])).values());
+                return unique;
+            });
+            alert('Ошибка при сохранении тех.карт в базу данных. Проверьте консоль для деталей.');
         }
     };
 

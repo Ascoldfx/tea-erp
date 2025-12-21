@@ -349,8 +349,21 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 // ВАЖНО: Создаем тех.карту со ВСЕМИ ингредиентами из импортируемого документа
                 // Приоритет - импортируемый документ, все материалы должны быть включены
                 // Даже если некоторые материалы не найдены, они добавляются с временным ID
+                console.log(`[Import] Тех.карта "${techCard.gpName}": обработано ${techCard.ingredients.length} ингредиентов из Excel, добавлено ${ingredients.length} в техкарту`);
+                
+                if (ingredients.length !== techCard.ingredients.length) {
+                    console.warn(`[Import] ⚠️ Тех.карта "${techCard.gpName}": не все ингредиенты добавлены! Из Excel: ${techCard.ingredients.length}, добавлено: ${ingredients.length}`);
+                    console.warn(`[Import] Пропущенные ингредиенты:`, techCard.ingredients.filter((ing, idx) => {
+                        // Проверяем, был ли этот ингредиент добавлен
+                        const wasAdded = ingredients.some(added => {
+                            const addedSku = added.tempMaterial?.sku || currentItems.find(i => i.id === added.itemId)?.sku;
+                            return addedSku === ing.materialSku || added.itemId === `temp-${ing.materialSku}`;
+                        });
+                        return !wasAdded;
+                    }).map(ing => `${ing.materialSku} - ${ing.materialName}`));
+                }
+                
                 if (ingredients.length > 0) {
-                    console.log(`[Import] Создана тех.карта "${techCard.gpName}" с ${ingredients.length} ингредиентами из ${techCard.ingredients.length} в Excel`);
                     recipes.push({
                         id: `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         name: techCard.gpName,

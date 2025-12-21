@@ -70,15 +70,18 @@ export const recipesService = {
                     if (!ingredientsMap.has(ing.recipe_id)) {
                         ingredientsMap.set(ing.recipe_id, []);
                     }
+                    // Если item_id NULL, используем временный ID из temp_material_sku
+                    const itemId = ing.item_id || (ing.temp_material_sku ? `temp-${ing.temp_material_sku}` : `temp-unknown-${Date.now()}`);
+                    
                     ingredientsMap.get(ing.recipe_id)!.push({
-                        itemId: ing.item_id,
+                        itemId: itemId,
                         quantity: ing.quantity,
                         tolerance: ing.tolerance,
                         isDuplicateSku: ing.is_duplicate_sku,
                         isAutoCreated: ing.is_auto_created,
                         tempMaterial: ing.temp_material_sku && ing.temp_material_name
                             ? { sku: ing.temp_material_sku, name: ing.temp_material_name }
-                            : undefined
+                            : (ing.item_id ? undefined : { sku: ing.temp_material_sku || 'UNKNOWN', name: ing.temp_material_name || 'Неизвестный материал' })
                     });
                 });
             }

@@ -386,11 +386,17 @@ export function parseTechCardsFromExcel(
         const datePattern = /(\d{2})\.(\d{2})\.(\d{4})/; // Более точный паттерн для DD.MM.YYYY
         
         console.log(`[parseTechCardsFromExcel] 🔍 Parsing monthly norms for row ${i + 1}`);
-        console.log(`[parseTechCardsFromExcel] Header row has ${headerRow.length} columns`);
-        console.log(`[parseTechCardsFromExcel] First 15 headers:`, headerRow.slice(0, 15).map((h, idx) => `[${idx}]: "${String(h || '').trim()}"`).join(', '));
+        console.log(`[parseTechCardsFromExcel] Header row has ${headerRow.length} columns, headers array has ${headers.length} columns`);
         
-        for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
-            const header = String(headerRow[colIdx] || '').trim();
+        // Логируем все заголовки для отладки (первые 30)
+        const headersPreview = headers.slice(0, 30).map((h, idx) => `[${idx}]: "${h}"`).join(', ');
+        console.log(`[parseTechCardsFromExcel] First 30 headers:`, headersPreview);
+        
+        // ВАЖНО: Используем headers (нормализованные) для поиска колонок с датами
+        // Но row - это массив, поэтому используем colIdx для доступа
+        for (let colIdx = 0; colIdx < Math.max(headerRow.length, headers.length); colIdx++) {
+            // Проверяем заголовок из нормализованного массива headers
+            const header = colIdx < headers.length ? headers[colIdx] : '';
             
             // Проверяем паттерн даты DD.MM.YYYY (например, 01.12.2025)
             const dateMatch = header.match(datePattern);

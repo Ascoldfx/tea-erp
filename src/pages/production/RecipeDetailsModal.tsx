@@ -147,8 +147,7 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-700">
-                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал</th>
-                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Артикул</th>
+                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
                                             <th className="text-right py-2 px-3 text-slate-400 font-semibold">Количество</th>
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
                                             {recipe.ingredients.some(ing => ing.monthlyNorms && ing.monthlyNorms.length > 0) && (
@@ -158,17 +157,62 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
                                         {recipe.ingredients.map((ing, idx) => {
-                                            const materialSku = getItemSku(ing.itemId);
-                                            const materialName = getItemName(ing.itemId);
+                                            // Для временных материалов используем tempMaterial
+                                            const tempMaterial = ing.tempMaterial;
+                                            
+                                            // Для существующих материалов ищем в items
+                                            let materialSku = '';
+                                            let materialName = '';
+                                            
+                                            if (tempMaterial) {
+                                                // Временный материал
+                                                materialSku = tempMaterial.sku;
+                                                materialName = tempMaterial.name;
+                                            } else {
+                                                // Ищем в базе данных
+                                                const foundItem = items.find(i => i.id === ing.itemId);
+                                                if (foundItem) {
+                                                    materialSku = foundItem.sku || '';
+                                                    materialName = foundItem.name || ing.itemId;
+                                                } else {
+                                                    // Если не найден, используем itemId как fallback
+                                                    materialSku = ing.itemId.startsWith('temp-') 
+                                                        ? ing.itemId.replace(/^temp-/, '') 
+                                                        : ing.itemId;
+                                                    materialName = ing.itemId;
+                                                }
+                                            }
+                                            
                                             const isDuplicate = ing.isDuplicateSku;
                                             const isAutoCreated = ing.isAutoCreated;
-                                            const tempMaterial = ing.tempMaterial;
                                             
                                             // Определяем, есть ли другие ингредиенты с таким же SKU
                                             const sameSkuCount = recipe.ingredients.filter(otherIng => {
-                                                const otherSku = getItemSku(otherIng.itemId);
-                                                return otherSku && otherSku === materialSku && otherIng !== ing;
+                                                if (otherIng === ing) return false;
+                                                
+                                                let otherSku = '';
+                                                if (otherIng.tempMaterial) {
+                                                    otherSku = otherIng.tempMaterial.sku;
+                                                } else {
+                                                    const otherItem = items.find(i => i.id === otherIng.itemId);
+                                                    otherSku = otherItem?.sku || '';
+                                                }
+                                                
+                                                return otherSku && otherSku === materialSku;
                                             }).length;
+                                            
+                                            // Получаем единицу измерения
+                                            let unit = '';
+                                            if (tempMaterial) {
+                                                unit = '-';
+                                            } else {
+                                                const foundItem = items.find(i => i.id === ing.itemId);
+                                                if (foundItem) {
+                                                    unit = foundItem.unit === 'pcs' ? 'шт' : foundItem.unit === 'kg' ? 'кг' : foundItem.unit || '-';
+                                                } else {
+                                                    unit = '-';
+                                                }
+                                            }
                                             
                                             return (
                                                 <tr 
@@ -184,40 +228,34 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     }`}
                                                 >
                                                     <td className="py-2 px-3 text-slate-200">
-                                                        <div className="flex items-center gap-2">
-                                                            {tempMaterial ? (
-                                                                <span className="text-slate-400 italic">
-                                                                    {tempMaterial.name}
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className={tempMaterial ? 'text-slate-400 italic' : ''}>
+                                                                    {materialName}
                                                                 </span>
-                                                            ) : (
-                                                                <span>{materialName}</span>
-                                                            )}
-                                                            {isAutoCreated && (
-                                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                                                                    Создан при импорте
-                                                                </span>
-                                                            )}
-                                                            {(isDuplicate || sameSkuCount > 0) && (
-                                                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
-                                                                    Дубликат артикула ({sameSkuCount + 1} шт.)
-                                                                </span>
-                                                            )}
+                                                                {materialSku && (
+                                                                    <span className="text-slate-400 font-mono text-xs">
+                                                                        ({materialSku}{tempMaterial ? ' - временный' : ''})
+                                                                    </span>
+                                                                )}
+                                                                {isAutoCreated && (
+                                                                    <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
+                                                                        Создан при импорте
+                                                                    </span>
+                                                                )}
+                                                                {(isDuplicate || sameSkuCount > 0) && (
+                                                                    <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
+                                                                        Дубликат артикула ({sameSkuCount + 1} шт.)
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-2 px-3 text-slate-400 font-mono text-xs">
-                                                        {tempMaterial ? (
-                                                            <span className="text-slate-500 italic">
-                                                                {tempMaterial.sku} (временный)
-                                                            </span>
-                                                        ) : (
-                                                            materialSku || '-'
-                                                        )}
-                                                    </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
-                                                        {ing.quantity}
+                                                        {ing.quantity.toFixed(4)}
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400">
-                                                        {tempMaterial ? '-' : getItemUnit(ing.itemId)}
+                                                        {unit}
                                                     </td>
                                                     {recipe.ingredients.some(ing => ing.monthlyNorms && ing.monthlyNorms.length > 0) && (
                                                         <td className="py-2 px-3 text-slate-300">

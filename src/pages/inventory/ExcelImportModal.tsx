@@ -21,9 +21,11 @@ interface ParsedItem {
     stockMai: number; // ТС (если есть отдельная колонка)
     stockFito: number; // Фито (если есть отдельная колонка)
     storageLocation?: string; // Место хранения из Excel
+    baseNorm?: number; // Базовая норма (эталон)
     plannedConsumption: Array<{
         date: string; // YYYY-MM-DD (первый день месяца)
         quantity: number;
+        isActual?: boolean; // true для фактического расхода (прошедшие месяцы), false для планового (будущие месяцы)
     }>;
 }
 
@@ -579,15 +581,78 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockFito = Number(stockFitoStr) || 0;
                 }
 
-                // Find planned consumption columns - "план витрат" это плановый расход на МЕСЯЦ
-                // COMPLETELY REWRITTEN: Use ONLY columnToMonthMap (month from row above header)
-                // This ensures we only use data where month is STRICTLY above the column
-                const plannedConsumption: Array<{ date: string; quantity: number }> = [];
+                // Find base norm (эталон) column
+                const baseNormStr = findColumn(row, [
+                    'Базовая норма', 'Базова норма', 'Еталон', 'Эталон', 'Норма', 'Norm',
+                    'Базовая норма расхода', 'Базова норма витрат', 'Еталонна норма'
+                ]);
+                const baseNorm = baseNormStr ? parseFloat(String(baseNormStr).replace(',', '.')) || 0 : undefined;
+
+                // Find planned consumption and actual consumption columns
+                // Под прошедшими месяцами - фактический расход
+                // Под будущим и текущим месяцем - плановый расход
+                const plannedConsumption: Array<{ date: string; quantity: number; isActual?: boolean }> = [];
                 
-                // Note: parseMonthToDate is already defined above (line 155), reuse it here
+                const now = new Date();
+                const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 
-                // ONLY use columns that have month mapped from row above headers
-                // This is the ONLY reliable way to get correct month-date association
+                // Parse month name columns (октябрь 2024, ноябрь 2024 и т.д.)
+                // These columns contain consumption data (actual for past months, planned for future months)
+                for (let i = 0; i < headers.length; i++) {
+                    const header = String(headers[i] || '').trim();
+                    const headerLower = header.toLowerCase();
+                    
+                    // Check if this is a month name column (октябрь 2024, ноябрь 2024 и т.д.)
+                    // Skip if it's explicitly "план витрат" or "залишки"
+                    if (headerLower.includes('план') || headerLower.includes('залишки') || headerLower.includes('зал')) {
+                        continue;
+                    }
+                    
+                    // Try to parse month name from header
+                    const monthMatch = headerLower.match(/(январь|февраль|март|апрель|май|июнь|июль|август|сентябрь|октябрь|ноябрь|декабрь|січень|лютий|березень|квітень|травень|червень|липень|серпень|вересень|жовтень|листопад|грудень)\s*(\d{4})?/);
+                    if (monthMatch) {
+                        const monthName = monthMatch[1];
+                        const year = monthMatch[2] ? parseInt(monthMatch[2]) : now.getFullYear();
+                        
+                        const monthMap: Record<string, number> = {
+                            'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
+                            'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
+                            'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
+                            'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
+                            'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
+                            'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
+                            'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
+                            'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
+                            'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
+                            'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
+                            'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
+                            'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
+                        };
+                        
+                        const month = monthMap[monthName.toLowerCase()];
+                        if (month) {
+                            const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
+                            const monthDateObj = new Date(year, month - 1, 1);
+                            
+                            // Determine if this is actual (past month) or planned (current/future month)
+                            const isActual = monthDateObj < currentMonth;
+                            
+                            const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                            const quantity = Number(value) || 0;
+                            
+                            if (quantity > 0) {
+                                plannedConsumption.push({ 
+                                    date: monthDate, 
+                                    quantity,
+                                    isActual 
+                                });
+                                console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
+                            }
+                        }
+                    }
+                }
+                
+                // Also check for explicit "план витрат" columns (for backward compatibility)
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
@@ -600,17 +665,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         // ONLY use if we have month mapped from row above
                         if (columnToMonthMap.has(i)) {
                             const monthDate = columnToMonthMap.get(i)!;
+                            const monthDateObj = new Date(monthDate);
+                            const isActual = monthDateObj < currentMonth;
+                            
                             const value = row[headers[i]] || row[`__EMPTY_${i}`];
                             const quantity = Number(value) || 0;
                             
                             // Only add non-zero quantities
                             if (quantity > 0) {
-                                plannedConsumption.push({ date: monthDate, quantity });
-                                console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}`);
+                                // Check if we already have this month from month name columns
+                                const existing = plannedConsumption.find(pc => pc.date === monthDate);
+                                if (!existing) {
+                                    plannedConsumption.push({ date: monthDate, quantity, isActual });
+                                    console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
+                                }
                             }
-                        } else {
-                            // Log warning if we found "план витрат" but no month above it
-                            console.warn(`[Excel Import] Item "${name}" (code: ${code}): Found "план витрат" column ${i} "${header}" but no month found above it. Skipping.`);
                         }
                     }
                 }
@@ -624,6 +693,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     stockMai: isNaN(stockMai) ? 0 : stockMai,
                     stockFito: isNaN(stockFito) ? 0 : stockFito,
                     storageLocation: storageLocation || undefined,
+                    baseNorm: baseNorm,
                     // Always include plannedConsumption array, even if empty (for debugging)
                     plannedConsumption: plannedConsumption,
                 };

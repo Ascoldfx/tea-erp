@@ -47,12 +47,12 @@ export default function ContractorsPage() {
         }
 
         try {
-            // Fetch only packaging contractors (Фито, ТС) - exclude suppliers
-            // Подрядчики по фасовке: Фито и ТС
+            // Fetch only packaging contractors (Фито, ТС, Кава, Бакалея, ТС Трейд) - exclude suppliers
+            // Подрядчики по фасовке: Фито, ТС, Кава, Бакалея, ТС Трейд
             const { data: contractorsData, error: contractorsError } = await supabase
                 .from('contractors')
                 .select('*')
-                .in('id', ['wh-fito', 'wh-ts'])
+                .in('id', ['wh-fito', 'wh-ts', 'wh-kava', 'wh-bakaleya', 'wh-ts-treyd'])
                 .order('name');
 
             if (contractorsError) throw contractorsError;

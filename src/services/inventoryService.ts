@@ -353,7 +353,12 @@ export const inventoryService = {
             if (!code) continue;
             
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
-                item.plannedConsumption.forEach((pc: { date: string; quantity: number }) => {
+                item.plannedConsumption.forEach((pc: { date: string; quantity: number; isActual?: boolean }) => {
+                    // Сохраняем только плановый расход (не фактический)
+                    // Фактический расход - это исторические данные, их не нужно сохранять в planned_consumption
+                    if (pc.isActual === true) {
+                        return; // Пропускаем фактический расход
+                    }
                     if (pc.quantity > 0) {
                         allPlannedConsumption.push({ code, date: pc.date, quantity: pc.quantity });
                     }

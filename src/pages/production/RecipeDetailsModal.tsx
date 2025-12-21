@@ -46,7 +46,28 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
     if (!recipe) return null;
 
     const { displayName, packsPerBox } = formatItemName(recipe.name);
-    const sku = finishedGood?.sku || recipe.outputItemId;
+    
+    // Извлекаем оригинальный SKU из description, если он там есть
+    // Формат: "Импортировано из Excel. Артикул: 282157"
+    let sku = finishedGood?.sku || '';
+    if (!sku && recipe.description) {
+        const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+        if (skuMatch) {
+            sku = skuMatch[1];
+        }
+    }
+    
+    // Если все еще нет SKU и outputItemId начинается с "temp-", убираем префикс
+    if (!sku && recipe.outputItemId && recipe.outputItemId.startsWith('temp-')) {
+        sku = recipe.outputItemId.replace(/^temp-/, '');
+    }
+    
+    // Если все еще нет SKU, используем outputItemId как есть (но не показываем "temp-")
+    if (!sku && recipe.outputItemId) {
+        sku = recipe.outputItemId.startsWith('temp-') 
+            ? recipe.outputItemId.replace(/^temp-/, '') 
+            : recipe.outputItemId;
+    }
 
     const handleEdit = () => {
         onClose();
@@ -79,7 +100,7 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                     <span className="font-mono">Артикул: {sku}</span>
                                 </div>
                             )}
-                            {recipe.description && (
+                            {recipe.description && !recipe.description.includes('Импортировано из Excel. Артикул:') && (
                                 <p className="text-sm text-slate-400 mt-3">{recipe.description}</p>
                             )}
                         </div>

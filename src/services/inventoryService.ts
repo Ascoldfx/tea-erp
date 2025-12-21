@@ -380,26 +380,43 @@ export const inventoryService = {
             // Use composite key to prevent duplicates: item_id + planned_date
             const key = `${itemId}_${pcData.date}`;
             
+            // Ensure date is in YYYY-MM-01 format (first day of month)
+            let normalizedDate = pcData.date;
+            if (normalizedDate && !normalizedDate.endsWith('-01')) {
+                // If date is not in YYYY-MM-01 format, normalize it
+                try {
+                    const date = new Date(normalizedDate);
+                    if (!isNaN(date.getTime())) {
+                        normalizedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                    }
+                } catch (e) {
+                    console.warn(`[Import] Invalid date format: ${normalizedDate}, using as-is`);
+                }
+            }
+            
             // If duplicate exists, use the last (most recent) value
             plannedConsumptionMap.set(key, {
                 item_id: itemId, // Always use UUID
-                planned_date: pcData.date,
+                planned_date: normalizedDate,
                 quantity: pcData.quantity,
                 notes: `Импортировано из Excel`
             });
-            console.log(`[Import] Saving planned consumption: itemId=${itemId} (UUID, code=${code}), date=${pcData.date}, quantity=${pcData.quantity}`);
+            console.log(`[Import] Saving planned consumption: itemId=${itemId} (UUID, code=${code}), date=${normalizedDate}, quantity=${pcData.quantity}`);
         }
 
         const plannedConsumptionInserts = Array.from(plannedConsumptionMap.values());
 
         if (plannedConsumptionInserts.length > 0) {
             console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей (после удаления дубликатов)...`);
-            const { error: plannedError } = await supabase
+            console.log('[Import] Sample planned consumption to insert:', plannedConsumptionInserts.slice(0, 5));
+            
+            const { error: plannedError, data: insertedData } = await supabase
                 .from('planned_consumption')
                 .upsert(plannedConsumptionInserts, { 
                     onConflict: 'item_id,planned_date',
                     ignoreDuplicates: false
-                });
+                })
+                .select();
 
             if (plannedError) {
                 console.error('Error upserting planned consumption:', plannedError);
@@ -407,7 +424,12 @@ export const inventoryService = {
                 console.warn('Плановые расходы не были импортированы, но материалы и остатки сохранены');
             } else {
                 console.log(`Плановые расходы успешно импортированы (${plannedConsumptionInserts.length} записей)`);
+                if (insertedData && insertedData.length > 0) {
+                    console.log('[Import] Sample inserted planned consumption:', insertedData.slice(0, 3));
+                }
             }
+        } else {
+            console.log('[Import] Нет плановых расходов для импорта (все записи были фактическими или пустыми)');
         }
 
         console.log('Импорт завершен успешно!');

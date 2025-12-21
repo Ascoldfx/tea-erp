@@ -37,19 +37,22 @@ export default function ProductionPlanning() {
     useEffect(() => {
         if (plannedConsumption.length > 0) {
             console.log('[ProductionPlanning] Total planned consumption entries:', plannedConsumption.length);
-            const decemberPlanned = plannedConsumption.filter(pc => {
+            console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, 'Selected year:', selectedYear);
+            console.log('[ProductionPlanning] Sample planned consumption entries:', plannedConsumption.slice(0, 5));
+            
+            // Log entries for selected month
+            const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+            const matchingEntries = plannedConsumption.filter(pc => {
                 try {
-                    const date = new Date(pc.plannedDate);
-                    return date.getFullYear() === 2025 && date.getMonth() === 11; // December is month 11 (0-indexed)
+                    const pcDateStr = String(pc.plannedDate || '').trim();
+                    return pcDateStr.startsWith(targetYearMonth);
                 } catch {
                     return false;
                 }
             });
-            if (decemberPlanned.length > 0) {
-                console.log('[ProductionPlanning] December 2025 planned consumption:', decemberPlanned);
-            }
+            console.log(`[ProductionPlanning] Entries for ${targetYearMonth}:`, matchingEntries.length, matchingEntries);
         }
-    }, [plannedConsumption]);
+    }, [plannedConsumption, selectedMonth, selectedYear]);
     
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

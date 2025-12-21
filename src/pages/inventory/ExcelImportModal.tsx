@@ -615,15 +615,53 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 const now = new Date();
                 const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 
-                // Parse month name columns (октябрь 2024, ноябрь 2024 и т.д.)
-                // These columns contain consumption data (actual for past months, planned for future months)
+                // Parse date columns (e.g., "01.12.2025", "01.01.2026") - these are consumption columns
+                const datePattern = /\d{2}\.\d{2}\.\d{4}/;
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
                     
-                    // Check if this is a month name column (октябрь 2024, ноябрь 2024 и т.д.)
+                    // Skip stock columns
+                    if (headerLower.includes('залишки') || headerLower.includes('зал') || headerLower.includes('остаток')) {
+                        continue;
+                    }
+                    
+                    // Check if this is a date column (DD.MM.YYYY format)
+                    const dateMatch = String(header || '').match(datePattern);
+                    if (dateMatch) {
+                        // Parse date from header (DD.MM.YYYY)
+                        const dateParts = dateMatch[0].split('.');
+                        if (dateParts.length === 3) {
+                            const day = parseInt(dateParts[0]);
+                            const month = parseInt(dateParts[1]);
+                            const year = parseInt(dateParts[2]);
+                            
+                            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                                const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
+                                const monthDateObj = new Date(year, month - 1, 1);
+                                
+                                // Determine if this is actual (past month) or planned (current/future month)
+                                const isActual = monthDateObj < currentMonth;
+                                
+                                const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                                const quantity = Number(value) || 0;
+                                
+                                if (quantity > 0) {
+                                    plannedConsumption.push({ 
+                                        date: monthDate, 
+                                        quantity,
+                                        isActual 
+                                    });
+                                    console.log(`[Excel Import] Item "${name}" (code: ${code}): Date column "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
+                                }
+                            }
+                        }
+                        continue; // Skip to next column
+                    }
+                    
+                    // Parse month name columns (октябрь 2024, ноябрь 2024 и т.д.)
                     // Skip if it's explicitly "план витрат" or "залишки"
-                    if (headerLower.includes('план') || headerLower.includes('залишки') || headerLower.includes('зал')) {
+                    if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
                         continue;
                     }
                     

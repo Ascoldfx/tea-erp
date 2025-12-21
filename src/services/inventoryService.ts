@@ -363,7 +363,10 @@ export const inventoryService = {
             notes?: string;
         }>();
 
-        // Collect all planned consumption data first (before processing)
+        // Collect actual consumption data for stock_movements (will be processed after items are saved)
+        const actualConsumptionData: Array<{ code: string; date: string; quantity: number }> = [];
+
+        // Collect all planned and actual consumption data
         const allPlannedConsumption: Array<{ code: string; date: string; quantity: number }> = [];
         for (const item of items) {
             const code = item.code?.trim();
@@ -371,15 +374,16 @@ export const inventoryService = {
             
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number; isActual?: boolean }) => {
-                    // Пропускаем фактический расход (isActual === true)
-                    // Сохраняем только плановый расход (isActual === false или undefined)
+                    if (pc.quantity <= 0) return;
+                    
+                    // Фактический расход (isActual === true) - сохраним в stock_movements после сохранения items
                     if (pc.isActual === true) {
-                        return; // Пропускаем фактический расход
+                        actualConsumptionData.push({ code, date: pc.date, quantity: pc.quantity });
+                        return;
                     }
                     
-                    if (pc.quantity > 0) {
-                        allPlannedConsumption.push({ code, date: pc.date, quantity: pc.quantity });
-                    }
+                    // Плановый расход (isActual === false или undefined) - сохраняем в planned_consumption
+                    allPlannedConsumption.push({ code, date: pc.date, quantity: pc.quantity });
                 });
             }
         }
@@ -447,6 +451,102 @@ export const inventoryService = {
             }
         } else {
             console.log('[Import] Нет плановых расходов для импорта (все записи были фактическими или пустыми)');
+        }
+
+        // 7. Import actual consumption as stock_movements (type='out')
+        // Process actual consumption AFTER items are saved (so we have correct item IDs)
+        if (actualConsumptionData.length > 0) {
+            console.log(`Импортируем фактический расход для ${actualConsumptionData.length} записей...`);
+            
+            const actualConsumptionMovements: Array<{
+                item_id: string;
+                quantity: number;
+                date: string;
+                type: 'out';
+                comment?: string;
+            }> = [];
+            
+            // Process actual consumption data using refreshed skuToIdMap
+            for (const acData of actualConsumptionData) {
+                const code = acData.code;
+                const itemId = skuToIdMap.get(code);
+                
+                if (!itemId) {
+                    console.warn(`[Import] Skipping actual consumption for code ${code}: item not found in database after save`);
+                    continue;
+                }
+                
+                // Normalize date to first day of month
+                let normalizedDate = acData.date;
+                if (normalizedDate && !normalizedDate.endsWith('-01')) {
+                    try {
+                        const date = new Date(normalizedDate);
+                        if (!isNaN(date.getTime())) {
+                            normalizedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                        }
+                    } catch (e) {
+                        console.warn(`[Import] Invalid date format for actual consumption: ${normalizedDate}`);
+                        continue;
+                    }
+                }
+                
+                // Use 15th day of the month for the movement date
+                const dateObj = new Date(normalizedDate);
+                const movementDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-15`;
+                
+                actualConsumptionMovements.push({
+                    item_id: itemId,
+                    quantity: acData.quantity,
+                    date: movementDate,
+                    type: 'out',
+                    comment: `Импортировано из Excel (фактический расход за ${normalizedDate.substring(0, 7)})`
+                });
+                console.log(`[Import] Saving actual consumption: itemId=${itemId} (code=${code}), date=${movementDate}, quantity=${acData.quantity}`);
+            }
+            
+            // Group by item_id and date to avoid duplicates (sum quantities if same item+date)
+            const movementsMap = new Map<string, {
+                item_id: string;
+                quantity: number;
+                date: string;
+                type: 'out';
+                comment?: string;
+            }>();
+            
+            actualConsumptionMovements.forEach(movement => {
+                const key = `${movement.item_id}_${movement.date}`;
+                const existing = movementsMap.get(key);
+                if (existing) {
+                    existing.quantity += movement.quantity;
+                } else {
+                    movementsMap.set(key, { ...movement });
+                }
+            });
+            
+            const uniqueMovements = Array.from(movementsMap.values());
+            console.log(`[Import] Unique actual consumption movements: ${uniqueMovements.length} (from ${actualConsumptionMovements.length} total)`);
+            
+            // Insert stock movements
+            const { error: movementsError } = await supabase
+                .from('stock_movements')
+                .insert(uniqueMovements.map(m => ({
+                    item_id: m.item_id,
+                    quantity: m.quantity,
+                    type: m.type,
+                    date: m.date,
+                    comment: m.comment,
+                    source_warehouse_id: 'wh-kotsyubinske' // Default warehouse for imported consumption
+                })));
+            
+            if (movementsError) {
+                console.error('Error inserting actual consumption movements:', movementsError);
+                // Don't throw - actual consumption is optional
+                console.warn('Фактический расход не был импортирован, но материалы и плановый расход сохранены');
+            } else {
+                console.log(`Фактический расход успешно импортирован (${uniqueMovements.length} записей)`);
+            }
+        } else {
+            console.log('[Import] Нет фактического расхода для импорта');
         }
 
         console.log('Импорт завершен успешно!');

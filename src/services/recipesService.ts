@@ -118,11 +118,17 @@ export const recipesService = {
 
         try {
             // Сохраняем техкарту
+            // ВАЖНО: Если outputItemId начинается с "temp-", используем NULL
+            // так как внешний ключ не позволит сохранить несуществующий ID
+            const outputItemId = recipe.outputItemId && !recipe.outputItemId.startsWith('temp-') 
+                ? recipe.outputItemId 
+                : null;
+            
             const recipeData: RecipeDB = {
                 id: recipe.id,
                 name: recipe.name,
                 description: recipe.description || undefined,
-                output_item_id: recipe.outputItemId,
+                output_item_id: outputItemId,
                 output_quantity: recipe.outputQuantity,
                 actual_quantity: recipe.actualQuantity || undefined,
                 materials_handover_date: recipe.materialsHandoverDate || undefined,

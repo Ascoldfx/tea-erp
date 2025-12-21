@@ -197,8 +197,10 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     );
                 }
 
-                // Если не найдено, создаем временный ID
-                const outputItemId = finishedGood?.id || `temp-${techCard.gpSku}`;
+                // Если не найдено, используем NULL или временный ID
+                // ВАЖНО: Если используем temp-*, то при сохранении в БД нужно использовать NULL
+                // так как внешний ключ не позволит сохранить несуществующий ID
+                const outputItemId = finishedGood?.id || null; // Используем null вместо temp-* для совместимости с БД
 
                 const ingredients: RecipeIngredient[] = [];
 

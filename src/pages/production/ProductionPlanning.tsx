@@ -100,6 +100,18 @@ export default function ProductionPlanning() {
         refresh();
     }, [refreshKey]);
     
+    // Listen for storage events to refresh when data is imported from another tab
+    useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'inventory_updated' || e.key === 'planned_consumption_updated') {
+                console.log('[ProductionPlanning] Storage event detected, refreshing data...');
+                refresh();
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [refresh]);
+    
     // Fetch open orders (not delivered, not cancelled)
     useEffect(() => {
         const fetchOpenOrders = async () => {

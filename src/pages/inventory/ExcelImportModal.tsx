@@ -828,6 +828,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             
             console.log('Импорт завершен, обновляем список...');
             await refresh(); // Reload inventory list
+            
+            // Notify other tabs/components about the update
+            localStorage.setItem('inventory_updated', Date.now().toString());
+            localStorage.setItem('planned_consumption_updated', Date.now().toString());
+            
             setStep('success');
         } catch (err: any) {
             console.error('Ошибка импорта:', err);

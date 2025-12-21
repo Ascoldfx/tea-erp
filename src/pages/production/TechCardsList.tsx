@@ -172,7 +172,7 @@ export default function TechCardsList() {
                 console.log('[TechCardsList] Тех.карты сохранены в localStorage:', allSaved.length);
                 
                 // Проверяем, что все ингредиенты сохранились
-                allSaved.forEach((recipe: Recipe, idx: number) => {
+                allSaved.forEach((recipe: Recipe) => {
                     if (recipe.ingredients && recipe.ingredients.length > 0) {
                         console.log(`[TechCardsList] Сохранена тех.карта "${recipe.name}": ${recipe.ingredients.length} ингредиентов`);
                     } else {

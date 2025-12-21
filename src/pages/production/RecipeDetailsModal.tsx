@@ -6,6 +6,17 @@ import { FileText, Edit, Package, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 
+// Функция для получения нормы текущего месяца
+const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: number }>): number | null => {
+    if (!monthlyNorms || monthlyNorms.length === 0) return null;
+    
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    
+    const currentNorm = monthlyNorms.find(norm => norm.date === currentMonth);
+    return currentNorm ? currentNorm.quantity : null;
+};
+
 interface RecipeDetailsModalProps {
     recipe: Recipe | null;
     isOpen: boolean;

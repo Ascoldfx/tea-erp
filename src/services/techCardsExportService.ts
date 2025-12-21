@@ -402,11 +402,19 @@ export function parseTechCardsFromExcel(
                         const rowValue = (row as any[])[colIdx];
                         const emptyKey = `__EMPTY_${colIdx}`;
                         const value = rowValue || (row as any)[emptyKey];
-                        const quantity = parseFloat(String(value || '0').replace(',', '.')) || 0;
                         
-                        if (quantity > 0) {
-                            monthlyNorms.push({ date: monthDate, quantity });
+                        // Парсим значение, даже если оно 0 (но не если ячейка пустая)
+                        let quantity = 0;
+                        if (value !== null && value !== undefined && value !== '') {
+                            const parsed = parseFloat(String(value).replace(',', '.').replace(/\s/g, ''));
+                            if (!isNaN(parsed)) {
+                                quantity = parsed;
+                            }
                         }
+                        
+                        // Сохраняем все нормы, включая 0 (это важно для отображения)
+                        monthlyNorms.push({ date: monthDate, quantity });
+                        console.log(`[parseTechCardsFromExcel] Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName}`);
                     }
                 }
             }

@@ -153,23 +153,16 @@ export default function TechCardsList() {
                 console.warn(`[TechCardsList] ⚠️ Не все тех.карты сохранены! Ожидалось: ${importedRecipes.length}, сохранено: ${savedCount}`);
             }
             
-            // ВАЖНО: Всегда перезагружаем список из базы данных после сохранения
-            // Это гарантирует, что мы видим актуальные данные
+            // ВАЖНО: Перезагружаем список из базы данных после сохранения
+            // Это гарантирует, что мы видим актуальные данные, сохраненные в БД
             console.log('[TechCardsList] Перезагружаем список тех.карт из базы данных...');
-            const loadedRecipes = await recipesService.getRecipes();
-            console.log(`[TechCardsList] ✅ Загружено ${loadedRecipes.length} тех.карт из базы данных`);
+            await loadRecipes();
             
-            if (loadedRecipes.length === 0) {
+            // Проверяем результат загрузки
+            const currentRecipes = await recipesService.getRecipes();
+            if (currentRecipes.length === 0 && savedCount > 0) {
                 console.error('[TechCardsList] ❌ КРИТИЧЕСКАЯ ОШИБКА: После сохранения база данных пуста!');
-                // Оставляем импортированные техкарты в локальном состоянии
-                setRecipes(prev => {
-                    const combined = [...prev, ...importedRecipes];
-                    // Убираем дубликаты по ID
-                    const unique = Array.from(new Map(combined.map(r => [r.id, r])).values());
-                    return unique;
-                });
-            } else {
-                setRecipes(loadedRecipes);
+                alert('Ошибка: тех.карты не сохранились в базу данных. Проверьте консоль для деталей.');
             }
         } catch (error) {
             console.error('[TechCardsList] ❌ Ошибка при сохранении тех.карт в базу данных:', error);
@@ -193,6 +186,15 @@ export default function TechCardsList() {
                     <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 ящик)</p>
                 </div>
                 <div className="flex gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={loadRecipes}
+                        className="border-slate-600 hover:bg-slate-800"
+                        title="Обновить список техкарт из базы данных"
+                    >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Обновить
+                    </Button>
                     <Button 
                         variant="outline" 
                         onClick={handleExport}

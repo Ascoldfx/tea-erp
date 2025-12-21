@@ -29,6 +29,30 @@ export default function ProductionPlanning() {
     const { t, language } = useLanguage();
     const { items, warehouses, stock, plannedConsumption, loading, refresh } = useInventory();
     
+    // Добавляем логирование для отладки
+    useEffect(() => {
+        console.log('[ProductionPlanning] === ОТЛАДКА ПЛАНИРОВАНИЯ ===');
+        console.log('[ProductionPlanning] Items:', items.length);
+        console.log('[ProductionPlanning] Planned consumption entries:', plannedConsumption.length);
+        console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, selectedYear);
+        
+        if (plannedConsumption.length > 0) {
+            const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+            const matching = plannedConsumption.filter(pc => {
+                const dateStr = String(pc.plannedDate || '').trim();
+                return dateStr.startsWith(targetYearMonth);
+            });
+            console.log(`[ProductionPlanning] Matching planned consumption for ${targetYearMonth}:`, matching.length);
+            if (matching.length > 0) {
+                console.log('[ProductionPlanning] Sample matching entries:', matching.slice(0, 3).map(pc => ({
+                    itemId: pc.itemId,
+                    date: pc.plannedDate,
+                    quantity: pc.quantity
+                })));
+            }
+        }
+    }, [items.length, plannedConsumption.length, selectedMonth, selectedYear]);
+    
     // State for material details modal
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);

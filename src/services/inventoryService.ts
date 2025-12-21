@@ -448,6 +448,13 @@ export const inventoryService = {
                 if (insertedData && insertedData.length > 0) {
                     console.log('[Import] Sample inserted planned consumption:', insertedData.slice(0, 3));
                 }
+                
+                // Уведомляем о обновлении planned consumption через localStorage
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('planned_consumption_updated', Date.now().toString());
+                    // Также отправляем событие для обновления в текущей вкладке
+                    window.dispatchEvent(new Event('storage'));
+                }
             }
         } else {
             console.log('[Import] Нет плановых расходов для импорта (все записи были фактическими или пустыми)');

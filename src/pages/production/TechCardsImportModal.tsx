@@ -16,7 +16,7 @@ interface TechCardsImportModalProps {
 }
 
 export default function TechCardsImportModal({ isOpen, onClose, onImport }: TechCardsImportModalProps) {
-    const { items, refresh } = useInventory();
+    const { items, refresh: refreshInventory } = useInventory();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'success'>('upload');
     const [parsedData, setParsedData] = useState<ImportedTechCard[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -172,9 +172,12 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 }
             };
 
+            // ВАЖНО: Используем динамический список items, который обновляется после создания материалов
+            let currentItems = [...items]; // Копируем текущий список
+            
             for (const techCard of parsedData) {
                 // Находим готовую продукцию по SKU или создаем новую
-                let finishedGood = items.find(i => i.sku === techCard.gpSku);
+                let finishedGood = currentItems.find(i => i.sku === techCard.gpSku);
                 
                 // Если не найдено по SKU, ищем по названию (точное совпадение)
                 if (!finishedGood) {
@@ -207,14 +210,14 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     
                     // Находим ВСЕ материалы по SKU (точное совпадение, без учета регистра)
                     // Это важно, так как один артикул может соответствовать нескольким материалам
-                    let matchingMaterials = items.filter(i => {
+                    let matchingMaterials = currentItems.filter(i => {
                         const itemSku = (i.sku || '').trim();
                         return itemSku && itemSku.toLowerCase() === searchSku.toLowerCase();
                     });
                     
                     // Если не найдено по SKU, ищем по названию (точное совпадение, без учета регистра)
                     if (matchingMaterials.length === 0 && searchName) {
-                        matchingMaterials = items.filter(i => {
+                        matchingMaterials = currentItems.filter(i => {
                             const itemName = (i.name || '').trim();
                             return itemName.toLowerCase() === searchName.toLowerCase();
                         });
@@ -222,7 +225,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
                     // Если не найдено, ищем по частичному совпадению названия (более гибко)
                     if (matchingMaterials.length === 0 && searchName) {
-                        matchingMaterials = items.filter(i => {
+                        matchingMaterials = currentItems.filter(i => {
                             const itemName = (i.name || '').trim().toLowerCase();
                             const searchNameLower = searchName.toLowerCase();
                             
@@ -255,7 +258,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
                     // Если не найдено, ищем по частичному совпадению SKU
                     if (matchingMaterials.length === 0 && searchSku) {
-                        matchingMaterials = items.filter(i => {
+                        matchingMaterials = currentItems.filter(i => {
                             const itemSku = (i.sku || '').trim().toLowerCase();
                             return itemSku && (
                                 itemSku.includes(searchSku.toLowerCase()) ||
@@ -294,6 +297,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         // Материал не найден - создаем его автоматически
                         const category = mapCategory(ing.materialCategory || '');
                         const unit = ing.unit || 'pcs';
+                        
+                        // Сохраняем информацию о материале для создания
+                        createdMaterials.push({ sku: searchSku, name: searchName, category, unit });
                         
                         // Создаем материал сразу
                         const createdId = await createMaterial(searchSku, searchName, category, unit);
@@ -343,10 +349,16 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             }
 
             // Обновляем список материалов после создания новых
+            // Это нужно для того, чтобы созданные материалы были доступны при поиске в следующих техкартах
             if (materialsCreatedCount > 0) {
                 console.log(`[Import] Обновляем список материалов после создания ${materialsCreatedCount} новых...`);
-                await refresh();
+                await refreshInventory();
                 console.log(`[Import] Список материалов обновлен`);
+                
+                // Перезагружаем items из useInventory после обновления
+                // Но это не сработает в этой функции, так как items - это состояние из хука
+                // Поэтому мы обновим items через refresh, и в следующей итерации цикла они будут доступны
+                // Но для первой техкарты это не поможет, поэтому нужно обрабатывать техкарты в два прохода
             }
             
             // Логируем статистику

@@ -17,7 +17,7 @@ export interface RecipeDB {
 export interface RecipeIngredientDB {
     id?: string;
     recipe_id: string;
-    item_id: string;
+    item_id: string | null; // Может быть NULL для временных материалов
     quantity: number;
     tolerance?: number;
     is_duplicate_sku?: boolean;
@@ -121,12 +121,12 @@ export const recipesService = {
             const recipeData: RecipeDB = {
                 id: recipe.id,
                 name: recipe.name,
-                description: recipe.description || null,
+                description: recipe.description || undefined,
                 output_item_id: recipe.outputItemId,
                 output_quantity: recipe.outputQuantity,
-                actual_quantity: recipe.actualQuantity || null,
-                materials_handover_date: recipe.materialsHandoverDate || null,
-                materials_accepted_date: recipe.materialsAcceptedDate || null
+                actual_quantity: recipe.actualQuantity || undefined,
+                materials_handover_date: recipe.materialsHandoverDate || undefined,
+                materials_accepted_date: recipe.materialsAcceptedDate || undefined
             };
 
             const { error: recipeError } = await supabase
@@ -171,13 +171,13 @@ export const recipesService = {
                         
                         return {
                             recipe_id: recipe.id,
-                            item_id: itemId || undefined, // NULL для временных материалов
+                            item_id: itemId, // NULL для временных материалов, string для существующих
                             quantity: ing.quantity,
-                            tolerance: ing.tolerance || null,
+                            tolerance: ing.tolerance || undefined,
                             is_duplicate_sku: ing.isDuplicateSku || false,
                             is_auto_created: ing.isAutoCreated || false,
-                            temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : null),
-                            temp_material_name: ing.tempMaterial?.name || null
+                            temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined),
+                            temp_material_name: ing.tempMaterial?.name || undefined
                         };
                     });
 

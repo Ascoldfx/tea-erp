@@ -175,6 +175,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             // ВАЖНО: Используем динамический список items, который обновляется после создания материалов
             let currentItems = [...items]; // Копируем текущий список
             
+            // Список созданных материалов для последующего обновления items (если нужно)
+            // const createdMaterials: Array<{ sku: string; name: string; category: string; unit: string }> = [];
+            
             for (const techCard of parsedData) {
                 // Находим готовую продукцию по SKU или создаем новую
                 let finishedGood = currentItems.find(i => i.sku === techCard.gpSku);
@@ -314,9 +317,6 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         const category = mapCategory(ing.materialCategory || '');
                         const unit = ing.unit || 'pcs';
                         
-                        // Сохраняем информацию о материале для создания
-                        createdMaterials.push({ sku: searchSku, name: searchName, category, unit });
-                        
                         // Создаем материал сразу
                         const createdId = await createMaterial(searchSku, searchName, category, unit);
                         
@@ -373,7 +373,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 ));
                 
                 if (ingredients.length !== techCard.ingredients.length) {
-                    const missing = techCard.ingredients.filter((ing, idx) => {
+                    const missing = techCard.ingredients.filter((ing) => {
                         // Проверяем, был ли этот ингредиент добавлен
                         const wasAdded = ingredients.some(added => {
                             const addedSku = added.tempMaterial?.sku || currentItems.find(i => i.id === added.itemId)?.sku;
@@ -389,7 +389,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     console.warn(`[Import] Пропущено ингредиентов: ${missing.length}`);
                     console.warn(`[Import] Пропущенные ингредиенты:`, missing.map(ing => 
                         `"${ing.materialSku || 'NO SKU'}" - "${ing.materialName || 'NO NAME'}" (норма: ${ing.norm})`
-                    ));
+                    ).join(', '));
                     
                     // ВАЖНО: Добавляем пропущенные ингредиенты с временным ID
                     for (const missingIng of missing) {

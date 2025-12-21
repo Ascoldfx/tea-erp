@@ -29,6 +29,19 @@ export default function ProductionPlanning() {
     const { t, language } = useLanguage();
     const { items, warehouses, stock, plannedConsumption, loading, refresh } = useInventory();
     
+    // State for material details modal
+    const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    
+    // State for actual consumption (stock_movements type='out' for selected month)
+    const [actualConsumptions, setActualConsumptions] = useState<Array<{
+        item_id: string;
+        quantity: number;
+    }>>([]);
+    
     // Добавляем логирование для отладки
     useEffect(() => {
         console.log('[ProductionPlanning] === ОТЛАДКА ПЛАНИРОВАНИЯ ===');
@@ -69,13 +82,6 @@ export default function ProductionPlanning() {
             })));
         }
     }, [items.length, plannedConsumption.length, actualConsumptions.length, selectedMonth, selectedYear]);
-    
-    // State for material details modal
-    const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
-    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-    
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     
     // Debug: log planned consumption data
     useEffect(() => {
@@ -126,12 +132,6 @@ export default function ProductionPlanning() {
     
     // State for actual arrival (delivered orders for selected month)
     const [actualArrivals, setActualArrivals] = useState<Array<{
-        item_id: string;
-        quantity: number;
-    }>>([]);
-    
-    // State for actual consumption (stock_movements type='out' for selected month)
-    const [actualConsumptions, setActualConsumptions] = useState<Array<{
         item_id: string;
         quantity: number;
     }>>([]);

@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { MOCK_RECIPES } from '../../data/mockProduction';
-import { MOCK_ITEMS } from '../../data/mockInventory';
 import { Trash2, Plus, Save, ArrowLeft } from 'lucide-react';
+import { recipesService } from '../../services/recipesService';
+import { useInventory } from '../../hooks/useInventory';
 import type { Recipe, RecipeIngredient } from '../../types/production';
 
 export default function RecipeEditor() {
@@ -23,14 +23,28 @@ export default function RecipeEditor() {
         ingredients: []
     });
 
+    const { items } = useInventory();
+
     useEffect(() => {
-        if (!isNew && id) {
-            const existing = MOCK_RECIPES.find(r => r.id === id);
-            if (existing) {
-                setRecipe({ ...existing }); // Clone to avoid mutating mock directly immediately
+        const loadRecipe = async () => {
+            if (!isNew && id) {
+                try {
+                    const recipes = await recipesService.getRecipes();
+                    const existing = recipes.find(r => r.id === id);
+                    if (existing) {
+                        setRecipe({ ...existing });
+                    } else {
+                        console.warn(`[RecipeEditor] Recipe ${id} not found`);
+                        navigate('/production/recipes');
+                    }
+                } catch (error) {
+                    console.error('[RecipeEditor] Error loading recipe:', error);
+                    navigate('/production/recipes');
+                }
             }
-        }
-    }, [id, isNew]);
+        };
+        loadRecipe();
+    }, [id, isNew, navigate]);
 
     const handleIngredientChange = (index: number, field: keyof RecipeIngredient, value: string | number) => {
         const newIngredients = [...recipe.ingredients];
@@ -50,11 +64,33 @@ export default function RecipeEditor() {
         setRecipe({ ...recipe, ingredients: newIngredients });
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Saving recipe:', recipe);
-        alert('Технологическая карта сохранена (Эмуляция)');
-        navigate('/production/recipes');
+        
+        if (!recipe.name.trim()) {
+            alert('Пожалуйста, укажите название техкарты');
+            return;
+        }
+
+        if (recipe.ingredients.length === 0) {
+            alert('Пожалуйста, добавьте хотя бы один ингредиент');
+            return;
+        }
+
+        try {
+            console.log('[RecipeEditor] Saving recipe:', recipe);
+            const success = await recipesService.saveRecipe(recipe);
+            
+            if (success) {
+                alert('Технологическая карта успешно сохранена!');
+                navigate('/production/recipes');
+            } else {
+                alert('Ошибка при сохранении техкарты. Проверьте консоль для деталей.');
+            }
+        } catch (error) {
+            console.error('[RecipeEditor] Error saving recipe:', error);
+            alert('Ошибка при сохранении техкарты');
+        }
     };
 
     return (

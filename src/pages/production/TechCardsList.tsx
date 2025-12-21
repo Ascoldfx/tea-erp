@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Search, Plus, FileText, Download, Upload } from 'lucide-react';
+import { Search, Plus, FileText, Download, Upload, Hash } from 'lucide-react';
 import { MOCK_RECIPES } from '../../data/mockProduction';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 import { exportTechCardsToExcel } from '../../services/techCardsExportService';
 import TechCardsImportModal from './TechCardsImportModal';
+import RecipeDetailsModal from './RecipeDetailsModal';
 import type { Recipe } from '../../types/production';
 
 export default function TechCardsList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const navigate = useNavigate();
     const { items, plannedConsumption } = useInventory();
 
@@ -42,6 +45,7 @@ export default function TechCardsList() {
         const unit = items.find(i => i.id === id)?.unit || '';
         return unit === 'pcs' ? 'шт' : unit;
     };
+    const getItemSku = (id: string) => items.find(i => i.id === id)?.sku || '';
 
     // Парсинг количества пачек в ящике из названия (формат: название (число))
     const parsePacksPerBox = (name: string): number | null => {
@@ -61,7 +65,8 @@ export default function TechCardsList() {
     };
 
     const handleCardDoubleClick = (recipe: Recipe) => {
-        navigate(`/production/recipes/${recipe.id}`);
+        setSelectedRecipe(recipe);
+        setIsDetailsModalOpen(true);
     };
 
     const handleExport = async () => {
@@ -142,6 +147,8 @@ export default function TechCardsList() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {filteredRecipes.map(recipe => {
                         const { displayName, packsPerBox } = formatItemName(recipe.name);
+                        const finishedGood = items.find(i => i.id === recipe.outputItemId);
+                        const sku = finishedGood?.sku || '';
                         
                         return (
                             <Card 
@@ -150,7 +157,7 @@ export default function TechCardsList() {
                                 onDoubleClick={() => handleCardDoubleClick(recipe)}
                             >
                                 <CardHeader className="pb-3">
-                                    <CardTitle className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                    <CardTitle className="text-lg font-bold text-slate-100 flex items-center gap-2 flex-wrap">
                                         <FileText className="w-5 h-5 text-emerald-500" />
                                         <span>{displayName}</span>
                                         {packsPerBox && (
@@ -159,9 +166,17 @@ export default function TechCardsList() {
                                             </span>
                                         )}
                                     </CardTitle>
+                                    {sku && (
+                                        <div className="flex items-center gap-2 mt-2 text-sm text-slate-400">
+                                            <Hash className="w-4 h-4" />
+                                            <span className="font-mono">{sku}</span>
+                                        </div>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
+                                    {recipe.description && (
+                                        <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
+                                    )}
 
                                     <div className="bg-slate-950/50 rounded-lg p-3">
                                         <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">
@@ -190,6 +205,15 @@ export default function TechCardsList() {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onImport={handleImport}
+            />
+
+            <RecipeDetailsModal
+                recipe={selectedRecipe}
+                isOpen={isDetailsModalOpen}
+                onClose={() => {
+                    setIsDetailsModalOpen(false);
+                    setSelectedRecipe(null);
+                }}
             />
         </div>
     );

@@ -61,7 +61,7 @@ export default function TechCardsList() {
             let sku = finishedGood?.sku || '';
             
             // Если не нашли по ID, извлекаем SKU из description
-            // Формат: "Импортировано из Excel. Артикул: 282157"
+            // Формат: "Артикул: 282157"
             if (!sku && recipe.description) {
                 const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
                 if (skuMatch) {

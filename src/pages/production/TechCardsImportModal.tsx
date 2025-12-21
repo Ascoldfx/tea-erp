@@ -189,7 +189,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                     recipes.push({
                         id: `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         name: techCard.gpName,
-                        description: `Импортировано из Excel. Артикул: ${techCard.gpSku}`,
+                        description: `Артикул: ${techCard.gpSku}`,
                         outputItemId,
                         outputQuantity: 1,
                         ingredients

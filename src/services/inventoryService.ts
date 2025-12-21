@@ -266,7 +266,9 @@ export const inventoryService = {
             }
 
             // Остатки на складах подрядчиков из stockWarehouses
+            // Поддержка нового формата (stockWarehouses) и старого (stockMai, stockFito) для обратной совместимости
             if (item.stockWarehouses && typeof item.stockWarehouses === 'object') {
+                // Новый формат: stockWarehouses - объект с ключами warehouse_id
                 for (const [warehouseId, quantity] of Object.entries(item.stockWarehouses)) {
                     const qty = Number(quantity) || 0;
                     if (qty > 0) {
@@ -277,6 +279,27 @@ export const inventoryService = {
                             quantity: qty
                         });
                     }
+                }
+            } else {
+                // Старый формат: stockMai и stockFito (для обратной совместимости)
+                const maiQty = Number((item as any).stockMai) || 0;
+                if (maiQty > 0) {
+                    const maiKey = `${itemId}_wh-ts`;
+                    stockMap.set(maiKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-ts',
+                        quantity: maiQty
+                    });
+                }
+                
+                const fitoQty = Number((item as any).stockFito) || 0;
+                if (fitoQty > 0) {
+                    const fitoKey = `${itemId}_wh-fito`;
+                    stockMap.set(fitoKey, {
+                        item_id: itemId,
+                        warehouse_id: 'wh-fito',
+                        quantity: fitoQty
+                    });
                 }
             }
         }

@@ -235,7 +235,8 @@ export interface ImportedTechCard {
         materialName: string;
         materialCategory: string;
         unit: string;
-        norm: number;
+        norm: number; // Базовая норма (Еталон)
+        monthlyNorms?: Array<{ date: string; quantity: number }>; // Нормы по месяцам
     }>;
 }
 
@@ -379,6 +380,36 @@ export function parseTechCardsFromExcel(
         const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
         const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
 
+        // Парсим нормы по месяцам из колонок с датами (формат DD.MM.YYYY)
+        const monthlyNorms: Array<{ date: string; quantity: number }> = [];
+        const datePattern = /\d{2}\.\d{2}\.\d{4}/;
+        
+        for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
+            const header = String(headerRow[colIdx] || '').trim();
+            const dateMatch = header.match(datePattern);
+            
+            if (dateMatch) {
+                // Парсим дату из заголовка (DD.MM.YYYY)
+                const dateParts = dateMatch[0].split('.');
+                if (dateParts.length === 3) {
+                    const day = parseInt(dateParts[0]);
+                    const month = parseInt(dateParts[1]);
+                    const year = parseInt(dateParts[2]);
+                    
+                    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                        // Нормализуем дату к первому числу месяца (YYYY-MM-01)
+                        const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
+                        const value = row[colIdx] || row[`__EMPTY_${colIdx}`];
+                        const quantity = parseFloat(String(value || '0').replace(',', '.')) || 0;
+                        
+                        if (quantity > 0) {
+                            monthlyNorms.push({ date: monthDate, quantity });
+                        }
+                    }
+                }
+            }
+        }
+
         // Пропускаем только полностью пустые строки (нет ни ГП, ни материала)
         if (!gpSku && !gpName && !materialSku && !materialName) {
             continue;
@@ -425,7 +456,8 @@ export function parseTechCardsFromExcel(
                     materialName: materialName || materialSku || 'Без названия',
                     materialCategory,
                     unit: parseUnit(unit),
-                    norm: norm || 0 // Разрешаем norm === 0
+                    norm: norm || 0, // Разрешаем norm === 0
+                    monthlyNorms: monthlyNorms.length > 0 ? monthlyNorms : undefined
                 });
             } else {
                 console.log(`[parseTechCardsFromExcel] Пропущен дубликат материала: ${materialSku || materialName}`);

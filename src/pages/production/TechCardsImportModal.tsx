@@ -302,7 +302,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 itemId: material.id,
                                 quantity: ing.norm,
                                 // Добавляем флаг, если это один из нескольких материалов с одинаковым артикулом
-                                isDuplicateSku: matchingMaterials.length > 1
+                                isDuplicateSku: matchingMaterials.length > 1,
+                                // Сохраняем нормы по месяцам, если они есть
+                                monthlyNorms: ing.monthlyNorms
                             });
                             foundMaterials.push({ 
                                 sku: ing.materialSku, 
@@ -326,7 +328,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                             ingredients.push({
                                 itemId: createdId,
                                 quantity: ing.norm,
-                                isAutoCreated: true
+                                isAutoCreated: true,
+                                // Сохраняем нормы по месяцам, если они есть
+                                monthlyNorms: ing.monthlyNorms
                             });
                             foundMaterials.push({ 
                                 sku: ing.materialSku, 
@@ -355,7 +359,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 itemId: tempId,
                                 quantity: ing.norm,
                                 isAutoCreated: true,
-                                tempMaterial: { sku: searchSku, name: searchName }
+                                tempMaterial: { sku: searchSku, name: searchName },
+                                // Сохраняем нормы по месяцам, если они есть
+                                monthlyNorms: ing.monthlyNorms
                             });
                             missingMaterials.push({ sku: ing.materialSku, name: ing.materialName });
                             console.warn(`[Import] Материал создан с временным ID: "${searchSku}" - "${searchName}"`);

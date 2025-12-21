@@ -24,6 +24,7 @@ export interface RecipeIngredientDB {
     is_auto_created?: boolean;
     temp_material_sku?: string;
     temp_material_name?: string;
+    monthly_norms?: Array<{ date: string; quantity: number }> | null; // Нормы по месяцам
 }
 
 export const recipesService = {
@@ -73,7 +74,7 @@ export const recipesService = {
                     // Если item_id NULL, используем временный ID из temp_material_sku
                     const itemId = ing.item_id || (ing.temp_material_sku ? `temp-${ing.temp_material_sku}` : `temp-unknown-${Date.now()}`);
                     
-                    ingredientsMap.get(ing.recipe_id)!.push({
+                    const ingredient: RecipeIngredient = {
                         itemId: itemId,
                         quantity: ing.quantity,
                         tolerance: ing.tolerance,
@@ -82,7 +83,14 @@ export const recipesService = {
                         tempMaterial: ing.temp_material_sku && ing.temp_material_name
                             ? { sku: ing.temp_material_sku, name: ing.temp_material_name }
                             : (ing.item_id ? undefined : { sku: ing.temp_material_sku || 'UNKNOWN', name: ing.temp_material_name || 'Неизвестный материал' })
-                    });
+                    };
+                    
+                    // Загружаем нормы по месяцам, если они есть
+                    if (ing.monthly_norms && Array.isArray(ing.monthly_norms)) {
+                        ingredient.monthlyNorms = ing.monthly_norms;
+                    }
+                    
+                    ingredientsMap.get(ing.recipe_id)!.push(ingredient);
                 });
             }
 
@@ -196,7 +204,8 @@ export const recipesService = {
                             is_duplicate_sku: ing.isDuplicateSku || false,
                             is_auto_created: ing.isAutoCreated || false,
                             temp_material_sku: ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined),
-                            temp_material_name: ing.tempMaterial?.name || undefined
+                            temp_material_name: ing.tempMaterial?.name || undefined,
+                            monthly_norms: ing.monthlyNorms && ing.monthlyNorms.length > 0 ? ing.monthlyNorms : undefined
                         });
                     });
 

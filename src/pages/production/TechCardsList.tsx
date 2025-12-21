@@ -24,39 +24,20 @@ export default function TechCardsList() {
 
     // Инициализируем тех.карты из localStorage
     // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
+    // Загружаем техкарты из базы данных
     useEffect(() => {
-        // Очищаем старые техкарты при первой загрузке (одноразово)
-        // Очищаем localStorage с техкартами при загрузке (для полной очистки)
-        localStorage.removeItem('techCards');
-        localStorage.removeItem('techCardsCleared');
-        console.log('[TechCards] localStorage очищен');
-        
-        const savedRecipes = localStorage.getItem('techCards');
-        if (savedRecipes) {
+        const loadRecipes = async () => {
             try {
-                const parsed = JSON.parse(savedRecipes) as Recipe[];
-                console.log('[TechCardsList] === ЗАГРУЗКА ТЕХ.КАРТ ИЗ LOCALSTORAGE ===');
-                console.log(`[TechCardsList] Загружено тех.карт: ${parsed.length}`);
-                parsed.forEach((recipe, idx) => {
-                    console.log(`[TechCardsList] Тех.карта ${idx + 1}: "${recipe.name}"`);
-                    console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients?.length || 0}`);
-                    if (recipe.ingredients && recipe.ingredients.length > 0) {
-                        console.log(`[TechCardsList]   - Ингредиенты:`, recipe.ingredients.map(ing => {
-                            const item = items.find(i => i.id === ing.itemId);
-                            return `${item?.sku || ing.itemId} - ${item?.name || ing.itemId} (${ing.quantity})`;
-                        }));
-                    } else {
-                        console.warn(`[TechCardsList] ⚠️ Тех.карта "${recipe.name}" загружена БЕЗ ингредиентов!`);
-                    }
-                });
-                setRecipes(parsed);
-            } catch (e) {
-                console.error('[TechCardsList] Ошибка при загрузке тех.карт из localStorage:', e);
+                const loadedRecipes = await recipesService.getRecipes();
+                console.log(`[TechCardsList] Загружено ${loadedRecipes.length} тех.карт из базы данных`);
+                setRecipes(loadedRecipes);
+            } catch (error) {
+                console.error('[TechCardsList] Ошибка при загрузке тех.карт:', error);
                 setRecipes([]);
             }
-        } else {
-            setRecipes([]);
-        }
+        };
+
+        loadRecipes();
     }, []);
 
     // Проверка, является ли техкарта приоритетной (топ-25)

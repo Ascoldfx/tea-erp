@@ -134,7 +134,6 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
                                         {recipe.ingredients.map((ing, idx) => {
-                                            const material = items.find(i => i.id === ing.itemId);
                                             const materialSku = getItemSku(ing.itemId);
                                             return (
                                                 <tr key={idx} className="hover:bg-slate-800/50">

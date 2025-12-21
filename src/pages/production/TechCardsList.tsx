@@ -45,7 +45,6 @@ export default function TechCardsList() {
         const unit = items.find(i => i.id === id)?.unit || '';
         return unit === 'pcs' ? 'шт' : unit;
     };
-    const getItemSku = (id: string) => items.find(i => i.id === id)?.sku || '';
 
     // Парсинг количества пачек в ящике из названия (формат: название (число))
     const parsePacksPerBox = (name: string): number | null => {

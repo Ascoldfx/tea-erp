@@ -251,8 +251,6 @@ export const inventoryService = {
 
             // Get the item ID (either from map or use code)
             const itemId = skuToIdMap.get(code) || code;
-            const category = itemCategories.get(itemId) || item.category || 'other';
-            const isCardboard = category === 'packaging_cardboard';
 
             // Main warehouse stock (Коцюбинське / база) - основной склад
             const mainKey = `${itemId}_wh-kotsyubinske`;

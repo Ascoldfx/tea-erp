@@ -17,9 +17,20 @@ export default function TechCardsList() {
     const navigate = useNavigate();
     const { items, plannedConsumption } = useInventory();
 
-    // Инициализируем тех.карты из MOCK_RECIPES
+    // Инициализируем тех.карты из MOCK_RECIPES и localStorage
     useEffect(() => {
-        setRecipes([...MOCK_RECIPES]);
+        const savedRecipes = localStorage.getItem('techCards');
+        if (savedRecipes) {
+            try {
+                const parsed = JSON.parse(savedRecipes);
+                setRecipes([...MOCK_RECIPES, ...parsed]);
+            } catch (e) {
+                console.error('Ошибка при загрузке тех.карт из localStorage:', e);
+                setRecipes([...MOCK_RECIPES]);
+            }
+        } else {
+            setRecipes([...MOCK_RECIPES]);
+        }
     }, []);
 
     const filteredRecipes = recipes.filter(r =>
@@ -63,8 +74,21 @@ export default function TechCardsList() {
     };
 
     const handleImport = (importedRecipes: Recipe[]) => {
-        setRecipes(prev => [...prev, ...importedRecipes]);
-        // TODO: В будущем сохранять в базу данных
+        setRecipes(prev => {
+            const updated = [...prev, ...importedRecipes];
+            // Сохраняем в localStorage для сохранения между перезагрузками
+            try {
+                // Сохраняем только импортированные тех.карты (не MOCK_RECIPES)
+                const savedRecipes = localStorage.getItem('techCards');
+                const existing = savedRecipes ? JSON.parse(savedRecipes) : [];
+                const allSaved = [...existing, ...importedRecipes];
+                localStorage.setItem('techCards', JSON.stringify(allSaved));
+                console.log('Тех.карты сохранены в localStorage:', allSaved.length);
+            } catch (e) {
+                console.error('Ошибка при сохранении тех.карт в localStorage:', e);
+            }
+            return updated;
+        });
         console.log('Импортировано тех.карт:', importedRecipes.length);
     };
 

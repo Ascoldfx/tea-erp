@@ -117,14 +117,25 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
         try {
             const recipes: Recipe[] = [];
 
+            const missingMaterials: Array<{ sku: string; name: string }> = [];
+            const foundMaterials: Array<{ sku: string; name: string }> = [];
+
             for (const techCard of parsedData) {
                 // Находим готовую продукцию по SKU или создаем новую
                 let finishedGood = items.find(i => i.sku === techCard.gpSku);
                 
-                // Если не найдено по SKU, ищем по названию
+                // Если не найдено по SKU, ищем по названию (точное совпадение)
                 if (!finishedGood) {
                     finishedGood = items.find(i => 
-                        i.name.toLowerCase() === techCard.gpName.toLowerCase()
+                        i.name.toLowerCase().trim() === techCard.gpName.toLowerCase().trim()
+                    );
+                }
+
+                // Если не найдено, ищем по частичному совпадению названия
+                if (!finishedGood) {
+                    finishedGood = items.find(i => 
+                        i.name.toLowerCase().includes(techCard.gpName.toLowerCase()) ||
+                        techCard.gpName.toLowerCase().includes(i.name.toLowerCase())
                     );
                 }
 
@@ -134,12 +145,30 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 const ingredients: RecipeIngredient[] = [];
 
                 for (const ing of techCard.ingredients) {
-                    // Находим материал по SKU или названию
-                    let material = items.find(i => i.sku === ing.materialSku);
+                    // Находим материал по SKU (точное совпадение)
+                    let material = items.find(i => i.sku && i.sku.trim() === ing.materialSku.trim());
                     
+                    // Если не найдено по SKU, ищем по названию (точное совпадение)
                     if (!material) {
                         material = items.find(i => 
-                            i.name.toLowerCase() === ing.materialName.toLowerCase()
+                            i.name.toLowerCase().trim() === ing.materialName.toLowerCase().trim()
+                        );
+                    }
+
+                    // Если не найдено, ищем по частичному совпадению названия
+                    if (!material) {
+                        material = items.find(i => {
+                            const itemNameLower = i.name.toLowerCase();
+                            const searchNameLower = ing.materialName.toLowerCase();
+                            return itemNameLower.includes(searchNameLower) ||
+                                   searchNameLower.includes(itemNameLower);
+                        });
+                    }
+
+                    // Если не найдено, ищем по частичному совпадению SKU
+                    if (!material && ing.materialSku) {
+                        material = items.find(i => 
+                            i.sku && i.sku.toLowerCase().includes(ing.materialSku.toLowerCase())
                         );
                     }
 
@@ -148,11 +177,14 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                             itemId: material.id,
                             quantity: ing.norm
                         });
+                        foundMaterials.push({ sku: ing.materialSku, name: ing.materialName });
                     } else {
+                        missingMaterials.push({ sku: ing.materialSku, name: ing.materialName });
                         console.warn(`Материал не найден: ${ing.materialSku} - ${ing.materialName}`);
                     }
                 }
 
+                // Создаем тех.карту, даже если не все материалы найдены (но хотя бы один должен быть)
                 if (ingredients.length > 0) {
                     recipes.push({
                         id: `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -162,10 +194,42 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         outputQuantity: 1,
                         ingredients
                     });
+                } else {
+                    console.warn(`Тех.карта "${techCard.gpName}" не создана: не найдено ни одного материала`);
                 }
             }
 
+            // Логируем статистику
+            console.log(`[Import] Найдено материалов: ${foundMaterials.length}, не найдено: ${missingMaterials.length}`);
+            if (missingMaterials.length > 0) {
+                console.log('[Import] Не найденные материалы:', missingMaterials.slice(0, 10));
+            }
+
             setImportedCount(recipes.length);
+            
+            // Показываем предупреждение, если есть не найденные материалы
+            if (missingMaterials.length > 0) {
+                const missingCount = missingMaterials.length;
+                const uniqueMissing = Array.from(
+                    new Map(missingMaterials.map(m => [m.sku + m.name, m])).values()
+                );
+                console.warn(`[Import] Не найдено ${missingCount} материалов. Уникальных: ${uniqueMissing.length}`);
+                
+                // Показываем предупреждение в UI, но не блокируем импорт
+                if (recipes.length === 0) {
+                    setError(
+                        `Не удалось импортировать тех.карты: не найдено материалов в базе данных.\n\n` +
+                        `Не найдено материалов: ${uniqueMissing.length}\n` +
+                        `Примеры: ${uniqueMissing.slice(0, 5).map(m => `${m.sku} - ${m.name}`).join(', ')}`
+                    );
+                    setStep('preview');
+                    return;
+                } else {
+                    // Если хотя бы некоторые тех.карты импортированы, показываем предупреждение, но продолжаем
+                    console.warn(`[Import] Импортировано ${recipes.length} тех.карт, но ${uniqueMissing.length} материалов не найдено`);
+                }
+            }
+            
             onImport(recipes);
             setStep('success');
         } catch (err: any) {
@@ -301,11 +365,16 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         </div>
                         <div className="text-center">
                             <p className="text-slate-200 font-medium text-lg">
-                                Импорт завершен успешно!
+                                {importedCount > 0 ? 'Импорт завершен успешно!' : 'Импорт завершен, но тех.карты не созданы'}
                             </p>
                             <p className="text-slate-400 mt-2">
                                 Импортировано тех.карт: {importedCount}
                             </p>
+                            {importedCount === 0 && (
+                                <p className="text-sm text-yellow-400 mt-2">
+                                    Проверьте консоль (F12) для списка не найденных материалов
+                                </p>
+                            )}
                         </div>
                         <Button
                             onClick={onClose}

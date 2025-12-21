@@ -21,31 +21,33 @@ BEGIN
         RAISE NOTICE 'Колонка item_id в recipe_ingredients уже nullable';
     END IF;
     
-    -- Проверяем и обновляем ограничение UNIQUE, если нужно
-    -- UNIQUE(recipe_id, item_id) должно работать с NULL значениями
-    -- В PostgreSQL несколько NULL значений считаются разными для UNIQUE
-    -- Но нам нужно убедиться, что ограничение правильно настроено
-    
-    -- Удаляем старое ограничение UNIQUE, если оно существует
+    -- Обновляем FOREIGN KEY constraint, чтобы он работал с NULL значениями
+    -- FOREIGN KEY по умолчанию позволяет NULL, но нужно убедиться, что constraint правильно настроен
     IF EXISTS (
         SELECT 1 
         FROM information_schema.table_constraints 
-        WHERE constraint_name = 'recipe_ingredients_recipe_id_item_id_key'
+        WHERE constraint_name = 'recipe_ingredients_item_id_fkey'
         AND table_name = 'recipe_ingredients'
     ) THEN
         -- Удаляем старое ограничение
         ALTER TABLE recipe_ingredients 
-        DROP CONSTRAINT recipe_ingredients_recipe_id_item_id_key;
+        DROP CONSTRAINT recipe_ingredients_item_id_fkey;
         
-        -- Создаем частичный уникальный индекс, который работает правильно с NULL
-        -- Это позволит иметь несколько записей с NULL item_id в одной техкарте
-        -- но предотвратит дубликаты для не-NULL значений
-        CREATE UNIQUE INDEX IF NOT EXISTS recipe_ingredients_recipe_id_item_id_unique 
-        ON recipe_ingredients(recipe_id, item_id) 
-        WHERE item_id IS NOT NULL;
+        -- Создаем новое ограничение с ON DELETE SET NULL для поддержки NULL значений
+        ALTER TABLE recipe_ingredients 
+        ADD CONSTRAINT recipe_ingredients_item_id_fkey 
+        FOREIGN KEY (item_id) 
+        REFERENCES items(id) 
+        ON DELETE SET NULL;
         
-        RAISE NOTICE 'Создан частичный уникальный индекс для recipe_id и item_id (только для не-NULL значений)';
+        RAISE NOTICE 'Обновлен FOREIGN KEY constraint для item_id с поддержкой NULL';
     END IF;
+    
+    -- Проверяем и обновляем ограничение UNIQUE, если нужно
+    -- В PostgreSQL несколько NULL значений считаются разными для UNIQUE
+    -- Но нам нужно убедиться, что ограничение правильно настроено
+    -- Оставляем существующее UNIQUE(recipe_id, item_id) - оно работает правильно с NULL
+    -- NULL значения считаются разными, поэтому несколько записей с NULL item_id в одной техкарте разрешены
 END $$;
 
 -- Комментарий для документации

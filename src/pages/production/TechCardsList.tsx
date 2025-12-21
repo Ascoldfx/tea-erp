@@ -72,13 +72,34 @@ export default function TechCardsList() {
             // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
             if (!sku && recipe.outputItemId) {
                 if (recipe.outputItemId.startsWith('temp-')) {
-                    sku = recipe.outputItemId.replace(/^temp-/, '');
+                    // Извлекаем SKU из temp-${sku} или temp-${id}
+                    // Формат может быть: temp-282157 или temp-rcp-1234567890-abc
+                    const tempMatch = recipe.outputItemId.match(/^temp-(.+)$/);
+                    if (tempMatch) {
+                        const tempValue = tempMatch[1];
+                        // Если это только цифры - это SKU
+                        if (/^\d+$/.test(tempValue)) {
+                            sku = tempValue;
+                        } else {
+                            // Если это ID рецепта (rcp-...), SKU уже должен быть в description
+                            // Не извлекаем SKU из ID рецепта
+                        }
+                    }
                 } else {
                     // Если outputItemId сам по себе является SKU (только цифры)
                     const outputSkuMatch = recipe.outputItemId.match(/^(\d+)$/);
                     if (outputSkuMatch) {
                         sku = outputSkuMatch[1];
                     }
+                }
+            }
+            
+            // ВАЖНО: Если все еще нет SKU и есть description с артикулом, извлекаем оттуда
+            // Это особенно важно для техкарт, загруженных из БД с NULL output_item_id
+            if (!sku && recipe.description) {
+                const descSkuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+                if (descSkuMatch) {
+                    sku = descSkuMatch[1];
                 }
             }
             

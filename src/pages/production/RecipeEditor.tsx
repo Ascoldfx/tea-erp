@@ -155,7 +155,12 @@ export default function RecipeEditor() {
                                         onChange={e => handleIngredientChange(index, 'itemId', e.target.value)}
                                         options={[
                                             { value: '', label: 'Выбрать...' },
-                                            ...MOCK_ITEMS.map(i => ({ value: i.id, label: `${i.name} (${i.unit})` }))
+                                            ...items
+                                                .filter(i => i.category !== 'finished_goods')
+                                                .map(i => ({ 
+                                                    value: i.id, 
+                                                    label: `${i.sku ? `${i.sku} - ` : ''}${i.name} (${i.unit || 'шт'})` 
+                                                }))
                                         ]}
                                     />
                                 </div>

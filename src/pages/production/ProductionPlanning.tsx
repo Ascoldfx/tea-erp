@@ -508,13 +508,13 @@ export default function ProductionPlanning() {
             const selectedMonthDate = new Date(selectedYear, selectedMonth, 1);
             const isPastMonth = selectedMonthDate < currentMonth;
             
-            // Для прошедших месяцев: скрывать материалы с 0 фактическим расходом
+            // Для прошедших месяцев: скрывать материалы с 0 фактическим расходом, 0 остатком и 0 фактическим приходом
             if (isPastMonth) {
-                return data.actualConsumption > 0;
+                return data.actualConsumption > 0 || data.totalStock > 0 || data.actualArrival > 0;
             }
             
-            // Для текущего и будущих месяцев: скрывать материалы с 0 планируемым расходом
-            return data.totalPlannedConsumption > 0;
+            // Для текущего и будущих месяцев: скрывать материалы с 0 планируемым расходом, 0 остатком, 0 плановым приходом и 0 фактическим приходом
+            return data.totalPlannedConsumption > 0 || data.totalStock > 0 || data.plannedArrival > 0 || data.actualArrival > 0;
         });
         
         // Sort by original order from database (preserve Excel import order)

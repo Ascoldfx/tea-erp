@@ -254,12 +254,10 @@ export const inventoryService = {
             const category = itemCategories.get(itemId) || item.category || 'other';
             const isCardboard = category === 'packaging_cardboard';
 
-            // Main warehouse stock (Коцюбинське / 1С) - для картонной упаковки это общий остаток
-            // Если материал встречается несколько раз, берем последнее значение (не суммируем)
+            // Main warehouse stock (Коцюбинське / база) - основной склад
             const mainKey = `${itemId}_wh-kotsyubinske`;
             const mainQty = Number(item.stockMain) || 0;
             if (mainQty > 0) {
-                // Перезаписываем значение, если уже есть (берем последнее из Excel)
                 stockMap.set(mainKey, {
                     item_id: itemId,
                     warehouse_id: 'wh-kotsyubinske',
@@ -267,56 +265,18 @@ export const inventoryService = {
                 });
             }
 
-            // Для картонной упаковки: "1С" - это общий остаток, не дублируем на других складах
-            // ТС и Фито - это остатки на складах подрядчиков, сохраняем только если они отличаются от общего остатка
-            if (isCardboard) {
-                // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
-                // Сохраняем только если значение отличается от общего остатка "1С"
-                const maiKey = `${itemId}_wh-ts`;
-                const maiQty = Number(item.stockMai) || 0;
-                if (maiQty > 0 && maiQty !== mainQty) {
-                    // Сохраняем только если остаток на ТС отличается от общего остатка
-                    stockMap.set(maiKey, {
-                        item_id: itemId,
-                        warehouse_id: 'wh-ts',
-                        quantity: maiQty
-                    });
-                }
-                
-                // Фито warehouse stock - отдельный склад
-                // Сохраняем только если значение отличается от общего остатка "1С"
-                const fitoKey = `${itemId}_wh-fito`;
-                const fitoQty = Number(item.stockFito) || 0;
-                if (fitoQty > 0 && fitoQty !== mainQty) {
-                    // Сохраняем только если остаток на Фито отличается от общего остатка
-                    stockMap.set(fitoKey, {
-                        item_id: itemId,
-                        warehouse_id: 'wh-fito',
-                        quantity: fitoQty
-                    });
-                }
-            } else {
-                // Для других категорий сохраняем все остатки как обычно
-                // ТС warehouse stock - отдельный склад (подрядчик по фасовке)
-                const maiKey = `${itemId}_wh-ts`;
-                const maiQty = Number(item.stockMai) || 0;
-                if (maiQty > 0) {
-                    stockMap.set(maiKey, {
-                        item_id: itemId,
-                        warehouse_id: 'wh-ts',
-                        quantity: maiQty
-                    });
-                }
-
-                // Фито warehouse stock - отдельный склад
-                const fitoKey = `${itemId}_wh-fito`;
-                const fitoQty = Number(item.stockFito) || 0;
-                if (fitoQty > 0) {
-                    stockMap.set(fitoKey, {
-                        item_id: itemId,
-                        warehouse_id: 'wh-fito',
-                        quantity: fitoQty
-                    });
+            // Остатки на складах подрядчиков из stockWarehouses
+            if (item.stockWarehouses && typeof item.stockWarehouses === 'object') {
+                for (const [warehouseId, quantity] of Object.entries(item.stockWarehouses)) {
+                    const qty = Number(quantity) || 0;
+                    if (qty > 0) {
+                        const key = `${itemId}_${warehouseId}`;
+                        stockMap.set(key, {
+                            item_id: itemId,
+                            warehouse_id: warehouseId,
+                            quantity: qty
+                        });
+                    }
                 }
             }
         }

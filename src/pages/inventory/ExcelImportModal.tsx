@@ -17,9 +17,8 @@ interface ParsedItem {
     name: string;
     unit: string;
     category: string;
-    stockMain: number; // Общий остаток (1С) - для картонной упаковки это общий остаток
-    stockMai: number; // ТС (если есть отдельная колонка)
-    stockFito: number; // Фито (если есть отдельная колонка)
+    stockMain: number; // Общий остаток (база/1С) - для картонной упаковки это общий остаток
+    stockWarehouses: Record<string, number>; // Остатки на складах подрядчиков: { 'wh-ts': 100, 'wh-fito': 50, ... }
     storageLocation?: string; // Место хранения из Excel
     baseNorm?: number; // Базовая норма (эталон)
     plannedConsumption: Array<{
@@ -463,11 +462,35 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 }
                 
                 // Find stock columns
-                // "Залишки на 1 число, 1С" - это ОБЩИЙ остаток материала (не разбитый по складам)
-                // Если есть отдельные колонки ТС (Май) и Фито - это остатки на этих складах
-                let stockMain = 0; // Общий остаток (1С)
-                let stockMai = 0;  // ТС (если есть отдельная колонка, может быть названа "Май" или "ТС")
-                let stockFito = 0; // Фито (если есть отдельная колонка)
+                // Формат: "залишки на [дата] [склад]"
+                // Примеры: "залишки на 30.11 база", "залишки на 30.11 ТС", "залишки на 31.10 Кава"
+                let stockMain = 0; // Общий остаток (база/1С)
+                const stockWarehouses: Record<string, number> = {}; // Остатки на складах подрядчиков
+                
+                // Маппинг названий складов на их ID
+                const warehouseNameMap: Record<string, string> = {
+                    'база': 'wh-kotsyubinske',
+                    'базы': 'wh-kotsyubinske',
+                    '1с': 'wh-kotsyubinske',
+                    '1 с': 'wh-kotsyubinske',
+                    'коцюбинське': 'wh-kotsyubinske',
+                    'коцюбинское': 'wh-kotsyubinske',
+                    'тс': 'wh-ts',
+                    'ts': 'wh-ts',
+                    'май': 'wh-ts', // Старое название
+                    'кава': 'wh-kava',
+                    'kava': 'wh-kava',
+                    'бакалея': 'wh-bakaleya',
+                    'bakaleya': 'wh-bakaleya',
+                    'фіто': 'wh-fito',
+                    'фито': 'wh-fito',
+                    'fito': 'wh-fito',
+                    'фото': 'wh-fito', // Опечатка
+                    'тс трейд': 'wh-ts-treyd',
+                    'тс трейт': 'wh-ts-treyd',
+                    'ts treyd': 'wh-ts-treyd',
+                    'ts treyt': 'wh-ts-treyd'
+                };
                 
                 // Find storage location column
                 const storageLocation = findColumn(row, [
@@ -476,8 +499,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 ]);
                 
                 // Look for stock columns - iterate through headers directly
-                // This is more reliable than findColumn for merged headers
-                // Остатки на 1 число месяца - месяц указан строго над столбцом
+                // Формат: "залишки на [дата] [склад]"
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
@@ -494,91 +516,88 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue;
                     }
                     
-                    // Check if there's a month above this stock column (from columnToMonthMap)
-                    // This helps identify which month the stock is for
-                    const monthForStock = columnToMonthMap.get(i);
-                    if (monthForStock) {
-                        console.log(`[Excel Import] Stock column ${i} (${header}) has month ${monthForStock} above it`);
+                    // Парсим формат "залишки на [дата] [склад]"
+                    // Примеры: "залишки на 30.11 база", "залишки на 30.11 ТС", "залишки на 31.10 Кава"
+                    const stockMatch = headerLower.match(/залишки\s+на\s+(\d{1,2})\.(\d{1,2})\s+(.+)/);
+                    if (stockMatch) {
+                        const day = parseInt(stockMatch[1]);
+                        const month = parseInt(stockMatch[2]);
+                        const warehouseName = stockMatch[3].trim();
+                        
+                        // Определяем склад по названию
+                        let warehouseId: string | null = null;
+                        for (const [name, id] of Object.entries(warehouseNameMap)) {
+                            if (warehouseName.includes(name)) {
+                                warehouseId = id;
+                                break;
+                            }
+                        }
+                        
+                        // Специальная логика для ТС Трейд: был только до 28.05, потом стал просто ТС
+                        if (warehouseName.includes('тс трейд') || warehouseName.includes('ts treyd')) {
+                            // Проверяем дату: если дата <= 28.05, то это ТС Трейд, иначе ТС
+                            if (month === 5 && day <= 28) {
+                                warehouseId = 'wh-ts-treyd';
+                            } else {
+                                warehouseId = 'wh-ts';
+                            }
+                        }
+                        
+                        if (warehouseId) {
+                            if (warehouseId === 'wh-kotsyubinske') {
+                                // Основной склад (база)
+                                stockMain = numValue;
+                            } else {
+                                // Склад подрядчика
+                                stockWarehouses[warehouseId] = numValue;
+                            }
+                            console.log(`[Excel Import] Stock column "${header}" -> ${warehouseId}: ${numValue}`);
+                        } else {
+                            console.warn(`[Excel Import] Unknown warehouse name in column "${header}": "${warehouseName}"`);
+                        }
+                        continue;
                     }
                     
-                    // Check for 1С - это ОБЩИЙ остаток для картонной упаковки
-                    // Ищем колонку с "1С" или "1с" или "1 с" в названии
-                    if ((headerLower.includes('1с') || headerLower.includes('1 с') || headerLower.includes('1c')) &&
+                    // Fallback: старый формат "залишки на 1 число, [склад]"
+                    // Check for 1С/база - это ОБЩИЙ остаток
+                    if ((headerLower.includes('1с') || headerLower.includes('1 с') || headerLower.includes('1c') || headerLower.includes('база')) &&
                         !headerLower.includes('май') && !headerLower.includes('тс') && !headerLower.includes('ts') &&
                         !headerLower.includes('фито') && !headerLower.includes('фіто') && !headerLower.includes('фото') &&
-                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
-                        // Это колонка "1С" - общий остаток
-                        stockMain = numValue; // Берем значение напрямую (не Math.max, чтобы не перезаписывать)
+                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское') &&
+                        !headerLower.includes('кава') && !headerLower.includes('бакалея')) {
+                        stockMain = numValue;
                     }
-                    // Check for Коцюбинське - отдельная колонка (может быть без "1С" в названии)
-                    else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское') || headerLower.includes('kotsyubinske')) &&
+                    // Check for Коцюбинське - отдельная колонка
+                    else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское')) &&
                              !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
-                        // Это колонка "коцюбинське" - используем только если нет колонки "1С"
                         if (stockMain === 0) {
                             stockMain = numValue;
                         }
                     }
-                    // Check for Май/ТС - отдельный склад подрядчика
-                    else if ((headerLower.includes('май') || headerLower.includes('тс') || headerLower.includes('ts')) &&
+                    // Check for ТС/Май
+                    else if ((headerLower.includes('май') || (headerLower.includes('тс') && !headerLower.includes('трейд'))) &&
                              !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
                              !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
-                        // Это колонка "Май" или "ТС" - остаток на складе подрядчика
-                        stockMai = numValue; // Берем значение напрямую
+                        stockWarehouses['wh-ts'] = numValue;
                     }
-                    // Check for Фито/Фото - отдельный склад подрядчика
+                    // Check for Фито/Фото
                     else if ((headerLower.includes('фито') || headerLower.includes('фіто') || headerLower.includes('fito') ||
                              headerLower.includes('фото') || headerLower.includes('photo')) &&
                              !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
-                        // Это колонка "Фито" или "Фото" - остаток на складе подрядчика
-                        stockFito = numValue; // Берем значение напрямую
+                        stockWarehouses['wh-fito'] = numValue;
                     }
-                }
-                
-                // Fallback: try to find by exact column names
-                // Для картонной упаковки колонка "1С" - это общий остаток
-                if (stockMain === 0) {
-                    const stockMainStr = findColumn(row, [
-                        'Залишки на 1 число, 1С', 'Зал. на 1 число, 1С', 'Зал на 1 число 1С',
-                        'залишки на 1 число, 1с', 'зал. на 1 число, 1с', 'залишки на 1 число, 1С',
-                        'залишки на 1 число, 1 с', 'залишки на 1 число, 1С',
-                        'Stock Main', 'Склад', 'Остаток', 'Остаток на складе',
-                        // Также проверяем колонку "коцюбинське" как fallback для основного склада
-                        // Но только если нет колонки "1С" (для картонной упаковки приоритет у "1С")
-                        'залишки на 1 число, коцюбинське', 'зал. на 1 число, коцюбинське',
-                        'Залишки на 1 число, Коцюбинське', 'Зал. на 1 число, Коцюбинське'
-                    ]);
-                    const foundValue = Number(stockMainStr) || 0;
-                    if (foundValue > 0) {
-                        stockMain = foundValue;
+                    // Check for Кава
+                    else if (headerLower.includes('кава') || headerLower.includes('kava')) {
+                        stockWarehouses['wh-kava'] = numValue;
                     }
-                }
-                
-                if (stockMai === 0) {
-                    const stockMaiStr = findColumn(row, [
-                        // Варианты с "Май" (может быть дублирование "1 число" в названии колонки)
-                        'залишки на 1 число Май', 'зал. на 1 число Май', 'залишки на 1 число май',
-                        'Залишки на 1 число Май', 'Зал. на 1 число Май',
-                        'залишки на 1 число, 1 число Май', 'зал. на 1 число, 1 число Май',
-                        'Залишки на 1 число, 1 число Май', 'Зал. на 1 число, 1 число Май',
-                        // Варианты с "ТС"
-                        'залишки на 1 число ТС', 'зал. на 1 число ТС', 'залишки на 1 число тс',
-                        'Залишки на 1 число ТС', 'Зал. на 1 число ТС',
-                        'залишки на 1 число, 1 число ТС', 'зал. на 1 число, 1 число ТС',
-                        'Залишки на 1 число, 1 число ТС', 'Зал. на 1 число, 1 число ТС'
-                    ]);
-                    stockMai = Number(stockMaiStr) || 0;
-                }
-                
-                if (stockFito === 0) {
-                    const stockFitoStr = findColumn(row, [
-                        'залишки на 1 число Фито', 'зал. на 1 число Фито', 'залишки на 1 число фито',
-                        'Залишки на 1 число Фито', 'Зал. на 1 число Фито', 'залишки на 1 число Φίτο',
-                        // Также может быть написано "Фото" вместо "Фито"
-                        'залишки на 1 число Фото', 'зал. на 1 число Фото', 'залишки на 1 число фото',
-                        'Залишки на 1 число Фото', 'Зал. на 1 число Фото',
-                        'залишки на 1 число, Фото', 'зал. на 1 число, Фото'
-                    ]);
-                    stockFito = Number(stockFitoStr) || 0;
+                    // Check for Бакалея
+                    else if (headerLower.includes('бакалея') || headerLower.includes('bakaleya')) {
+                        stockWarehouses['wh-bakaleya'] = numValue;
+                    }
+                    // Check for ТС Трейд
+                    else if (headerLower.includes('тс трейд') || headerLower.includes('ts treyd')) {
+                        stockWarehouses['wh-ts-treyd'] = numValue;
+                    }
                 }
 
                 // Find base norm (эталон) column
@@ -690,8 +709,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     unit: unit,
                     category: category,
                     stockMain: isNaN(stockMain) ? 0 : stockMain,
-                    stockMai: isNaN(stockMai) ? 0 : stockMai,
-                    stockFito: isNaN(stockFito) ? 0 : stockFito,
+                    stockWarehouses: stockWarehouses,
                     storageLocation: storageLocation || undefined,
                     baseNorm: baseNorm,
                     // Always include plannedConsumption array, even if empty (for debugging)
@@ -703,9 +721,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     console.log(`[Planned Consumption Debug] Item "${name}" (code: ${code}):`, plannedConsumption);
                 }
                 
-                // Debug logging for cardboard packaging to track stock parsing
-                if (category === 'packaging_cardboard') {
-                    console.log(`[Cardboard Debug] Item "${name}" (code: ${code}): stockMain=${stockMain}, stockMai=${stockMai}, stockFito=${stockFito}, groupValue="${groupValue}"`);
+                // Debug logging for stock parsing
+                if (stockMain > 0 || Object.keys(stockWarehouses).length > 0) {
+                    console.log(`[Stock Debug] Item "${name}" (code: ${code}): stockMain=${stockMain}, stockWarehouses=`, stockWarehouses);
                 }
                 
                 // Debug logging if category doesn't match group (e.g., картон -> envelope)
@@ -979,6 +997,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                         return found ? found.quantity : 0;
                                     };
                                     
+                                    // Собираем все уникальные склады из всех элементов
+                                    const allWarehouses = new Set<string>();
+                                    parsedData.forEach(item => {
+                                        Object.keys(item.stockWarehouses).forEach(wh => allWarehouses.add(wh));
+                                    });
+                                    const warehouseNames: Record<string, string> = {
+                                        'wh-kotsyubinske': 'База',
+                                        'wh-ts': 'ТС',
+                                        'wh-fito': 'Фіто',
+                                        'wh-kava': 'Кава',
+                                        'wh-bakaleya': 'Бакалея',
+                                        'wh-ts-treyd': 'ТС Трейд'
+                                    };
+                                    const sortedWarehouses = Array.from(allWarehouses).sort();
+                                    
                                     return (
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
@@ -986,9 +1019,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                                     <th className="px-3 py-2">{t('materials.code')}</th>
                                                     <th className="px-3 py-2">{t('materials.name')}</th>
                                                     <th className="px-3 py-2">{t('materials.category')}</th>
-                                                    <th className="px-3 py-2 text-right">1С</th>
-                                                    <th className="px-3 py-2 text-right">ТС</th>
-                                                    <th className="px-3 py-2 text-right">Фито</th>
+                                                    <th className="px-3 py-2 text-right">База</th>
+                                                    {sortedWarehouses.map(wh => (
+                                                        <th key={wh} className="px-3 py-2 text-right">
+                                                            {warehouseNames[wh] || wh}
+                                                        </th>
+                                                    ))}
                                                     {sortedMonths.map(monthStr => (
                                                         <th key={monthStr} className="px-3 py-2 text-right text-blue-400" title={formatMonth(monthStr)}>
                                                             {formatMonth(monthStr)}
@@ -1003,8 +1039,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                                         <td className="px-3 py-2">{item.name}</td>
                                                         <td className="px-3 py-2 text-slate-500">{item.category}</td>
                                                         <td className="px-3 py-2 text-right font-medium">{item.stockMain}</td>
-                                                        <td className="px-3 py-2 text-right font-medium">{item.stockMai}</td>
-                                                        <td className="px-3 py-2 text-right font-medium">{item.stockFito}</td>
+                                                        {sortedWarehouses.map(wh => (
+                                                            <td key={wh} className="px-3 py-2 text-right font-medium">
+                                                                {item.stockWarehouses[wh] || '-'}
+                                                            </td>
+                                                        ))}
                                                         {sortedMonths.map(monthStr => {
                                                             const qty = getPlannedForMonth(item, monthStr);
                                                             return (

@@ -12,7 +12,7 @@ const getNavItems = (t: (key: string) => string) => [
     { to: '/logistics', icon: Calendar, label: t('nav.logistics') },
     { to: '/calculator', icon: Calculator, label: t('nav.calculator') },
     { to: '/contractors', icon: Users, label: t('nav.contractors') },
-    { to: '/catalog', icon: Book, label: t('nav.techCards') },
+    { to: '/production/recipes', icon: Book, label: t('nav.techCards') },
     { to: '/users', icon: Users, label: t('nav.users'), requireAdmin: true },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
 ];

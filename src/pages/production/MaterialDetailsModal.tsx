@@ -85,11 +85,25 @@ export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, al
 
                                 // Determine SKU for display
                                 const recipeSku = (() => {
-                                    if (recipe.outputItemId?.startsWith('temp-')) return recipe.outputItemId.replace('temp-', '');
+                                    // 1. Try to find item by ID
                                     const item = items.find(i => i.id === recipe.outputItemId);
                                     if (item?.sku) return item.sku;
-                                    const match = recipe.description?.match(/Артикул:\s*(\d+)/i);
-                                    return match ? match[1] : '';
+
+                                    // 2. If it's a temp item, use the stored SKU
+                                    if (recipe.outputItemId?.startsWith('temp-')) {
+                                        return recipe.outputItemId.replace('temp-', '');
+                                    }
+
+                                    // 3. Search in description (supports both "SKU:" and "Артикул:")
+                                    // Matches "SKU: 123", "Артикул: 123", "SKU:123" etc.
+                                    const descMatch = recipe.description?.match(/(?:SKU|Артикул|Sku|Articul)[\s:]+([^\s,;]+)/i);
+                                    if (descMatch) return descMatch[1];
+
+                                    // 4. Try to find SKU in name (often in parentheses like "(282057)")
+                                    const nameMatch = recipe.name.match(/\((\d{4,})\)/);
+                                    if (nameMatch) return nameMatch[1];
+
+                                    return '';
                                 })();
 
                                 return (

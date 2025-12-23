@@ -236,8 +236,8 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                 <tr
                                                     key={idx}
                                                     className={`hover:bg-slate-800/50 ${isDuplicate || sameSkuCount > 0
-                                                            ? 'bg-yellow-500/10 border-l-2 border-yellow-500'
-                                                            : ''
+                                                        ? 'bg-yellow-500/10 border-l-2 border-yellow-500'
+                                                        : ''
                                                         } ${isAutoCreated
                                                             ? 'bg-blue-500/10 border-l-2 border-blue-500'
                                                             : ''
@@ -268,7 +268,15 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         </div>
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
-                                                        {ing.quantity.toFixed(4)}
+                                                        {ing.quantity > 0 ? (
+                                                            ing.quantity.toFixed(4)
+                                                        ) : (
+                                                            currentNorm !== null ? (
+                                                                <span className="text-slate-400 italic" title="Используется норма текущего месяца">{currentNorm.toFixed(4)}*</span>
+                                                            ) : (
+                                                                <span className="text-slate-500">0.0000</span>
+                                                            )
+                                                        )}
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
                                                         {currentNorm !== null ? (

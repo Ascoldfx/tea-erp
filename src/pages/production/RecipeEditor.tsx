@@ -66,7 +66,7 @@ export default function RecipeEditor() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!recipe.name.trim()) {
             alert('Пожалуйста, укажите название техкарты');
             return;
@@ -80,7 +80,7 @@ export default function RecipeEditor() {
         try {
             console.log('[RecipeEditor] Saving recipe:', recipe);
             const success = await recipesService.saveRecipe(recipe);
-            
+
             if (success) {
                 console.log('[RecipeEditor] Тех.карта успешно сохранена в базу данных');
                 alert('Технологическая карта успешно сохранена!');
@@ -158,11 +158,16 @@ export default function RecipeEditor() {
                                         onChange={e => handleIngredientChange(index, 'itemId', e.target.value)}
                                         options={[
                                             { value: '', label: 'Выбрать...' },
+                                            // Добавляем опцию для временного материала, если он есть в этом ингредиенте
+                                            ...(ing.itemId.startsWith('temp-') && ing.tempMaterial ? [{
+                                                value: ing.itemId,
+                                                label: `* ${ing.tempMaterial.sku ? `${ing.tempMaterial.sku} - ` : ''}${ing.tempMaterial.name} [Текст]`
+                                            }] : []),
                                             ...items
                                                 .filter(i => i.category !== 'finished_goods')
-                                                .map(i => ({ 
-                                                    value: i.id, 
-                                                    label: `${i.sku ? `${i.sku} - ` : ''}${i.name} (${i.unit || 'шт'})` 
+                                                .map(i => ({
+                                                    value: i.id,
+                                                    label: `${i.sku ? `${i.sku} - ` : ''}${i.name} (${i.unit || 'шт'})`
                                                 }))
                                         ]}
                                     />

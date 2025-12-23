@@ -6,7 +6,7 @@ import { Search, Plus, FileText, Download, Upload, Hash, Star, RefreshCw } from 
 // MOCK_RECIPES больше не используется - все техкарты загружаются из базы данных или импортируются
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
-import { exportTechCardsToExcel } from '../../services/techCardsExportService';
+
 import TechCardsImportModal from './TechCardsImportModal';
 import RecipeDetailsModal from './RecipeDetailsModal';
 import { TOP_25_SKUS } from '../../data/top25Skus';
@@ -53,7 +53,7 @@ export default function TechCardsList() {
             // Сначала пытаемся найти готовый продукт по outputItemId
             const finishedGood = items.find(i => i.id === recipe.outputItemId);
             let sku = finishedGood?.sku || '';
-            
+
             // Если не нашли по ID, извлекаем SKU из description
             // Формат: "Артикул: 282157" или просто "282157" в начале description
             if (!sku && recipe.description) {
@@ -68,7 +68,7 @@ export default function TechCardsList() {
                     }
                 }
             }
-            
+
             // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
             if (!sku && recipe.outputItemId) {
                 if (recipe.outputItemId.startsWith('temp-')) {
@@ -93,7 +93,7 @@ export default function TechCardsList() {
                     }
                 }
             }
-            
+
             // ВАЖНО: Если все еще нет SKU и есть description с артикулом, извлекаем оттуда
             // Это особенно важно для техкарт, загруженных из БД с NULL output_item_id
             if (!sku && recipe.description) {
@@ -102,10 +102,10 @@ export default function TechCardsList() {
                     sku = descSkuMatch[1];
                 }
             }
-            
+
             // Проверяем, есть ли этот SKU в топ-25
             const isPriority = Boolean(sku && TOP_25_SKUS.includes(sku));
-            
+
             // Логирование для отладки
             if (isPriority) {
                 console.log(`[Priority] Recipe "${recipe.name}" is priority (SKU: ${sku})`);
@@ -113,7 +113,7 @@ export default function TechCardsList() {
                 // Логируем только если SKU найден, но не в топ-25 (для отладки)
                 console.log(`[Priority] Recipe "${recipe.name}" SKU: ${sku} (not in TOP-25)`);
             }
-            
+
             return isPriority;
         };
     }, [items]);
@@ -124,7 +124,7 @@ export default function TechCardsList() {
             // Сначала пытаемся найти готовый продукт по outputItemId
             const finishedGood = items.find(i => i.id === recipe.outputItemId);
             let sku = finishedGood?.sku || '';
-            
+
             // Если не нашли по ID, извлекаем SKU из description
             if (!sku && recipe.description) {
                 const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
@@ -137,7 +137,7 @@ export default function TechCardsList() {
                     }
                 }
             }
-            
+
             // Если outputItemId начинается с "temp-", извлекаем SKU оттуда
             if (!sku && recipe.outputItemId) {
                 if (recipe.outputItemId.startsWith('temp-')) {
@@ -155,7 +155,7 @@ export default function TechCardsList() {
                     }
                 }
             }
-            
+
             // ВАЖНО: Если все еще нет SKU и есть description с артикулом, извлекаем оттуда
             if (!sku && recipe.description) {
                 const descSkuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
@@ -163,13 +163,13 @@ export default function TechCardsList() {
                     sku = descSkuMatch[1];
                 }
             }
-            
+
             // Находим индекс в TOP_25_SKUS
             if (sku) {
                 const index = TOP_25_SKUS.indexOf(sku);
                 return index >= 0 ? index : Infinity; // Если не в топ-25, возвращаем Infinity
             }
-            
+
             return Infinity; // Если SKU не найден, не приоритетный
         };
     }, [items]);
@@ -184,18 +184,18 @@ export default function TechCardsList() {
         return filtered.sort((a, b) => {
             const aIsPriority = isPriorityRecipe(a);
             const bIsPriority = isPriorityRecipe(b);
-            
+
             // Если оба приоритетные, сортируем по порядку в TOP_25_SKUS
             if (aIsPriority && bIsPriority) {
                 const aIndex = getTop25Index(a);
                 const bIndex = getTop25Index(b);
                 return aIndex - bIndex; // Сортируем по индексу в списке
             }
-            
+
             // Если только один приоритетный, он идет первым
             if (aIsPriority && !bIsPriority) return -1;
             if (!aIsPriority && bIsPriority) return 1;
-            
+
             // Если оба не приоритетные, сохраняем исходный порядок
             return 0;
         });
@@ -229,14 +229,7 @@ export default function TechCardsList() {
         setIsDetailsModalOpen(true);
     };
 
-    const handleExport = async () => {
-        try {
-            await exportTechCardsToExcel(recipes, items, plannedConsumption);
-        } catch (error) {
-            console.error('Ошибка при экспорте:', error);
-            alert('Ошибка при экспорте техкарт');
-        }
-    };
+
 
     const handleImport = async (importedRecipes: Recipe[]) => {
         // Логируем детали импортированных тех.карт
@@ -246,28 +239,28 @@ export default function TechCardsList() {
             console.log(`[TechCardsList] Тех.карта: "${recipe.name}" (ID: ${recipe.id})`);
             console.log(`[TechCardsList]   - Ингредиентов: ${recipe.ingredients.length}`);
         });
-        
+
         // ВАЖНО: Сохраняем в базу данных ПЕРЕД обновлением списка
         try {
             console.log('[TechCardsList] Начинаем сохранение тех.карт в базу данных...');
             const savedCount = await recipesService.saveRecipes(importedRecipes);
             console.log(`[TechCardsList] ✅ Сохранено ${savedCount} из ${importedRecipes.length} тех.карт в базу данных`);
-            
+
             if (savedCount !== importedRecipes.length) {
                 const failedCount = importedRecipes.length - savedCount;
                 console.warn(`[TechCardsList] ⚠️ Не все тех.карты сохранены! Ожидалось: ${importedRecipes.length}, сохранено: ${savedCount}, не удалось: ${failedCount}`);
                 alert(`⚠️ Внимание: сохранено только ${savedCount} из ${importedRecipes.length} тех.карт.\n\nПроверьте консоль браузера (F12) для деталей об ошибках.`);
             }
-            
+
             // ВАЖНО: Перезагружаем список из базы данных после сохранения
             // Это гарантирует, что мы видим актуальные данные, сохраненные в БД
             console.log('[TechCardsList] Перезагружаем список тех.карт из базы данных...');
             await loadRecipes();
-            
+
             // Проверяем результат загрузки
             const currentRecipes = await recipesService.getRecipes();
             console.log(`[TechCardsList] Загружено из БД: ${currentRecipes.length} тех.карт`);
-            
+
             if (currentRecipes.length === 0 && savedCount > 0) {
                 console.error('[TechCardsList] ❌ КРИТИЧЕСКАЯ ОШИБКА: После сохранения база данных пуста!');
                 alert('❌ Ошибка: тех.карты не сохранились в базу данных.\n\nПроверьте консоль браузера (F12) для деталей.');
@@ -299,35 +292,19 @@ export default function TechCardsList() {
                     <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 ящик)</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button 
-                        variant="outline" 
-                        onClick={loadRecipes}
-                        className="border-slate-600 hover:bg-slate-800"
-                        title="Обновить список техкарт из базы данных"
-                    >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Обновить
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        onClick={handleExport}
-                        className="border-slate-600 hover:bg-slate-800"
-                    >
-                        <Download className="w-4 h-4 mr-2" />
-                        Экспорт в Excel
-                    </Button>
-                    <Button 
-                        variant="outline" 
+
+                    <Button
+                        variant="outline"
                         onClick={() => setIsImportModalOpen(true)}
                         className="border-slate-600 hover:bg-slate-800"
                     >
                         <Upload className="w-4 h-4 mr-2" />
                         Импорт из Excel
                     </Button>
-                <Button onClick={() => navigate('/production/recipes/new')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Создать карту
-                </Button>
+                    <Button onClick={() => navigate('/production/recipes/new')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Создать карту
+                    </Button>
                 </div>
             </div>
 
@@ -347,21 +324,20 @@ export default function TechCardsList() {
                     <p>Нет техкарт. Создайте первую техкарту.</p>
                 </div>
             ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {filteredAndSortedRecipes.map(recipe => {
                         const { displayName, packsPerBox } = formatItemName(recipe.name);
                         const finishedGood = items.find(i => i.id === recipe.outputItemId);
                         const sku = finishedGood?.sku || '';
                         const isPriority = isPriorityRecipe(recipe);
-                        
+
                         return (
-                            <Card 
-                                key={recipe.id} 
-                                className={`transition-colors cursor-pointer ${
-                                    isPriority 
-                                        ? 'border-2 border-amber-500/50 bg-gradient-to-br from-amber-950/20 to-slate-900 hover:border-amber-500 hover:from-amber-950/30' 
-                                        : 'hover:border-emerald-500/50'
-                                }`}
+                            <Card
+                                key={recipe.id}
+                                className={`transition-colors cursor-pointer ${isPriority
+                                    ? 'border-2 border-amber-500/50 bg-gradient-to-br from-amber-950/20 to-slate-900 hover:border-amber-500 hover:from-amber-950/30'
+                                    : 'hover:border-emerald-500/50'
+                                    }`}
                                 onDoubleClick={() => handleCardDoubleClick(recipe)}
                             >
                                 <CardHeader className="pb-3">
@@ -381,17 +357,17 @@ export default function TechCardsList() {
                                                 ТОП-25
                                             </span>
                                         )}
-                            </CardTitle>
+                                    </CardTitle>
                                     {sku && (
                                         <div className="flex items-center gap-2 mt-2 text-sm text-slate-400">
                                             <Hash className="w-4 h-4" />
                                             <span className="font-mono">{sku}</span>
                                         </div>
                                     )}
-                        </CardHeader>
-                        <CardContent>
+                                </CardHeader>
+                                <CardContent>
                                     {recipe.description && (
-                            <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
+                                        <p className="text-sm text-slate-400 mb-4">{recipe.description}</p>
                                     )}
 
                                     <div className="bg-slate-950/50 rounded-lg p-3">
@@ -404,21 +380,19 @@ export default function TechCardsList() {
                                                 const isDuplicate = ing.isDuplicateSku;
                                                 const isAutoCreated = ing.isAutoCreated;
                                                 const tempMaterial = ing.tempMaterial;
-                                                
+
                                                 // Определяем, есть ли другие ингредиенты с таким же SKU
                                                 const sameSkuCount = recipe.ingredients.filter(otherIng => {
                                                     const otherSku = items.find(i => i.id === otherIng.itemId)?.sku || '';
                                                     return otherSku && otherSku === materialSku && otherIng !== ing;
                                                 }).length;
-                                                
+
                                                 return (
-                                                    <li 
-                                                        key={idx} 
-                                                        className={`flex justify-between text-slate-300 ${
-                                                            (isDuplicate || sameSkuCount > 0) ? 'text-yellow-400' : ''
-                                                        } ${
-                                                            isAutoCreated ? 'text-blue-400' : ''
-                                                        }`}
+                                                    <li
+                                                        key={idx}
+                                                        className={`flex justify-between text-slate-300 ${(isDuplicate || sameSkuCount > 0) ? 'text-yellow-400' : ''
+                                                            } ${isAutoCreated ? 'text-blue-400' : ''
+                                                            }`}
                                                     >
                                                         <span className="flex items-center gap-2">
                                                             {tempMaterial ? (
@@ -445,16 +419,16 @@ export default function TechCardsList() {
                                                     </li>
                                                 );
                                             })}
-                                </ul>
-                            </div>
+                                        </ul>
+                                    </div>
                                     <p className="text-xs text-slate-500 mt-3 italic text-center">
                                         Двойной клик для просмотра деталей
                                     </p>
-                        </CardContent>
-                    </Card>
+                                </CardContent>
+                            </Card>
                         );
                     })}
-            </div>
+                </div>
             )}
 
             <TechCardsImportModal

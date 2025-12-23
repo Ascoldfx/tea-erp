@@ -21,11 +21,12 @@ const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: numb
 interface RecipeDetailsModalProps {
     recipe: Recipe | null;
     allRecipes: Recipe[]; // Pass all recipes for "Where Used" search
+    onRecipeSelect?: (recipe: Recipe) => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
-export default function RecipeDetailsModal({ recipe, allRecipes = [], isOpen, onClose }: RecipeDetailsModalProps) {
+export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSelect, isOpen, onClose }: RecipeDetailsModalProps) {
     const navigate = useNavigate();
     const { items } = useInventory();
 
@@ -396,6 +397,10 @@ export default function RecipeDetailsModal({ recipe, allRecipes = [], isOpen, on
                 onClose={() => setIsMaterialModalOpen(false)}
                 materialInfo={selectedMaterial}
                 allRecipes={allRecipes}
+                onRecipeSelect={(r) => {
+                    setIsMaterialModalOpen(false);
+                    if (onRecipeSelect) onRecipeSelect(r);
+                }}
             />
         </>
     );

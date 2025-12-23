@@ -445,6 +445,7 @@ export default function TechCardsList() {
             <RecipeDetailsModal
                 recipe={selectedRecipe}
                 allRecipes={recipes}
+                onRecipeSelect={setSelectedRecipe}
                 isOpen={isDetailsModalOpen}
                 onClose={() => {
                     setIsDetailsModalOpen(false);

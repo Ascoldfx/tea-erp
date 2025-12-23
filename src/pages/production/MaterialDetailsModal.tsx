@@ -2,6 +2,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import type { Recipe } from '../../types/production';
 import { Package, Hash, FileText } from 'lucide-react';
+import { useInventory } from '../../hooks/useInventory';
 
 interface MaterialDetailsModalProps {
     isOpen: boolean;
@@ -14,10 +15,11 @@ interface MaterialDetailsModalProps {
         isTemp?: boolean;
     } | null;
     allRecipes: Recipe[];
+    onRecipeSelect?: (recipe: Recipe) => void;
 }
 
-export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, allRecipes }: MaterialDetailsModalProps) {
-    // const { items } = useInventory();
+export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, allRecipes, onRecipeSelect }: MaterialDetailsModalProps) {
+    const { items } = useInventory();
 
     if (!materialInfo) return null;
 
@@ -81,13 +83,34 @@ export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, al
                                     (i.tempMaterial && i.tempMaterial.sku === materialInfo.sku)
                                 );
 
+                                // Determine SKU for display
+                                const recipeSku = (() => {
+                                    if (recipe.outputItemId?.startsWith('temp-')) return recipe.outputItemId.replace('temp-', '');
+                                    const item = items.find(i => i.id === recipe.outputItemId);
+                                    if (item?.sku) return item.sku;
+                                    const match = recipe.description?.match(/Артикул:\s*(\d+)/i);
+                                    return match ? match[1] : '';
+                                })();
+
                                 return (
-                                    <div key={recipe.id} className="bg-slate-900 p-3 rounded-lg border border-slate-800 hover:border-emerald-500/50 transition-colors">
+                                    <div
+                                        key={recipe.id}
+                                        className="bg-slate-900 p-3 rounded-lg border border-slate-800 hover:border-emerald-500/50 transition-colors cursor-pointer group"
+                                        onDoubleClick={() => onRecipeSelect && onRecipeSelect(recipe)}
+                                        title="Двойной клик для перехода к техкарте"
+                                    >
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <div className="font-medium text-slate-200">{recipe.name}</div>
-                                                <div className="text-xs text-slate-500 mt-1">
-                                                    {recipe.outputItemId}
+                                                <div className="font-medium text-slate-200 group-hover:text-emerald-400 transition-colors">{recipe.name}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {recipeSku && (
+                                                        <span className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono border border-slate-700">
+                                                            {recipeSku}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-slate-600">
+                                                        {/* Optional ID display if needed, but SKU is better */}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div className="text-right">

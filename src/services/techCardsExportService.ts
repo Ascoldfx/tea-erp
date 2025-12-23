@@ -24,7 +24,7 @@ interface MonthData {
  */
 function formatUnit(unit: string | undefined): string {
     if (!unit) return 'шт';
-    
+
     const unitMap: Record<string, string> = {
         'pcs': 'шт',
         'шт': 'шт',
@@ -33,7 +33,7 @@ function formatUnit(unit: string | undefined): string {
         'l': 'л',
         'ml': 'мл'
     };
-    
+
     return unitMap[unit.toLowerCase()] || unit;
 }
 
@@ -53,7 +53,7 @@ function generateMonths(): MonthData[] {
         const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
         const year = date.getFullYear();
         const month = date.getMonth();
-        
+
         months.push({
             date: `${year}-${String(month + 1).padStart(2, '0')}-01`,
             monthName: `${monthNames[month]} ${year}`,
@@ -207,7 +207,7 @@ export async function exportTechCardsToExcel(
  */
 function parseUnit(unitStr: string | undefined): string {
     if (!unitStr) return 'pcs';
-    
+
     const unitMap: Record<string, string> = {
         'шт': 'pcs',
         'кг': 'kg',
@@ -220,7 +220,7 @@ function parseUnit(unitStr: string | undefined): string {
         'l': 'l',
         'ml': 'ml'
     };
-    
+
     return unitMap[unitStr.toLowerCase().trim()] || 'pcs';
 }
 
@@ -263,14 +263,14 @@ export function parseTechCardsFromExcel(
     // Находим строку заголовков
     let headerRowIndex = 0;
     const headerKeywords = ['артикул гп', 'назва гп', 'название гп', 'артикул ксм', 'назва ксм', 'эталон'];
-    
+
     for (let i = 0; i < Math.min(10, rawData.length); i++) {
         const row = rawData[i];
         if (!row) continue;
-        
+
         const rowText = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
         const hasHeader = headerKeywords.some(keyword => rowText.includes(keyword));
-        
+
         if (hasHeader) {
             headerRowIndex = i;
             break;
@@ -287,7 +287,7 @@ export function parseTechCardsFromExcel(
             for (let i = 0; i < headers.length; i++) {
                 const header = String(headers[i] || '').trim();
                 const headerLower = header.toLowerCase();
-                
+
                 // Exact match
                 if (headerLower === nameLower) {
                     return i;
@@ -380,178 +380,137 @@ export function parseTechCardsFromExcel(
         const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
         const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
 
-        // Парсим нормы по месяцам из колонок с датами (формат DD.MM.YYYY)
-        // ВАЖНО: Проверяем заголовки из headerRow, который был найден ранее
+        // Парсим нормы по месяцам из колонок с датами (формат DD.MM.YYYY или DD.MM.YY)
         const monthlyNorms: Array<{ date: string; quantity: number }> = [];
-        const datePattern = /(\d{2})\.(\d{2})\.(\d{4})/; // Более точный паттерн для DD.MM.YYYY
-        
-        console.log(`[parseTechCardsFromExcel] 🔍 Parsing monthly norms for row ${i + 1}`);
-        console.log(`[parseTechCardsFromExcel] Header row has ${headerRow.length} columns, headers array has ${headers.length} columns`);
-        
-        // Логируем все заголовки для отладки (первые 30)
-        const headersPreview = headers.slice(0, 30).map((h, idx) => `[${idx}]: "${h}"`).join(', ');
-        console.log(`[parseTechCardsFromExcel] First 30 headers:`, headersPreview);
-        
+        const datePattern = /(\d{2})\.(\d{2})\.(\d{4})/; // DD.MM.YYYY
+        const datePatternShort = /(\d{2})\.(\d{2})\.(\d{2})/; // DD.MM.YY
+
         // ВАЖНО: Используем headers (нормализованные) для поиска колонок с датами
-        // Но row - это массив, поэтому используем colIdx для доступа
         for (let colIdx = 0; colIdx < Math.max(headerRow.length, headers.length); colIdx++) {
             // Проверяем заголовок из нормализованного массива headers
             const header = colIdx < headers.length ? headers[colIdx] : '';
-            
-            // Проверяем паттерн даты DD.MM.YYYY (например, 01.12.2025)
-            const dateMatch = header.match(datePattern);
-            
-            if (dateMatch) {
-                const [, dayStr, monthStr, yearStr] = dateMatch;
-                const day = parseInt(dayStr);
-                const month = parseInt(monthStr);
-                const year = parseInt(yearStr);
-                
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year) && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-                    // Нормализуем дату к первому числу месяца (YYYY-MM-01)
-                    const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
-                    
-                    // Получаем значение из текущей строки данных
-                    // XLSX может хранить значения в разных форматах
-                    let rowValue = (row as any[])[colIdx];
-                    
-                    // Если значение не найдено, пробуем альтернативные ключи
-                    if (rowValue === undefined || rowValue === null) {
-                        const emptyKey = `__EMPTY_${colIdx}`;
-                        rowValue = (row as any)[emptyKey];
-                    }
-                    
-                    // Если все еще нет, пробуем получить по индексу через XLSX utils
-                    if (rowValue === undefined || rowValue === null) {
-                        // Пробуем получить через альтернативные способы
-                        try {
-                            const cellAddress = XLSX.utils.encode_cell({ r: i, c: colIdx });
-                            const cell = ws[cellAddress];
-                            if (cell && cell.v !== undefined) {
-                                rowValue = cell.v;
-                                console.log(`[parseTechCardsFromExcel] Got value from cell ${cellAddress}:`, rowValue);
-                            }
-                        } catch (e) {
-                            // Игнорируем ошибки при чтении ячейки
-                        }
-                    }
-                    
-                    const value = rowValue;
-                    console.log(`[parseTechCardsFromExcel] ✅ Found date column ${colIdx}: "${header}" -> ${monthDate}, value:`, value, `(type: ${typeof value}, raw: ${JSON.stringify(value)})`);
-                    
-                    // Парсим значение, даже если оно 0 (но не если ячейка пустая)
-                    let quantity = 0;
-                    if (value !== null && value !== undefined && value !== '') {
-                        // Обрабатываем разные форматы чисел
-                        let strValue = String(value);
-                        // Заменяем запятую на точку (украинский/русский формат)
-                        strValue = strValue.replace(',', '.');
-                        // Убираем пробелы
-                        strValue = strValue.replace(/\s/g, '').trim();
-                        
-                        if (strValue !== '' && strValue !== '-') {
-                            const parsed = parseFloat(strValue);
-                            if (!isNaN(parsed)) {
-                                quantity = parsed;
-                            } else {
-                                console.warn(`[parseTechCardsFromExcel] ⚠️ Cannot parse value "${value}" as number for column ${colIdx}`);
-                            }
-                        }
-                    }
-                    
-                    // Сохраняем все нормы, включая 0 (это важно для отображения)
-                    monthlyNorms.push({ date: monthDate, quantity });
-                    console.log(`[parseTechCardsFromExcel] ✅ Parsed monthly norm: ${monthDate} = ${quantity} for material ${materialSku || materialName || 'UNKNOWN'}`);
-                } else {
-                    console.warn(`[parseTechCardsFromExcel] ⚠️ Invalid date in header "${header}": day=${day}, month=${month}, year=${year}`);
+
+            // Проверяем паттерн даты
+            let day, month, year;
+            const matchFull = header.match(datePattern);
+            const matchShort = header.match(datePatternShort);
+
+            if (matchFull) {
+                [, day, month, year] = matchFull.map(Number);
+            } else if (matchShort) {
+                [, day, month, year] = matchShort.map(Number);
+                year += 2000; // Assume 20xx for 2-digit years
+            }
+
+            if (day && month && year && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                // Нормализуем дату к первому числу месяца (YYYY-MM-01)
+                const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
+
+                // Получаем значение
+                let rowValue = (row as any[])[colIdx];
+                if (rowValue === undefined || rowValue === null) {
+                    const emptyKey = `__EMPTY_${colIdx}`;
+                    rowValue = (row as any)[emptyKey];
                 }
+
+                // Парсим значение
+                let quantity = 0;
+                if (rowValue !== null && rowValue !== undefined && rowValue !== '') {
+                    let strValue = String(rowValue).replace(',', '.').replace(/\s/g, '').trim();
+                    if (strValue !== '' && strValue !== '-') {
+                        const parsed = parseFloat(strValue);
+                        if (!isNaN(parsed)) quantity = parsed;
+                    }
+                }
+
+                monthlyNorms.push({ date: monthDate, quantity });
             }
         }
-        
-        console.log(`[parseTechCardsFromExcel] 📊 Total monthly norms parsed: ${monthlyNorms.length}`, monthlyNorms);
 
-        // Пропускаем только полностью пустые строки (нет ни ГП, ни материала)
-        if (!gpSku && !gpName && !materialSku && !materialName) {
-            continue;
-        }
+        // Пропускаем только полностью пустые строки
+        if (!gpSku && !gpName && !materialSku && !materialName) continue;
 
         // Определяем текущую техкарту
         let currentTechCard: ImportedTechCard | null = null;
-        
+
         if (gpSku || gpName) {
-            // Есть SKU или название ГП - это новая техкарта или существующая
-            // Используем SKU как основной идентификатор, если нет - используем название
             const key = gpSku ? `${gpSku}|${gpName || gpSku}` : `|${gpName}`;
-            
             if (!techCardsMap.has(key)) {
                 techCardsMap.set(key, {
                     gpSku: gpSku || '',
                     gpName: gpName || gpSku || 'Без названия',
                     ingredients: []
                 });
-                console.log(`[parseTechCardsFromExcel] Создана новая техкарта: SKU=${gpSku || 'нет'}, Name=${gpName || 'нет'}`);
             }
             currentTechCard = techCardsMap.get(key)!;
-            lastTechCard = currentTechCard; // Обновляем последнюю техкарту
+            lastTechCard = currentTechCard;
         } else if (lastTechCard) {
-            // Нет SKU и названия ГП, но есть последняя техкарта - это продолжение
             currentTechCard = lastTechCard;
         } else {
-            // Нет ни ГП, ни последней техкарты - пропускаем строку
-            console.warn(`[parseTechCardsFromExcel] Строка ${i + 1}: пропущена (нет ГП и нет предыдущей техкарты)`);
             continue;
         }
 
-        // Добавляем ингредиент только если есть материал и техкарта
+        // Добавляем ингредиент
         if (currentTechCard && (materialSku || materialName)) {
-            // Проверяем, не добавлен ли уже этот материал (избегаем дубликатов)
-            const isDuplicate = currentTechCard.ingredients.some(
-                ing => (ing.materialSku && ing.materialSku === materialSku) || 
-                       (ing.materialName && ing.materialName === materialName)
-            );
-            
-            if (!isDuplicate) {
-                // ВАЖНО: Сохраняем monthlyNorms даже если они все равны 0 или пустые
-                // Это нужно для отображения структуры норм по месяцам
-                // ВАЖНО: Сохраняем monthlyNorms даже если они все равны 0
-                // Это нужно для отображения структуры норм по месяцам
+            // Функция нормализации строки для сравнения (убираем все пробелы, приводим к нижнему регистру)
+            const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '').replace(/[^a-zа-я0-9]/gi, '');
+
+            const normMaterialSku = normalize(materialSku);
+            const normMaterialName = normalize(materialName);
+
+            // Ищем дубликат с строгим сравнением
+            const existingIngredientIndex = currentTechCard.ingredients.findIndex(ing => {
+                const ingSku = normalize(ing.materialSku);
+                const ingName = normalize(ing.materialName);
+
+                // Если есть SKU у обоих - сравниваем SKU
+                if (ingSku && normMaterialSku) return ingSku === normMaterialSku;
+                // Иначе сравниваем названия
+                return ingName === normMaterialName;
+            });
+
+            if (existingIngredientIndex === -1) {
+                // Новая запись
                 const ingredient = {
                     materialSku: materialSku || '',
                     materialName: materialName || materialSku || 'Без названия',
                     materialCategory,
                     unit: parseUnit(unit),
-                    norm: norm || 0, // Разрешаем norm === 0
+                    norm: norm || 0,
                     monthlyNorms: monthlyNorms.length > 0 ? monthlyNorms : undefined
                 };
-                
-                if (monthlyNorms.length > 0) {
-                    console.log(`[parseTechCardsFromExcel] ✅ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has ${monthlyNorms.length} monthly norms:`, JSON.stringify(monthlyNorms));
-                } else {
-                    console.warn(`[parseTechCardsFromExcel] ⚠️ Ingredient "${ingredient.materialName}" (${ingredient.materialSku}) has NO monthly norms!`);
-                    console.warn(`[parseTechCardsFromExcel] ⚠️ Check if date columns (01.12.2025, 01.01.2026, etc.) are found in headers.`);
-                    console.warn(`[parseTechCardsFromExcel] ⚠️ Headers checked:`, headers.slice(0, 20).join(', '));
-                }
-                
                 currentTechCard.ingredients.push(ingredient);
             } else {
-                console.log(`[parseTechCardsFromExcel] Пропущен дубликат материала: ${materialSku || materialName}`);
+                // Дубликат найден - пытаемся объединить данные
+                console.log(`[parseTechCardsFromExcel] Дубликат материала: ${materialSku || materialName}. Объединяем данные.`);
+                const existing = currentTechCard.ingredients[existingIngredientIndex];
+
+                // Если у существующего нет monthlyNorms, а у нового есть - берем новые
+                if (!existing.monthlyNorms && monthlyNorms.length > 0) {
+                    existing.monthlyNorms = monthlyNorms;
+                }
+                // Если у обоих есть monthlyNorms - можно объединить (здесь просто оставляем старые или новые, если старые пустые)
+                // Если норма была 0, а теперь не 0 - обновляем
+                if (existing.norm === 0 && norm > 0) {
+                    existing.norm = norm;
+                }
             }
         }
     }
 
     const result = Array.from(techCardsMap.values());
-    
+
     // Постобработка: если норма (etalon) равна 0, пытаемся найти норму на текущий месяц
     // Это нужно для случаев, когда в excel указаны только нормы по месяцам
     const currentDate = new Date();
     const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
-    
+
     result.forEach(tc => {
         tc.ingredients.forEach(ing => {
             if (ing.norm === 0 && ing.monthlyNorms && ing.monthlyNorms.length > 0) {
                 // Ищем норму на текущий месяц
                 const currentMonthNorm = ing.monthlyNorms.find(mn => mn.date === currentMonthStr);
-                
+
                 if (currentMonthNorm && currentMonthNorm.quantity > 0) {
                     console.log(`[parseTechCardsFromExcel] 🔄 Updating norm for "${ing.materialName}" from 0 to ${currentMonthNorm.quantity} (current month)`);
                     ing.norm = currentMonthNorm.quantity;

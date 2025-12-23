@@ -278,6 +278,10 @@ export function parseTechCardsFromExcel(
     }
 
     const headerRow = rawData[headerRowIndex] || [];
+
+    // DEBUG: Dump raw headers
+    console.log('[parseTechCardsFromExcel] Raw Headers (Row ' + headerRowIndex + '):', JSON.stringify(headerRow));
+
     const headers = headerRow.map((h: any) => String(h || '').trim());
 
     // Helper function to find column index by multiple possible names (case-insensitive, flexible)
@@ -335,18 +339,32 @@ export function parseTechCardsFromExcel(
         'Од. вим.', 'Од. вим', 'Единица измерения', 'Единица', 'Unit', 'Од. вим.',
         'од. вим.', 'од. вим', 'единица измерения', 'единица', 'unit'
     ]);
-    const normIndex = findColumnIndex([
+    let normIndex = findColumnIndex([
         'Еталон', 'Эталон', 'Норма', 'Norm', 'Базовая норма', 'Базова норма',
-        'эталон', 'эталон', 'норма', 'norm', 'базовая норма', 'базова норма'
+        'эталон', 'эталон', 'норма', 'norm', 'базовая норма', 'базова норма',
+        'Кількість', 'Количество', 'Кол-во', 'Q-ty', 'Sum', 'Сума',
+        'кількість', 'количество', 'кол-во', 'q-ty', 'sum', 'сума',
+        'Нормы', 'Норм', 'Norms', 'нормы', 'норм', 'norms'
     ]);
+
+    // EMERGENCY FALLBACK: If norm column not found by name, assume it is the LAST column
+    // This is a common pattern in user files where the last column is just a number without a standard header
+    if (normIndex === -1 && headers.length > 0) {
+        const lastIndex = headers.length - 1;
+        normIndex = lastIndex;
+        console.warn(`[parseTechCardsFromExcel] ⚠️ Norm column not found by name. Falling back to LAST column (index ${lastIndex}): "${headers[lastIndex]}"`);
+    } else {
+        console.log(`[parseTechCardsFromExcel] ✅ Norm column found at index ${normIndex}`);
+    }
 
     // Формируем список отсутствующих колонок для более информативного сообщения об ошибке
     const missingColumns: string[] = [];
     if (gpSkuIndex === -1) missingColumns.push('Артикул ГП');
-    if (gpNameIndex === -1) missingColumns.push('Назва ГП');
-    if (materialSkuIndex === -1) missingColumns.push('Артикул КСМ');
-    if (materialNameIndex === -1) missingColumns.push('Назва КСМ');
-    if (normIndex === -1) missingColumns.push('Еталон');
+    if (gpNameIndex === -1 && gpSkuIndex === -1) missingColumns.push('Назва ГП'); // Название необязательно если есть артикул
+    if (materialSkuIndex === -1 && materialNameIndex === -1) missingColumns.push('Артикул КСМ или Назва КСМ');
+
+    // Etalon is now OPTIONAL
+    // if (normIndex === -1) missingColumns.push('Еталон');
 
     if (missingColumns.length > 0) {
         const foundHeaders = headers.filter(h => h && !h.startsWith('__EMPTY')).slice(0, 10).join(', ');
@@ -357,10 +375,19 @@ export function parseTechCardsFromExcel(
             `- Артикул ГП (или Артикул Г.П., SKU ГП)\n` +
             `- Назва ГП (или Название ГП, Наименование ГП)\n` +
             `- Артикул КСМ (или Артикул К.С.М., SKU КСМ)\n` +
-            `- Назва КСМ (или Название КСМ, Наименование КСМ)\n` +
-            `- Еталон (или Эталон, Норма, Базовая норма)`
+            `- Назва КСМ (или Название КСМ, Наименование КСМ)`
         );
     }
+
+    // Log detected columns for debugging
+    console.log('[parseTechCardsFromExcel] Detected columns:', {
+        gpSku: gpSkuIndex,
+        gpName: gpNameIndex,
+        materialSku: materialSkuIndex,
+        materialName: materialNameIndex,
+        etalon: normIndex,
+        unit: unitIndex
+    });
 
     // Группируем строки по готовой продукции
     const techCardsMap = new Map<string, ImportedTechCard>();
@@ -378,12 +405,16 @@ export function parseTechCardsFromExcel(
         const materialName = String(row[materialNameIndex] || '').trim();
         const materialCategory = materialCategoryIndex >= 0 ? String(row[materialCategoryIndex] || '').trim() : '';
         const unit = unitIndex >= 0 ? String(row[unitIndex] || '').trim() : 'шт';
-        const norm = parseFloat(String(row[normIndex] || '0').replace(',', '.')) || 0;
+
+        let normRaw = parseFloat(String(row[normIndex] || '0').replace(',', '.'));
+        // SANITIZE: Constraint prevent negative values
+        const norm = !isNaN(normRaw) ? Math.max(0, normRaw) : 0;
 
         // Парсим нормы по месяцам из колонок с датами (формат DD.MM.YYYY или DD.MM.YY)
         const monthlyNorms: Array<{ date: string; quantity: number }> = [];
-        const datePattern = /(\d{2})\.(\d{2})\.(\d{4})/; // DD.MM.YYYY
-        const datePatternShort = /(\d{2})\.(\d{2})\.(\d{2})/; // DD.MM.YY
+        // Enhanced date patterns to support dots, slashes, dashes, and spaces
+        const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY
+        const datePatternShort = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{2})/; // DD.MM.YY
 
         // ВАЖНО: Используем headers (нормализованные) для поиска колонок с датами
         const maxCols = Math.max(headerRow.length, headers.length);
@@ -391,10 +422,9 @@ export function parseTechCardsFromExcel(
         for (let colIdx = 0; colIdx < maxCols; colIdx++) {
             // Получаем заголовок
             let headerStr = '';
-            if (colIdx < headers.length) {
-                headerStr = headers[colIdx];
-            } else if (colIdx < headerRow.length) {
-                headerStr = String(headerRow[colIdx] || '');
+            // Try to get raw header first for better parsing
+            if (headerRow[colIdx] !== undefined && headerRow[colIdx] !== null) {
+                headerStr = String(headerRow[colIdx]).trim();
             }
 
             // Проверяем на Excel Serial Date (число ~40000-50000)
@@ -451,7 +481,10 @@ export function parseTechCardsFromExcel(
                     let strValue = String(rowValue).replace(',', '.').replace(/\s/g, '').trim();
                     if (strValue !== '' && strValue !== '-') {
                         const parsed = parseFloat(strValue);
-                        if (!isNaN(parsed)) quantity = parsed;
+                        if (!isNaN(parsed)) {
+                            // SANITIZE: Constraint prevent negative values. Replace < 0 with 0.
+                            quantity = Math.max(0, parsed);
+                        }
                     }
                 }
 
@@ -549,25 +582,36 @@ export function parseTechCardsFromExcel(
     // Постобработка: если норма (etalon) равна 0, пытаемся найти норму на текущий месяц
     // Это нужно для случаев, когда в excel указаны только нормы по месяцам
     const currentDate = new Date();
-    const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
+    // For current month logic, we look for current month in the imported data
+    const currentMonthPrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+    console.log(`[parseTechCardsFromExcel] Target current month prefix: ${currentMonthPrefix}`);
 
     result.forEach(tc => {
         tc.ingredients.forEach(ing => {
+            // If base norm is 0, we MUST try to find a fallback
             if (ing.norm === 0 && ing.monthlyNorms && ing.monthlyNorms.length > 0) {
-                // Ищем норму на текущий месяц
-                const currentMonthNorm = ing.monthlyNorms.find(mn => mn.date === currentMonthStr);
+                // 1. Try exact current month
+                const currentMonthNorm = ing.monthlyNorms.find(mn => mn.date.startsWith(currentMonthPrefix));
 
                 if (currentMonthNorm && currentMonthNorm.quantity > 0) {
-                    console.log(`[parseTechCardsFromExcel] 🔄 Updating norm for "${ing.materialName}" from 0 to ${currentMonthNorm.quantity} (current month)`);
+                    console.log(`[parseTechCardsFromExcel] 🔄 Resolution for "${ing.materialName}": Base=0 -> Using Current Month (${currentMonthNorm.date}): ${currentMonthNorm.quantity}`);
                     ing.norm = currentMonthNorm.quantity;
                 } else {
-                    // Если на текущий месяц нет, берем первую доступную ненулевую норму (как fallback)
-                    const firstNonZero = ing.monthlyNorms.find(mn => mn.quantity > 0);
+                    // 2. Fallback: Find first non-zero norm
+                    // Sort by date to be deterministic
+                    const sortedNorms = [...ing.monthlyNorms].sort((a, b) => a.date.localeCompare(b.date));
+                    const firstNonZero = sortedNorms.find(mn => mn.quantity > 0);
+
                     if (firstNonZero) {
-                        console.log(`[parseTechCardsFromExcel] 🔄 Updating norm for "${ing.materialName}" from 0 to ${firstNonZero.quantity} (first available: ${firstNonZero.date})`);
+                        console.log(`[parseTechCardsFromExcel] 🔄 Resolution for "${ing.materialName}": Base=0, Current=0 -> Using First Available (${firstNonZero.date}): ${firstNonZero.quantity}`);
                         ing.norm = firstNonZero.quantity;
+                    } else {
+                        console.warn(`[parseTechCardsFromExcel] ⚠️ Resolution for "${ing.materialName}": Base=0 and NO non-zero monthly norms found!`);
                     }
                 }
+            } else if (ing.norm === 0) {
+                console.warn(`[parseTechCardsFromExcel] ⚠️ Ingredient "${ing.materialName}" has 0 norm and NO monthly norms detected.`);
             }
         });
     });

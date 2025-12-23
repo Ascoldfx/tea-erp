@@ -408,13 +408,25 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                     <div key={idx} className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
-                                                <p className="text-slate-200 font-medium">{techCard.gpName}</p>
+                                                <div className="flex justify-between items-start">
+                                                    <p className="text-slate-200 font-medium">{techCard.gpName}</p>
+                                                    <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+                                                        {techCard.ingredients.length} мат.
+                                                    </span>
+                                                </div>
                                                 <p className="text-xs text-slate-400 font-mono mt-1">
                                                     {techCard.gpSku}
                                                 </p>
-                                                <p className="text-xs text-slate-500 mt-2">
-                                                    Материалов: {techCard.ingredients.length}
-                                                </p>
+
+                                                {/* Zero Norm Warning - Only if ALL ingredients are zero (empty recipe) */}
+                                                {techCard.ingredients.every(i => i.norm === 0) && (
+                                                    <div className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
+                                                        🔴 Внимание: Все материалы имеют нулевую норму.
+                                                        <div className="mt-1 opacity-80">
+                                                            Техкарта не будет работать корректно без норм. Проверьте файл.
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

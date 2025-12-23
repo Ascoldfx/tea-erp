@@ -120,57 +120,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
             const missingMaterials: Array<{ sku: string; name: string }> = [];
             const foundMaterials: Array<{ sku: string; name: string; foundAs?: string; isMultiple?: boolean }> = [];
-            let materialsCreatedCount = 0;
 
-            // Функция для определения категории по группе КСМ
-            const mapCategory = (group: string): string => {
-                const groupLower = (group || '').toLowerCase().trim();
-                if (groupLower.includes('сировина') || groupLower.includes('сырье')) return 'tea_bulk';
-                if (groupLower.includes('суміш') || groupLower.includes('смесь')) return 'tea_bulk';
-                if (groupLower.includes('картон') || groupLower.includes('упаковка')) return 'packaging_cardboard';
-                if (groupLower.includes('ярлик') || groupLower.includes('этикетка') || groupLower.includes('label')) return 'label';
-                if (groupLower.includes('г/я') || groupLower.includes('гофро') || groupLower.includes('ящик')) return 'packaging_crate';
-                return 'other';
-            };
-
-            // Функция для создания материала в базе данных
-            const createMaterial = async (sku: string, name: string, category: string, unit: string): Promise<string | null> => {
-                if (!supabase || !sku) return null;
-
-                try {
-                    // Используем SKU как ID
-                    const itemId = sku.trim();
-                    const normalizedUnit = unit.toLowerCase() === 'pcs' || unit === 'шт' ? 'pcs' :
-                        unit.toLowerCase() === 'kg' || unit === 'кг' ? 'kg' :
-                            unit.toLowerCase() === 'g' || unit === 'г' ? 'g' : 'pcs';
-
-                    const { data, error } = await supabase
-                        .from('items')
-                        .upsert({
-                            id: itemId,
-                            sku: sku.trim(),
-                            name: name.trim(),
-                            category: category,
-                            unit: normalizedUnit,
-                            min_stock_level: 0
-                        }, {
-                            onConflict: 'id'
-                        })
-                        .select('id')
-                        .single();
-
-                    if (error) {
-                        console.error(`[Import] Ошибка при создании материала ${sku}:`, error);
-                        return null;
-                    }
-
-                    console.log(`[Import] Материал создан: ${sku} - ${name} (категория: ${category})`);
-                    return data?.id || itemId;
-                } catch (e) {
-                    console.error(`[Import] Исключение при создании материала ${sku}:`, e);
-                    return null;
-                }
-            };
 
             // ВАЖНО: Используем динамический список items, который обновляется после создания материалов
             let currentItems = [...items]; // Копируем текущий список

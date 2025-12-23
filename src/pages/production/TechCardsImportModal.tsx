@@ -7,7 +7,7 @@ import { parseTechCardsFromExcel } from '../../services/techCardsExportService';
 import type { ImportedTechCard } from '../../services/techCardsExportService';
 import { useInventory } from '../../hooks/useInventory';
 import type { Recipe, RecipeIngredient } from '../../types/production';
-import { supabase } from '../../lib/supabase';
+// import { supabase } from '../../lib/supabase';
 
 interface TechCardsImportModalProps {
     isOpen: boolean;
@@ -16,7 +16,7 @@ interface TechCardsImportModalProps {
 }
 
 export default function TechCardsImportModal({ isOpen, onClose, onImport }: TechCardsImportModalProps) {
-    const { items, refresh: refreshInventory } = useInventory();
+    const { items } = useInventory();
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'success'>('upload');
     const [parsedData, setParsedData] = useState<ImportedTechCard[]>([]);
     const [error, setError] = useState<string | null>(null);

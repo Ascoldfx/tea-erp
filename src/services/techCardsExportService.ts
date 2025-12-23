@@ -386,14 +386,37 @@ export function parseTechCardsFromExcel(
         const datePatternShort = /(\d{2})\.(\d{2})\.(\d{2})/; // DD.MM.YY
 
         // ВАЖНО: Используем headers (нормализованные) для поиска колонок с датами
-        for (let colIdx = 0; colIdx < Math.max(headerRow.length, headers.length); colIdx++) {
-            // Проверяем заголовок из нормализованного массива headers
-            const header = colIdx < headers.length ? headers[colIdx] : '';
+        const maxCols = Math.max(headerRow.length, headers.length);
 
-            // Проверяем паттерн даты
+        for (let colIdx = 0; colIdx < maxCols; colIdx++) {
+            // Получаем заголовок
+            let headerStr = '';
+            if (colIdx < headers.length) {
+                headerStr = headers[colIdx];
+            } else if (colIdx < headerRow.length) {
+                headerStr = String(headerRow[colIdx] || '');
+            }
+
+            // Проверяем на Excel Serial Date (число ~40000-50000)
+            const rawHeader = headerRow[colIdx];
+            if (typeof rawHeader === 'number' && rawHeader > 35000 && rawHeader < 60000) {
+                try {
+                    const date = XLSX.SSF.parse_date_code(rawHeader);
+                    if (date) {
+                        const d = String(date.d).padStart(2, '0');
+                        const m = String(date.m).padStart(2, '0');
+                        const y = date.y;
+                        headerStr = `${d}.${m}.${y}`;
+                    }
+                } catch (e) {
+                    // Ignore parsing errors
+                }
+            }
+
+            // Проверяем паттерн даты DD.MM.YYYY или DD.MM.YY
             let day, month, year;
-            const matchFull = header.match(datePattern);
-            const matchShort = header.match(datePatternShort);
+            const matchFull = headerStr.match(datePattern);
+            const matchShort = headerStr.match(datePatternShort);
 
             if (matchFull) {
                 [, day, month, year] = matchFull.map(Number);
@@ -411,6 +434,15 @@ export function parseTechCardsFromExcel(
                 if (rowValue === undefined || rowValue === null) {
                     const emptyKey = `__EMPTY_${colIdx}`;
                     rowValue = (row as any)[emptyKey];
+                }
+
+                // Пробуем через XLSX utils если значение не найдено
+                if (rowValue === undefined && ws) {
+                    try {
+                        const cellAddress = XLSX.utils.encode_cell({ r: i, c: colIdx });
+                        const cell = ws[cellAddress];
+                        if (cell && cell.v !== undefined) rowValue = cell.v;
+                    } catch (e) { }
                 }
 
                 // Парсим значение
@@ -481,18 +513,32 @@ export function parseTechCardsFromExcel(
                 };
                 currentTechCard.ingredients.push(ingredient);
             } else {
-                // Дубликат найден - пытаемся объединить данные
-                console.log(`[parseTechCardsFromExcel] Дубликат материала: ${materialSku || materialName}. Объединяем данные.`);
+                // Дубликат найден - объединяем данные
+                // console.log(`[parseTechCardsFromExcel] Дубликат материала: ${materialSku || materialName}. Объединяем данные.`);
                 const existing = currentTechCard.ingredients[existingIngredientIndex];
 
-                // Если у существующего нет monthlyNorms, а у нового есть - берем новые
-                if (!existing.monthlyNorms && monthlyNorms.length > 0) {
-                    existing.monthlyNorms = monthlyNorms;
-                }
-                // Если у обоих есть monthlyNorms - можно объединить (здесь просто оставляем старые или новые, если старые пустые)
                 // Если норма была 0, а теперь не 0 - обновляем
                 if (existing.norm === 0 && norm > 0) {
                     existing.norm = norm;
+                }
+
+                // ВАЖНО: Объединяем monthlyNorms
+                if (monthlyNorms.length > 0) {
+                    if (!existing.monthlyNorms) {
+                        existing.monthlyNorms = [];
+                    }
+
+                    monthlyNorms.forEach(newM => {
+                        const existingM = existing.monthlyNorms!.find(em => em.date === newM.date);
+                        if (existingM) {
+                            // Если есть существующая норма - берем максимальное (или непустое) значение
+                            if (existingM.quantity === 0 && newM.quantity > 0) {
+                                existingM.quantity = newM.quantity;
+                            }
+                        } else {
+                            existing.monthlyNorms!.push(newM);
+                        }
+                    });
                 }
             }
         }

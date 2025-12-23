@@ -89,15 +89,18 @@ export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, al
                                     const item = items.find(i => i.id === recipe.outputItemId);
                                     if (item?.sku) return item.sku;
 
-                                    // 2. If it's a temp item, use the stored SKU
+                                    // 2. If it's a temp item, check if it stores a readable SKU
                                     if (recipe.outputItemId?.startsWith('temp-')) {
-                                        return recipe.outputItemId.replace('temp-', '');
+                                        const val = recipe.outputItemId.replace('temp-', '');
+                                        if (!val.startsWith('rcp-')) return val;
                                     }
 
-                                    // 3. Search in description (supports both "SKU:" and "Артикул:")
-                                    // Matches "SKU: 123", "Артикул: 123", "SKU:123" etc.
-                                    const descMatch = recipe.description?.match(/(?:SKU|Артикул|Sku|Articul)[\s:]+([^\s,;]+)/i);
-                                    if (descMatch) return descMatch[1];
+                                    // 3. Search in description (supports "SKU:", "Артикул:", "Код:", etc.)
+                                    const descMatch = recipe.description?.match(/(?:SKU|Артикул|Sku|Articul|Код)[\s:\.\-№]+([^\s,;]+)/i);
+                                    if (descMatch) {
+                                        const val = descMatch[1];
+                                        if (!val.startsWith('rcp-')) return val;
+                                    }
 
                                     // 4. Try to find SKU in name (often in parentheses like "(282057)")
                                     const nameMatch = recipe.name.match(/\((\d{4,})\)/);
@@ -105,6 +108,9 @@ export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, al
 
                                     return '';
                                 })();
+
+                                // Final safety check
+                                if (recipeSku && recipeSku.startsWith('rcp-')) return null;
 
                                 return (
                                     <div

@@ -256,7 +256,8 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                                 // ВАЖНО: Сохраняем tempMaterial с оригинальным названием из Excel для правильного отображения
                                 tempMaterial: {
                                     sku: ing.materialSku || material.sku || '',
-                                    name: ing.materialName || material.name || 'Неизвестный материал'
+                                    name: ing.materialName || material.name || 'Неизвестный материал',
+                                    unit: ing.unit
                                 }
                             });
                             foundMaterials.push({
@@ -277,7 +278,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                             itemId: tempId,
                             quantity: ing.norm,
                             isAutoCreated: true,
-                            tempMaterial: { sku: searchSku, name: searchName },
+                            tempMaterial: { sku: searchSku, name: searchName, unit: ing.unit },
                             // Сохраняем нормы по месяцам, если они есть
                             monthlyNorms: ing.monthlyNorms
                         });

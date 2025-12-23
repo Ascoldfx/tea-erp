@@ -419,7 +419,7 @@ export default function TechCardsList() {
                                                             )}
                                                         </span>
                                                         <span className="text-slate-500">
-                                                            {ing.quantity} {tempMaterial ? '-' : getItemUnit(ing.itemId)}
+                                                            {ing.quantity} {tempMaterial ? (tempMaterial.unit === 'pcs' ? 'шт' : (tempMaterial.unit || '-')) : getItemUnit(ing.itemId)}
                                                         </span>
                                                     </li>
                                                 );

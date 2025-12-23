@@ -153,11 +153,12 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-700">
-                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
-                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Еталон</th>
-                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Текущий месяц</th>
-                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
-                                            <th className="text-center py-2 px-3 text-slate-400 font-semibold">Динамика</th>
+                                            <tr className="border-b border-slate-700">
+                                                <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
+                                                <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма</th>
+                                                <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
+                                                <th className="text-center py-2 px-3 text-slate-400 font-semibold">Сезонность</th>
+                                            </tr>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">

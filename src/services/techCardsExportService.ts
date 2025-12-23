@@ -299,8 +299,8 @@ export function parseTechCardsFromExcel(
     const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции']);
     const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции']);
     const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category']);
-    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала']);
-    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала']);
+    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM']);
+    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM']);
     const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм']);
 
     // Ищем колонку Нормы
@@ -502,6 +502,22 @@ export function parseTechCardsFromExcel(
                     monthlyCount: monthlyNorms.length
                 });
             }
+
+            // START DEBUG for SKU 282057
+            if ((gpSku && gpSku.includes('282057')) || (gpName && gpName.includes('282057')) || (lastTechCard && lastTechCard.gpSku.includes('282057'))) {
+                console.log(`[DEBUG 282057] Row ${i}:`, {
+                    gpSku,
+                    gpName: gpName?.substring(0, 20),
+                    hasGpInfo,
+                    materialSku,
+                    materialName: materialName?.substring(0, 20),
+                    normIndex,
+                    normRawThisRow: row[normIndex],
+                    currentCardSku: currentTechCard?.gpSku,
+                    currentCardIngs: currentTechCard?.ingredients.length
+                });
+            }
+            // END DEBUG
 
             // Добавляем ингредиент
             const ingredient = {

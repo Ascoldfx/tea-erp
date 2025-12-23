@@ -73,7 +73,7 @@ export const recipesService = {
                     }
                     // Если item_id NULL, используем временный ID из temp_material_sku
                     const itemId = ing.item_id || (ing.temp_material_sku ? `temp-${ing.temp_material_sku}` : `temp-unknown-${Date.now()}`);
-                    
+
                     const ingredient: RecipeIngredient = {
                         itemId: itemId,
                         quantity: ing.quantity,
@@ -84,12 +84,12 @@ export const recipesService = {
                             ? { sku: ing.temp_material_sku, name: ing.temp_material_name }
                             : (ing.item_id ? undefined : { sku: ing.temp_material_sku || 'UNKNOWN', name: ing.temp_material_name || 'Неизвестный материал' })
                     };
-                    
+
                     // Загружаем нормы по месяцам, если они есть
                     if (ing.monthly_norms) {
                         // PostgreSQL JSONB может вернуть объект или массив
                         let monthlyNormsArray: Array<{ date: string; quantity: number }> | null = null;
-                        
+
                         if (Array.isArray(ing.monthly_norms)) {
                             monthlyNormsArray = ing.monthly_norms;
                         } else if (typeof ing.monthly_norms === 'object' && ing.monthly_norms !== null) {
@@ -104,13 +104,13 @@ export const recipesService = {
                                 monthlyNormsArray = null;
                             }
                         }
-                        
+
                         if (monthlyNormsArray && monthlyNormsArray.length > 0) {
                             ingredient.monthlyNorms = monthlyNormsArray;
                             console.log(`[RecipesService] Loaded ${monthlyNormsArray.length} monthly norms for ingredient ${ing.temp_material_sku || ing.item_id}`);
                         }
                     }
-                    
+
                     ingredientsMap.get(ing.recipe_id)!.push(ingredient);
                 });
             }
@@ -149,10 +149,10 @@ export const recipesService = {
             // Сохраняем техкарту
             // ВАЖНО: Если outputItemId начинается с "temp-", используем NULL
             // так как внешний ключ не позволит сохранить несуществующий ID
-            const outputItemId = recipe.outputItemId && !recipe.outputItemId.startsWith('temp-') 
-                ? recipe.outputItemId 
+            const outputItemId = recipe.outputItemId && !recipe.outputItemId.startsWith('temp-')
+                ? recipe.outputItemId
                 : null;
-            
+
             const recipeData: RecipeDB = {
                 id: recipe.id,
                 name: recipe.name,
@@ -205,23 +205,23 @@ export const recipesService = {
                     // Один и тот же материал (item_id) может использоваться в разных техкартах - это нормально
                     // Группируем по (recipe_id, item_id) и берем последний (самый актуальный)
                     const ingredientsMap = new Map<string, RecipeIngredientDB>();
-                    
+
                     validIngredients.forEach(ing => {
                         // Если itemId начинается с temp-, используем null для item_id
                         // Но сохраняем информацию в temp_material_sku и temp_material_name
                         const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
-                        
+
                         // Создаем ключ для уникальности: recipe_id + item_id (или temp_material_sku для NULL)
-                        const uniqueKey = itemId 
-                            ? `${recipe.id}_${itemId}` 
+                        const uniqueKey = itemId
+                            ? `${recipe.id}_${itemId}`
                             : `${recipe.id}_null_${ing.tempMaterial?.sku || ing.itemId}`;
-                        
+
                         // Если уже есть такой ингредиент, заменяем его (берем последний)
                         // ВАЖНО: Всегда сохраняем temp_material_name и temp_material_sku, даже если материал найден в БД
                         // Это нужно для отображения правильных названий
                         const tempSku = ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined);
                         const tempName = ing.tempMaterial?.name || undefined;
-                        
+
                         ingredientsMap.set(uniqueKey, {
                             recipe_id: recipe.id,
                             item_id: itemId, // NULL для временных материалов, string для существующих
@@ -234,11 +234,11 @@ export const recipesService = {
                             temp_material_name: tempName,
                             // ВАЖНО: Сохраняем monthly_norms даже если они все равны 0
                             // Это нужно для отображения структуры норм по месяцам
-                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0 
+                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
                                 ? (ing.monthlyNorms as any) // JSONB в PostgreSQL принимает массив напрямую
                                 : null
                         });
-                        
+
                         if (tempName) {
                             console.log(`[RecipesService] Saving ingredient with tempMaterial: ${tempName} (${tempSku})`);
                         }
@@ -251,17 +251,20 @@ export const recipesService = {
 
                     // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
                     console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}" (после удаления дубликатов из ${validIngredients.length})`);
-                    
+
                     // Логируем нормы по месяцам перед сохранением
                     ingredientsData.forEach((ingData, idx) => {
-                        if (ingData.monthly_norms) {
-                            const normsCount = Array.isArray(ingData.monthly_norms) ? ingData.monthly_norms.length : 0;
-                            console.log(`[RecipesService] ✅ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) имеет ${normsCount} норм по месяцам:`, JSON.stringify(ingData.monthly_norms));
+                        if (ingData.monthly_norms && Array.isArray(ingData.monthly_norms) && ingData.monthly_norms.length > 0) {
+                            const normsCount = ingData.monthly_norms.length;
+                            console.log(`[RecipesService] ✅ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) имеет ${normsCount} норм по месяцам`);
+                        } else if (ingData.quantity > 0) {
+                            // Если есть базовая норма - это нормально, не шумим
+                            console.log(`[RecipesService] ℹ️ Ингредиент ${idx + 1} использует базовую норму: ${ingData.quantity}`);
                         } else {
-                            console.warn(`[RecipesService] ❌ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) НЕ имеет норм по месяцам`);
+                            console.warn(`[RecipesService] ❌ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) НЕ имеет ни норм по месяцам, ни базовой нормы (0)`);
                         }
                     });
-                    
+
                     const { error: ingredientsError, data: insertedIngredients } = await supabase
                         .from('recipe_ingredients')
                         .insert(ingredientsData)
@@ -273,7 +276,7 @@ export const recipesService = {
                         console.error('[RecipesService] Full error details:', JSON.stringify(ingredientsError, null, 2));
                         return false;
                     }
-                    
+
                     const validCount = ingredientsData.filter(ing => ing.item_id).length;
                     const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
                     console.log(`[RecipesService] ✅ Сохранено ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);

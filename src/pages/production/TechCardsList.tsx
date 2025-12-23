@@ -176,9 +176,14 @@ export default function TechCardsList() {
 
     // Сортировка и фильтрация техкарт
     const filteredAndSortedRecipes = useMemo(() => {
-        const filtered = recipes.filter(r =>
-            r.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        const filtered = recipes.filter(r => {
+            const term = searchTerm.toLowerCase();
+            return (
+                r.name.toLowerCase().includes(term) ||
+                (r.description && r.description.toLowerCase().includes(term)) ||
+                (r.outputItemId && r.outputItemId.toLowerCase().includes(term))
+            );
+        });
 
         // Сортируем: приоритетные сверху в порядке TOP_25_SKUS, затем остальные
         return filtered.sort((a, b) => {
@@ -439,6 +444,7 @@ export default function TechCardsList() {
 
             <RecipeDetailsModal
                 recipe={selectedRecipe}
+                allRecipes={recipes}
                 isOpen={isDetailsModalOpen}
                 onClose={() => {
                     setIsDetailsModalOpen(false);

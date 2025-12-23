@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import type { Recipe } from '../../types/production';
 import { FileText, Edit, Package, Hash } from 'lucide-react';
+import MaterialDetailsModal from './MaterialDetailsModal';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -19,13 +20,23 @@ const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: numb
 
 interface RecipeDetailsModalProps {
     recipe: Recipe | null;
+    allRecipes: Recipe[]; // Pass all recipes for "Where Used" search
     isOpen: boolean;
     onClose: () => void;
 }
 
-export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDetailsModalProps) {
+export default function RecipeDetailsModal({ recipe, allRecipes = [], isOpen, onClose }: RecipeDetailsModalProps) {
     const navigate = useNavigate();
     const { items } = useInventory();
+
+    // Material Modal State
+    const [selectedMaterial, setSelectedMaterial] = useState<{ itemId: string, name: string, sku: string, isTemp: boolean } | null>(null);
+    const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+
+    const handleMaterialDoubleClick = (itemId: string, name: string, sku: string, isTemp: boolean) => {
+        setSelectedMaterial({ itemId, name, sku, isTemp });
+        setIsMaterialModalOpen(true);
+    };
 
 
     const finishedGood = useMemo(() => {
@@ -260,13 +271,23 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                             return (
                                                 <tr
                                                     key={idx}
-                                                    className={`hover:bg-slate-800/50 ${isDuplicate || sameSkuCount > 0
+                                                    className={`hover:bg-slate-800/50 cursor-pointer transition-colors ${isDuplicate || sameSkuCount > 0
                                                         ? 'bg-yellow-500/10 border-l-2 border-yellow-500'
                                                         : ''
                                                         } ${isAutoCreated
                                                             ? 'bg-blue-500/10 border-l-2 border-blue-500'
                                                             : ''
                                                         }`}
+                                                    onDoubleClick={(e) => {
+                                                        e.stopPropagation(); // Prevent bubbling if needed
+                                                        handleMaterialDoubleClick(
+                                                            ing.itemId,
+                                                            materialName,
+                                                            materialSku,
+                                                            !!tempMaterial || ing.itemId.startsWith('temp-')
+                                                        );
+                                                    }}
+                                                    title="Двойной клик для просмотра использования"
                                                 >
                                                     <td className="py-2 px-3 text-slate-200">
                                                         <div className="flex flex-col gap-1">
@@ -367,6 +388,15 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                 </div>
             </div>
         </Modal>
+
+        {/* Material Details Modal */ }
+    <MaterialDetailsModal
+        isOpen={isMaterialModalOpen}
+        onClose={() => setIsMaterialModalOpen(false)}
+        materialInfo={selectedMaterial}
+        allRecipes={allRecipes}
+    />
+        </>
     );
 }
 

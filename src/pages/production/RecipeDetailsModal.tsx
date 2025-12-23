@@ -153,12 +153,10 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-700">
-                                            <tr className="border-b border-slate-700">
-                                                <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
-                                                <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма</th>
-                                                <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
-                                                <th className="text-center py-2 px-3 text-slate-400 font-semibold">Сезонность</th>
-                                            </tr>
+                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
+                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма</th>
+                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
+                                            <th className="text-center py-2 px-3 text-slate-400 font-semibold">Сезонность</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -230,8 +228,34 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                 }
                                             }
 
+                                            // Логика расчета отображаемой нормы
                                             const hasMonthlyNorms = ing.monthlyNorms && ing.monthlyNorms.length > 0;
                                             const currentNorm = getCurrentMonthNorm(ing.monthlyNorms);
+
+                                            // Определяем "эффективную" норму для отображения
+                                            let effectiveNorm = 0;
+                                            let normSource: 'etalon' | 'monthly_current' | 'monthly_fallback' | 'none' = 'none';
+                                            let normDate = '';
+
+                                            if (currentNorm !== null && currentNorm > 0) {
+                                                effectiveNorm = currentNorm;
+                                                normSource = 'monthly_current';
+                                            } else if (ing.quantity > 0) {
+                                                effectiveNorm = ing.quantity;
+                                                normSource = 'etalon';
+                                            } else if (hasMonthlyNorms) {
+                                                // Если текущего месяца нет, берем первый доступный (fallback)
+                                                // Сортируем по дате, чтобы взять ближайший
+                                                const sortedNorms = [...ing.monthlyNorms!].sort((a, b) => a.date.localeCompare(b.date));
+                                                // Ищем первый ненулевой
+                                                const firstNonZero = sortedNorms.find(n => n.quantity > 0);
+
+                                                if (firstNonZero) {
+                                                    effectiveNorm = firstNonZero.quantity;
+                                                    normSource = 'monthly_fallback';
+                                                    normDate = firstNonZero.date;
+                                                }
+                                            }
 
                                             return (
                                                 <tr
@@ -269,19 +293,26 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         </div>
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
-                                                        {ing.quantity > 0 ? (
-                                                            ing.quantity.toFixed(4)
-                                                        ) : (
-                                                            currentNorm !== null ? (
-                                                                <span className="text-slate-400 italic" title="Используется норма текущего месяца">{currentNorm.toFixed(4)}*</span>
-                                                            ) : (
-                                                                <span className="text-slate-500">0.0000</span>
-                                                            )
-                                                        )}
-                                                    </td>
-                                                    <td className="py-2 px-3 text-right text-slate-200 font-medium">
-                                                        {currentNorm !== null ? (
-                                                            <span className="text-emerald-400 font-bold">{currentNorm.toFixed(4)}</span>
+                                                        {effectiveNorm > 0 ? (
+                                                            <div className="flex flex-col items-end">
+                                                                <span className={`font-bold ${normSource === 'monthly_current' ? 'text-emerald-400' :
+                                                                        normSource === 'monthly_fallback' ? 'text-amber-400' :
+                                                                            'text-slate-200'
+                                                                    }`}>
+                                                                    {effectiveNorm.toFixed(4)}
+                                                                    {normSource !== 'etalon' && '*'}
+                                                                </span>
+                                                                {normSource === 'monthly_fallback' && (
+                                                                    <span className="text-[10px] text-slate-500">
+                                                                        (из плана на {new Date(normDate).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })})
+                                                                    </span>
+                                                                )}
+                                                                {normSource === 'monthly_current' && (
+                                                                    <span className="text-[10px] text-emerald-500/70">
+                                                                        (текущий месяц)
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         ) : (
                                                             <span className="text-slate-500 text-xs">—</span>
                                                         )}

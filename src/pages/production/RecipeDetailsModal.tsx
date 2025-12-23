@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import type { Recipe } from '../../types/production';
-import { FileText, Edit, Package, Hash, Calendar } from 'lucide-react';
+import { FileText, Edit, Package, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -26,7 +26,7 @@ interface RecipeDetailsModalProps {
 export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDetailsModalProps) {
     const navigate = useNavigate();
     const { items } = useInventory();
-    const [hoveredNorms, setHoveredNorms] = useState<string | null>(null);
+
 
     const finishedGood = useMemo(() => {
         if (!recipe) return null;
@@ -156,7 +156,6 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
                                             <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма</th>
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
-                                            <th className="text-center py-2 px-3 text-slate-400 font-semibold">Сезонность</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
@@ -218,7 +217,8 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                             // Получаем единицу измерения
                                             let unit = '';
                                             if (tempMaterial) {
-                                                unit = '-';
+                                                // Для временных материалов берем единицу из них, если есть, или '-'
+                                                unit = tempMaterial.unit ? (tempMaterial.unit === 'pcs' ? 'шт' : tempMaterial.unit === 'kg' ? 'кг' : tempMaterial.unit) : '-';
                                             } else {
                                                 const foundItem = items.find(i => i.id === ing.itemId);
                                                 if (foundItem) {
@@ -296,8 +296,8 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         {effectiveNorm > 0 ? (
                                                             <div className="flex flex-col items-end">
                                                                 <span className={`font-bold ${normSource === 'monthly_current' ? 'text-emerald-400' :
-                                                                        normSource === 'monthly_fallback' ? 'text-amber-400' :
-                                                                            'text-slate-200'
+                                                                    normSource === 'monthly_fallback' ? 'text-amber-400' :
+                                                                        'text-slate-200'
                                                                     }`}>
                                                                     {effectiveNorm.toFixed(4)}
                                                                     {normSource !== 'etalon' && '*'}
@@ -319,50 +319,6 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400">
                                                         {unit}
-                                                    </td>
-                                                    <td className="py-2 px-3 text-center relative">
-                                                        {hasMonthlyNorms ? (
-                                                            <div
-                                                                className="inline-block relative"
-                                                                onMouseEnter={() => setHoveredNorms(`ing-${idx}`)}
-                                                                onMouseLeave={() => setHoveredNorms(null)}
-                                                            >
-                                                                <button className="p-1 hover:bg-slate-700 rounded-full transition-colors group">
-                                                                    <Calendar className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300" />
-                                                                </button>
-
-                                                                {/* Custom Tooltip */}
-                                                                {hoveredNorms === `ing-${idx}` && (
-                                                                    <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-3 animate-in fade-in zoom-in-95 duration-100">
-                                                                        <div className="text-xs font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-1">
-                                                                            Нормы по месяцам
-                                                                        </div>
-                                                                        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                                                                            {ing.monthlyNorms!
-                                                                                .sort((a, b) => a.date.localeCompare(b.date))
-                                                                                .map((norm, normIdx) => {
-                                                                                    const date = new Date(norm.date);
-                                                                                    const isCurrent = getCurrentMonthNorm([norm]) !== null && norm.quantity === currentNorm;
-                                                                                    const monthName = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-
-                                                                                    return (
-                                                                                        <div
-                                                                                            key={normIdx}
-                                                                                            className={`flex justify-between text-xs px-2 py-1 rounded ${isCurrent ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-700/50'
-                                                                                                }`}
-                                                                                        >
-                                                                                            <span>{monthName}</span>
-                                                                                            <span className="font-mono">{norm.quantity.toFixed(4)}</span>
-                                                                                        </div>
-                                                                                    );
-                                                                                })}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-slate-500 text-xs">—</span>
-                                                        )}
                                                     </td>
                                                 </tr>
                                             );

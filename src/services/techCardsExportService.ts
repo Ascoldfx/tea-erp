@@ -301,7 +301,7 @@ export function parseTechCardsFromExcel(
     const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category']);
     const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала']);
     const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала']);
-    const unitIndex = findColumnIndex(['Од. вим.', 'Единица измерения', 'Единица', 'Unit']);
+    const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм']);
 
     // Ищем колонку Нормы
     let normIndex = findColumnIndex([

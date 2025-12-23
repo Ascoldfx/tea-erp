@@ -1,18 +1,18 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import type { Recipe } from '../../types/production';
-import { FileText, Edit, Package, Hash } from 'lucide-react';
+import { FileText, Edit, Package, Hash, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 
 // Функция для получения нормы текущего месяца
 const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: number }>): number | null => {
     if (!monthlyNorms || monthlyNorms.length === 0) return null;
-    
+
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    
+
     const currentNorm = monthlyNorms.find(norm => norm.date === currentMonth);
     return currentNorm ? currentNorm.quantity : null;
 };
@@ -26,6 +26,7 @@ interface RecipeDetailsModalProps {
 export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDetailsModalProps) {
     const navigate = useNavigate();
     const { items } = useInventory();
+    const [hoveredNorms, setHoveredNorms] = useState<string | null>(null);
 
     const finishedGood = useMemo(() => {
         if (!recipe) return null;
@@ -51,7 +52,7 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
     if (!recipe) return null;
 
     const { displayName, packsPerBox } = formatItemName(recipe.name);
-    
+
     // Извлекаем оригинальный SKU из description, если он там есть
     // Формат: "Артикул: 282157"
     let sku = finishedGood?.sku || '';
@@ -61,16 +62,16 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
             sku = skuMatch[1];
         }
     }
-    
+
     // Если все еще нет SKU и outputItemId начинается с "temp-", убираем префикс
     if (!sku && recipe.outputItemId && recipe.outputItemId.startsWith('temp-')) {
         sku = recipe.outputItemId.replace(/^temp-/, '');
     }
-    
+
     // Если все еще нет SKU, используем outputItemId как есть (но не показываем "temp-")
     if (!sku && recipe.outputItemId) {
-        sku = recipe.outputItemId.startsWith('temp-') 
-            ? recipe.outputItemId.replace(/^temp-/, '') 
+        sku = recipe.outputItemId.startsWith('temp-')
+            ? recipe.outputItemId.replace(/^temp-/, '')
             : recipe.outputItemId;
     }
 
@@ -148,39 +149,37 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                         {recipe.ingredients.length === 0 ? (
                             <p className="text-slate-500 text-center py-4">Нет ингредиентов</p>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto overflow-y-visible min-h-[200px]">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-700">
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Материал (Артикул)</th>
                                             <th className="text-right py-2 px-3 text-slate-400 font-semibold">Еталон</th>
-                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Норма текущего месяца</th>
+                                            <th className="text-right py-2 px-3 text-slate-400 font-semibold">Текущий месяц</th>
                                             <th className="text-left py-2 px-3 text-slate-400 font-semibold">Ед. изм.</th>
-                                            <th className="text-left py-2 px-3 text-slate-400 font-semibold">Нормы по месяцам</th>
+                                            <th className="text-center py-2 px-3 text-slate-400 font-semibold">Динамика</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-800">
                                         {recipe.ingredients.map((ing, idx) => {
                                             // Для временных материалов используем tempMaterial
                                             const tempMaterial = ing.tempMaterial;
-                                            
+
                                             // Для существующих материалов ищем в items
                                             let materialSku = '';
                                             let materialName = '';
-                                            
+
                                             // ВАЖНО: Сначала проверяем tempMaterial (для временных материалов)
                                             if (tempMaterial && tempMaterial.name) {
                                                 // Временный материал - используем данные из tempMaterial
                                                 materialSku = tempMaterial.sku || '';
                                                 materialName = tempMaterial.name;
-                                                console.log(`[RecipeDetailsModal] Using tempMaterial: ${materialName} (${materialSku})`);
                                             } else {
                                                 // Ищем в базе данных по itemId
                                                 const foundItem = items.find(i => i.id === ing.itemId);
                                                 if (foundItem && foundItem.name) {
                                                     materialSku = foundItem.sku || '';
                                                     materialName = foundItem.name;
-                                                    console.log(`[RecipeDetailsModal] Found in items: ${materialName} (${materialSku})`);
                                                 } else {
                                                     // Если не найден, пытаемся извлечь из itemId
                                                     if (ing.itemId.startsWith('temp-')) {
@@ -191,22 +190,21 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         materialSku = ing.itemId;
                                                         materialName = ing.itemId; // Fallback
                                                     }
-                                                    console.warn(`[RecipeDetailsModal] Material not found for itemId: ${ing.itemId}, using fallback: ${materialName}`);
                                                 }
                                             }
-                                            
+
                                             // Если название все еще пустое, используем SKU
                                             if (!materialName && materialSku) {
                                                 materialName = `Материал ${materialSku}`;
                                             }
-                                            
+
                                             const isDuplicate = ing.isDuplicateSku;
                                             const isAutoCreated = ing.isAutoCreated;
-                                            
+
                                             // Определяем, есть ли другие ингредиенты с таким же SKU
                                             const sameSkuCount = recipe.ingredients.filter(otherIng => {
                                                 if (otherIng === ing) return false;
-                                                
+
                                                 let otherSku = '';
                                                 if (otherIng.tempMaterial) {
                                                     otherSku = otherIng.tempMaterial.sku;
@@ -214,10 +212,10 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     const otherItem = items.find(i => i.id === otherIng.itemId);
                                                     otherSku = otherItem?.sku || '';
                                                 }
-                                                
+
                                                 return otherSku && otherSku === materialSku;
                                             }).length;
-                                            
+
                                             // Получаем единицу измерения
                                             let unit = '';
                                             if (tempMaterial) {
@@ -230,19 +228,20 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                     unit = '-';
                                                 }
                                             }
-                                            
+
+                                            const hasMonthlyNorms = ing.monthlyNorms && ing.monthlyNorms.length > 0;
+                                            const currentNorm = getCurrentMonthNorm(ing.monthlyNorms);
+
                                             return (
-                                                <tr 
-                                                    key={idx} 
-                                                    className={`hover:bg-slate-800/50 ${
-                                                        isDuplicate || sameSkuCount > 0 
-                                                            ? 'bg-yellow-500/10 border-l-2 border-yellow-500' 
+                                                <tr
+                                                    key={idx}
+                                                    className={`hover:bg-slate-800/50 ${isDuplicate || sameSkuCount > 0
+                                                            ? 'bg-yellow-500/10 border-l-2 border-yellow-500'
                                                             : ''
-                                                    } ${
-                                                        isAutoCreated 
-                                                            ? 'bg-blue-500/10 border-l-2 border-blue-500' 
+                                                        } ${isAutoCreated
+                                                            ? 'bg-blue-500/10 border-l-2 border-blue-500'
                                                             : ''
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <td className="py-2 px-3 text-slate-200">
                                                         <div className="flex flex-col gap-1">
@@ -257,12 +256,12 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                                 )}
                                                                 {isAutoCreated && (
                                                                     <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                                                                        Создан при импорте
+                                                                        Создан
                                                                     </span>
                                                                 )}
                                                                 {(isDuplicate || sameSkuCount > 0) && (
                                                                     <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
-                                                                        Дубликат артикула ({sameSkuCount + 1} шт.)
+                                                                        Дубликат ({sameSkuCount + 1})
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -272,60 +271,58 @@ export default function RecipeDetailsModal({ recipe, isOpen, onClose }: RecipeDe
                                                         {ing.quantity.toFixed(4)}
                                                     </td>
                                                     <td className="py-2 px-3 text-right text-slate-200 font-medium">
-                                                        {(() => {
-                                                            const currentNorm = getCurrentMonthNorm(ing.monthlyNorms);
-                                                            if (currentNorm !== null) {
-                                                                return <span className="text-emerald-400">{currentNorm.toFixed(4)}</span>;
-                                                            }
-                                                            return <span className="text-slate-500 text-xs">—</span>;
-                                                        })()}
+                                                        {currentNorm !== null ? (
+                                                            <span className="text-emerald-400 font-bold">{currentNorm.toFixed(4)}</span>
+                                                        ) : (
+                                                            <span className="text-slate-500 text-xs">—</span>
+                                                        )}
                                                     </td>
                                                     <td className="py-2 px-3 text-slate-400">
                                                         {unit}
                                                     </td>
-                                                    <td className="py-2 px-3 text-slate-300">
-                                                        {(() => {
-                                                            // Логируем для отладки
-                                                            if (ing.monthlyNorms) {
-                                                                console.log(`[RecipeDetailsModal] ✅ Ingredient "${materialName}" (${materialSku}) has ${ing.monthlyNorms.length} monthly norms:`, JSON.stringify(ing.monthlyNorms));
-                                                            } else {
-                                                                console.warn(`[RecipeDetailsModal] ❌ Ingredient "${materialName}" (${materialSku}) has NO monthly norms!`);
-                                                            }
-                                                            
-                                                            if (ing.monthlyNorms && ing.monthlyNorms.length > 0) {
-                                                                return (
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {ing.monthlyNorms
-                                                                            .sort((a, b) => a.date.localeCompare(b.date))
-                                                                            .map((norm, normIdx) => {
-                                                                                try {
+                                                    <td className="py-2 px-3 text-center relative">
+                                                        {hasMonthlyNorms ? (
+                                                            <div
+                                                                className="inline-block relative"
+                                                                onMouseEnter={() => setHoveredNorms(`ing-${idx}`)}
+                                                                onMouseLeave={() => setHoveredNorms(null)}
+                                                            >
+                                                                <button className="p-1 hover:bg-slate-700 rounded-full transition-colors group">
+                                                                    <Calendar className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300" />
+                                                                </button>
+
+                                                                {/* Custom Tooltip */}
+                                                                {hoveredNorms === `ing-${idx}` && (
+                                                                    <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl p-3 animate-in fade-in zoom-in-95 duration-100">
+                                                                        <div className="text-xs font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-1">
+                                                                            Нормы по месяцам
+                                                                        </div>
+                                                                        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                                                                            {ing.monthlyNorms!
+                                                                                .sort((a, b) => a.date.localeCompare(b.date))
+                                                                                .map((norm, normIdx) => {
                                                                                     const date = new Date(norm.date);
-                                                                                    if (isNaN(date.getTime())) {
-                                                                                        console.warn('[RecipeDetailsModal] Invalid date:', norm.date);
-                                                                                        return null;
-                                                                                    }
-                                                                                    const monthName = date.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' });
+                                                                                    const isCurrent = getCurrentMonthNorm([norm]) !== null && norm.quantity === currentNorm;
+                                                                                    const monthName = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+
                                                                                     return (
-                                                                                        <span 
+                                                                                        <div
                                                                                             key={normIdx}
-                                                                                            className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700"
-                                                                                            title={`${monthName}: ${norm.quantity.toFixed(4)}`}
+                                                                                            className={`flex justify-between text-xs px-2 py-1 rounded ${isCurrent ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-700/50'
+                                                                                                }`}
                                                                                         >
-                                                                                            {monthName}: {norm.quantity.toFixed(4)}
-                                                                                        </span>
+                                                                                            <span>{monthName}</span>
+                                                                                            <span className="font-mono">{norm.quantity.toFixed(4)}</span>
+                                                                                        </div>
                                                                                     );
-                                                                                } catch (e) {
-                                                                                    console.error('[RecipeDetailsModal] Error formatting norm:', e, norm);
-                                                                                    return null;
-                                                                                }
-                                                                            })
-                                                                            .filter(Boolean)}
+                                                                                })}
+                                                                        </div>
                                                                     </div>
-                                                                );
-                                                            } else {
-                                                                return <span className="text-slate-500 text-xs">—</span>;
-                                                            }
-                                                        })()}
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-500 text-xs">—</span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             );

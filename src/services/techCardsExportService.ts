@@ -540,6 +540,33 @@ export function parseTechCardsFromExcel(
     }
 
     const result = Array.from(techCardsMap.values());
+    
+    // Постобработка: если норма (etalon) равна 0, пытаемся найти норму на текущий месяц
+    // Это нужно для случаев, когда в excel указаны только нормы по месяцам
+    const currentDate = new Date();
+    const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
+    
+    result.forEach(tc => {
+        tc.ingredients.forEach(ing => {
+            if (ing.norm === 0 && ing.monthlyNorms && ing.monthlyNorms.length > 0) {
+                // Ищем норму на текущий месяц
+                const currentMonthNorm = ing.monthlyNorms.find(mn => mn.date === currentMonthStr);
+                
+                if (currentMonthNorm && currentMonthNorm.quantity > 0) {
+                    console.log(`[parseTechCardsFromExcel] 🔄 Updating norm for "${ing.materialName}" from 0 to ${currentMonthNorm.quantity} (current month)`);
+                    ing.norm = currentMonthNorm.quantity;
+                } else {
+                    // Если на текущий месяц нет, берем первую доступную ненулевую норму (как fallback)
+                    const firstNonZero = ing.monthlyNorms.find(mn => mn.quantity > 0);
+                    if (firstNonZero) {
+                        console.log(`[parseTechCardsFromExcel] 🔄 Updating norm for "${ing.materialName}" from 0 to ${firstNonZero.quantity} (first available: ${firstNonZero.date})`);
+                        ing.norm = firstNonZero.quantity;
+                    }
+                }
+            }
+        });
+    });
+
     console.log(`[parseTechCardsFromExcel] Импортировано техкарт: ${result.length}`);
     result.forEach((tc, idx) => {
         console.log(`[parseTechCardsFromExcel] Техкарта ${idx + 1}: SKU=${tc.gpSku}, Name=${tc.gpName}, Ингредиентов=${tc.ingredients.length}`);

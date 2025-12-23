@@ -404,7 +404,9 @@ export function parseTechCardsFromExcel(
         const hasGpInfo = gpSku || gpName;
 
         if (hasGpInfo) {
-            const key = gpSku ? `${gpSku}|${gpName || gpSku}` : `|${gpName}`;
+            // FIX: Group primarily by SKU to avoid splitting tech cards due to minor name variations (e.g. "Name" vs "Name Tilend")
+            const key = gpSku ? gpSku : gpName;
+
             if (!techCardsMap.has(key)) {
                 currentTechCard = {
                     gpSku: gpSku || '',
@@ -416,6 +418,10 @@ export function parseTechCardsFromExcel(
                 result.push(currentTechCard);
             } else {
                 currentTechCard = techCardsMap.get(key)!;
+                // Update name if the new one is longer/more complete (optional heuristic)
+                if (gpName && gpName.length > currentTechCard.gpName.length) {
+                    currentTechCard.gpName = gpName;
+                }
             }
             lastTechCard = currentTechCard;
         } else if (lastTechCard) {

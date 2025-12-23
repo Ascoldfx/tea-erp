@@ -515,6 +515,17 @@ export function parseTechCardsFromExcel(
             continue;
         }
 
+        // DEBUG: Log first 5 rows' norm parsing details
+        if (i < headerRowIndex + 5) {
+            console.log(`[parseTechCardsFromExcel] Row ${i} Debug:`, {
+                materialName,
+                normIndex,
+                normRawValue: row[normIndex],
+                normParsed: norm,
+                monthlyNormsCount: monthlyNorms.length
+            });
+        }
+
         // Добавляем ингредиент
         if (currentTechCard && (materialSku || materialName)) {
             // Функция нормализации строки для сравнения (убираем все пробелы, приводим к нижнему регистру)

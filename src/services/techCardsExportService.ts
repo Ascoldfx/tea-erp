@@ -380,6 +380,9 @@ export function parseTechCardsFromExcel(
 
     // 4. Парсим строки
     const techCardsMap = new Map<string, ImportedTechCard>();
+    // Map<OriginalSKU, Array<{name: string, assignedSku: string}>>
+    const skuVariationsMap = new Map<string, Array<{ name: string, assignedSku: string }>>();
+
     let lastTechCard: ImportedTechCard | null = null;
     const result: ImportedTechCard[] = [];
 
@@ -404,12 +407,49 @@ export function parseTechCardsFromExcel(
         const hasGpInfo = gpSku || gpName;
 
         if (hasGpInfo) {
-            // FIX: Group primarily by SKU to avoid splitting tech cards due to minor name variations (e.g. "Name" vs "Name Tilend")
-            const key = gpSku ? gpSku : gpName;
+            let finalSku = gpSku || '';
+            const normalizedName = gpName.toLowerCase().trim();
+
+            if (gpSku) {
+                if (!skuVariationsMap.has(gpSku)) {
+                    skuVariationsMap.set(gpSku, []);
+                }
+                const variations = skuVariationsMap.get(gpSku)!;
+
+                // Ищем уже существующую вариацию по названию
+                // Если названия немного отличаются, считаем их одним, если отличие только в регистре?
+                // User said "different names" -> duplicate card. "Different name" implies significant difference usually.
+                // But previously I unified them. Now I separate them.
+                // Let's use strict name comparison (normalized) to separate.
+
+                const existingVar = variations.find(v => v.name === normalizedName);
+
+                if (existingVar) {
+                    finalSku = existingVar.assignedSku;
+                } else {
+                    // New variation
+                    // If it's the VERY first one, keep original SKU.
+                    // If subsequent, append (1), (2)...
+                    // Exception: If normalizedName is empty (just SKU provided), treat as base.
+
+                    const count = variations.length;
+                    if (count === 0) {
+                        finalSku = gpSku;
+                    } else {
+                        // User requested adding symbol (1)
+                        // Example: 282186 (1)
+                        finalSku = `${gpSku} (${count})`;
+                    }
+                    variations.push({ name: normalizedName, assignedSku: finalSku });
+                }
+            }
+
+            // Key is now the potentially modified SKU
+            const key = finalSku ? finalSku : gpName;
 
             if (!techCardsMap.has(key)) {
                 currentTechCard = {
-                    gpSku: gpSku || '',
+                    gpSku: finalSku, // Use the unique SKU
                     gpName: gpName || gpSku || 'Без названия',
                     ingredients: []
                 };
@@ -418,10 +458,6 @@ export function parseTechCardsFromExcel(
                 result.push(currentTechCard);
             } else {
                 currentTechCard = techCardsMap.get(key)!;
-                // Update name if the new one is longer/more complete (optional heuristic)
-                if (gpName && gpName.length > currentTechCard.gpName.length) {
-                    currentTechCard.gpName = gpName;
-                }
             }
             lastTechCard = currentTechCard;
         } else if (lastTechCard) {

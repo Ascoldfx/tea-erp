@@ -4,6 +4,7 @@ export interface RecipeIngredient {
     tolerance?: number; // +/- percent allowed variation (optional)
     isDuplicateSku?: boolean; // True if multiple materials share the same SKU
     isAutoCreated?: boolean; // True if material was auto-created during import
+    unit?: string; // Unit from Excel (fallback)
     tempMaterial?: { sku: string; name: string; unit?: string }; // Temporary material info if not yet in DB
     monthlyNorms?: Array<{ date: string; quantity: number }>; // Нормы расхода по месяцам
 }

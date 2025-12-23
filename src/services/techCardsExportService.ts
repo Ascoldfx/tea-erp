@@ -328,6 +328,17 @@ export function parseTechCardsFromExcel(
         console.log(`[parseTechCardsFromExcel] ✅ Norm column found at index ${normIndex}`);
     }
 
+    // DEBUG: Log all detected column indices for user validation
+    console.log('[parseTechCardsFromExcel] Column Indexation Results:', {
+        'GP SKU': gpSkuIndex,
+        'GP Name': gpNameIndex,
+        'Material Category': materialCategoryIndex,
+        'Material SKU': materialSkuIndex,
+        'Material Name': materialNameIndex,
+        'Unit': unitIndex,
+        'Norm': normIndex
+    });
+
     // 3. Предварительно находим колонки с датами (для месячных норм)
     // Это оптимизация: ищем паттерны дат ОДИН раз, а не для каждой строки
     const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY

@@ -234,8 +234,11 @@ export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSe
                                                     unit = tempMaterial.unit ? (tempMaterial.unit === 'pcs' ? 'шт' : tempMaterial.unit === 'kg' ? 'кг' : tempMaterial.unit) : '-';
                                                 } else {
                                                     const foundItem = items.find(i => i.id === ing.itemId);
-                                                    if (foundItem) {
-                                                        unit = foundItem.unit === 'pcs' ? 'шт' : foundItem.unit === 'kg' ? 'кг' : foundItem.unit || '-';
+                                                    if (foundItem && foundItem.unit) {
+                                                        unit = foundItem.unit === 'pcs' ? 'шт' : foundItem.unit === 'kg' ? 'кг' : foundItem.unit;
+                                                    } else if (ing.unit) {
+                                                        // Если в товаре нет единицы, но она есть в ингредиенте (сохранена при импорте)
+                                                        unit = ing.unit === 'pcs' ? 'шт' : ing.unit === 'kg' ? 'кг' : ing.unit;
                                                     } else {
                                                         unit = '-';
                                                     }

@@ -963,7 +963,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.7 RADICAL)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.8 VERIFIED)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

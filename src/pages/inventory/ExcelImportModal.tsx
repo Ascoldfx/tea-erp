@@ -540,10 +540,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                         // Special handling for labels/stickers (always integer pieces).
                         // In RU/UA locale, dots are often thousand separators (e.g. 1.551 or 2.124.770).
-                        const isIntegerItem = detectedCategory === 'label' ||
-                            detectedCategory === 'sticker' ||
-                            item.name?.toLowerCase().includes('ярлик') ||
-                            item.name?.toLowerCase().includes('стикер');
+                        const isIntegerItem = category === 'label' ||
+                            category === 'sticker' ||
+                            nameLower.includes('ярлик') ||
+                            nameLower.includes('стикер');
 
                         if (isIntegerItem) {
                             // For labels: remove ALL dots (treat as thousand separators).

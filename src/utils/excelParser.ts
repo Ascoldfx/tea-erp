@@ -13,10 +13,10 @@ export const parseStockValueStrict = (
     let str = String(val).trim();
     if (str === '-') return 0; // Sometimes '-' means 0
 
-    // Normalize inputs
-    const unitLower = unit.toLowerCase().trim();
-    const categoryLower = category.toLowerCase().trim();
-    const nameLower = itemName.toLowerCase().trim();
+    // Normalize inputs safely
+    const unitLower = String(unit || '').toLowerCase().trim();
+    const categoryLower = String(category || '').toLowerCase().trim();
+    const nameLower = String(itemName || '').toLowerCase().trim();
 
     // Remove spaces (common thousand separators)
     str = str.replace(/\s/g, '');

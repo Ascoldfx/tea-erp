@@ -552,7 +552,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                             // For labels: remove ALL dots (treat as thousand separators).
                             // Treat comma as decimal (unlikely for labels but let's keep it standard).
-                            const originalStr = str;
                             str = str.replace(/\./g, '').replace(',', '.');
 
                             // console.log(`[Import Debug] Label Logic: "${originalStr}" -> "${str}"`);

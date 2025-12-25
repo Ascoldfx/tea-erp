@@ -531,7 +531,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
                     const rawValue = row[header] || row[`__EMPTY_${i}`];
-                    // Use strict parser utility (v2.1 Fix)
+                    // Use strict parser utility (v2.3 Debug)
+                    console.log(`[v2.3] Parsing: "${rawValue}", Unit: "${unit}", Cat: "${category}"`);
                     const stockVal = parseStockValueStrict(rawValue, unit, category, name);
 
                     // Debug log for every header to see what we are processing

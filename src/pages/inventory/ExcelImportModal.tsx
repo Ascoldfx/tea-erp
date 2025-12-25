@@ -72,9 +72,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
         reader.onload = (evt) => {
             try {
                 const bstr = evt.target?.result;
-                
+
                 // Read workbook with options to handle formulas and large files
-                const wb = XLSX.read(bstr, { 
+                const wb = XLSX.read(bstr, {
                     type: 'binary',
                     cellDates: true,
                     cellNF: false,
@@ -86,7 +86,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Get all sheet names
                 const sheets = wb.SheetNames;
                 setSheetNames(sheets);
-                
+
                 // If only one sheet, auto-select it
                 if (sheets.length === 1) {
                     setSelectedSheet(sheets[0]);
@@ -130,14 +130,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Find header row - look for row containing key words like "Артикул", "Назва", "Код", etc.
             let headerRowIndex = 0;
             const headerKeywords = ['артикул', 'назва', 'название', 'наименование', 'код', 'code', 'sku', 'name'];
-            
+
             for (let i = 0; i < Math.min(10, rawData.length); i++) {
                 const row = rawData[i];
                 if (!row) continue;
-                
+
                 const rowText = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
                 const hasHeader = headerKeywords.some(keyword => rowText.includes(keyword));
-                
+
                 if (hasHeader) {
                     headerRowIndex = i;
                     break;
@@ -147,11 +147,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Extract headers from found row
             const headerRow = rawData[headerRowIndex] || [];
             const headers = headerRow.map((h: any) => String(h || '').trim());
-            
+
             // Check row ABOVE headers for month names (common Excel structure: month row, then "план витрат" row)
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
-            
+
             // Helper function to parse month name to date string
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const monthLower = String(monthName || '').toLowerCase().trim();
@@ -169,7 +169,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
                     'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
                 };
-                
+
                 if (monthMap[monthLower]) {
                     const month = monthMap[monthLower];
                     const finalYear = year || new Date().getFullYear();
@@ -177,7 +177,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 }
                 return null;
             };
-            
+
             // Map column indices to month dates (if month is found in row above headers)
             // Месяц указывается СТРОГО над столбцом (в той же колонке)
             // Это работает для:
@@ -188,12 +188,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 const monthCell = monthRow[colIndex] ? String(monthRow[colIndex]).trim() : '';
                 const headerCell = headers[colIndex] ? String(headers[colIndex]).trim() : '';
                 const headerLower = headerCell.toLowerCase();
-                
+
                 // Check if this column has "план витрат" or "залишки на 1 число" in header
                 const isPlannedConsumption = headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'));
-                const isStockColumn = (headerLower.includes('залишки') || headerLower.includes('зал')) && 
-                                     (headerLower.includes('1') || headerLower.includes('число'));
-                
+                const isStockColumn = (headerLower.includes('залишки') || headerLower.includes('зал')) &&
+                    (headerLower.includes('1') || headerLower.includes('число'));
+
                 if (isPlannedConsumption || isStockColumn) {
                     // Check if month is in the cell above (STRICTLY same column, not adjacent)
                     if (monthCell) {
@@ -206,7 +206,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
             }
-            
+
             // Skip header row and empty rows, convert to objects
             const dataRows = rawData.slice(headerRowIndex + 1).filter(row => {
                 // Skip completely empty rows
@@ -231,7 +231,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             // Get all column names (for error messages)
             const columnNames = headers.filter(h => h && !h.startsWith('__EMPTY'));
-            
+
             // Helper function to find column by multiple possible names (case-insensitive, trim)
             const findColumn = (row: any, possibleNames: string[]): string => {
                 for (const name of possibleNames) {
@@ -265,7 +265,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Find date columns (e.g., "01.12.2023", "01.12.2025")
             const datePattern = /\d{2}\.\d{2}\.\d{4}/;
             const dateColumnIndices: number[] = [];
-            
+
             // Month names mapping (Russian and Ukrainian)
             const monthNames: Record<string, number> = {
                 'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
@@ -281,17 +281,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
                 'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
             };
-            
+
             // Find month name columns and date columns
             const monthColumnIndices: Array<{ index: number; month: number; year?: number }> = [];
             headers.forEach((header, index) => {
                 const headerLower = String(header || '').toLowerCase().trim();
-                
+
                 // Check for date pattern (DD.MM.YYYY)
                 if (datePattern.test(String(header || ''))) {
                     dateColumnIndices.push(index);
                 }
-                
+
                 // Check for month name
                 if (monthNames[headerLower]) {
                     const month = monthNames[headerLower];
@@ -310,23 +310,23 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Try multiple column name variations (case-insensitive)
                 // Supports Russian, Ukrainian, and English column names
                 const code = findColumn(row, [
-                    'Code', 'Код', 'SKU', 'Артикул', 'Арт.', 'Арт', 'Код товара', 
+                    'Code', 'Код', 'SKU', 'Артикул', 'Арт.', 'Арт', 'Код товара',
                     'КодТовара', 'Код_товара', 'Артикул товара', 'АртикулТовара',
                     'Артикул товара', 'АртикулТовара'
                 ]);
-                
+
                 const nameRaw = findColumn(row, [
                     'Name', 'Наименование', 'Название', 'Товар', 'Назва', 'Наименование товара',
                     'НаименованиеТовара', 'Название товара', 'НазваниеТовара', 'Товар', 'Продукт',
                     'Назва', 'Назва товара', 'НазваТовара' // Ukrainian
                 ]);
                 const name = nameRaw ? String(nameRaw).trim() : '';
-                
+
                 // Skip items where name is just "0" or empty
                 if (!name || name === '' || name === '0' || name.trim() === '0') {
                     return null; // Will be filtered out
                 }
-                
+
                 const unitRaw = findColumn(row, [
                     'Unit', 'Ед. изм.', 'Единица', 'Ед', 'Ед.изм', 'Единица измерения',
                     'ЕдиницаИзмерения', 'Ед. измерения', 'ЕдИзмерения',
@@ -337,7 +337,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (unit.toLowerCase() === 'pcs' || unit.toLowerCase() === 'шт') {
                     unit = 'шт';
                 }
-                
+
                 // Get category from "Група" column, map common values
                 // If empty, use last category (inherit from previous row)
                 const groupValueRaw = findColumn(row, [
@@ -346,7 +346,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Категорія товара', 'КатегоріяТовара' // Ukrainian
                 ]);
                 let groupValue = groupValueRaw ? String(groupValueRaw).toLowerCase().trim() : '';
-                
+
                 // If group is empty, use last category
                 if (!groupValue || groupValue === '') {
                     groupValue = lastCategory;
@@ -354,39 +354,43 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Update last category for next rows
                     lastCategory = groupValue;
                 }
-                
+
                 // Map group values to categories
                 // STRICT LOGIC: Each material can belong to ONLY ONE category
                 // Priority order matters - check most specific first
                 // IMPORTANT: If groupValue is empty, always use 'other'
                 let category = 'other'; // default to 'other'
-                
+
                 // If no group value provided, always use 'other'
                 if (!groupValue || groupValue === '') {
                     category = 'other';
                 }
                 // 1. Ароматизаторы - если указано в группе (более гибкая проверка)
-                else if (groupValue === 'flavor' || 
-                         groupValue === 'ароматизатор' || groupValue === 'ароматизаторы' || 
-                         groupValue === 'ароматизатори' || groupValue === 'ароматизаторів' ||
-                         groupValue.startsWith('ароматизатор') || 
-                         groupValue.includes('ароматизатор') ||
-                         groupValue.includes('flavor')) {
+                else if (groupValue === 'flavor' ||
+                    groupValue === 'ароматизатор' || groupValue === 'ароматизаторы' ||
+                    groupValue === 'ароматизатори' || groupValue === 'ароматизаторів' ||
+                    groupValue.startsWith('ароматизатор') ||
+                    groupValue.includes('ароматизатор') ||
+                    groupValue.includes('flavor')) {
                     category = 'flavor';
                 }
-                // 2. Ярлыки - ТОЛЬКО если явно указано в группе (строгая проверка)
-                else if (groupValue === 'label' || groupValue === 'ярлик' || groupValue === 'ярлыки' || groupValue === 'ярлики' ||
-                         groupValue.startsWith('ярлик') || groupValue.includes(' ярлик')) {
+                // 2. Ярлыки - более гибкая проверка (было строго)
+                else if (groupValue === 'label' ||
+                    groupValue.includes('ярлик') ||
+                    groupValue.includes('ярлики') ||
+                    groupValue.includes('ярлык') ||
+                    groupValue.includes('ярлыки') ||
+                    groupValue.includes('label')) {
                     category = 'label';
                 }
                 // 3. Стикеры/этикетки/наклейки - ТОЛЬКО если явно указано в группе (строгая проверка)
                 else if (groupValue === 'sticker' || groupValue === 'стикер' || groupValue === 'стикеры' || groupValue === 'стикери' ||
-                         groupValue === 'этикетка' || groupValue === 'этикетки' || groupValue === 'етикетка' || groupValue === 'етикетки' ||
-                         groupValue === 'наклейка' || groupValue === 'наклейки' || groupValue === 'наклейка' || groupValue === 'наклейки' ||
-                         groupValue.startsWith('стикер') || groupValue.startsWith('этикетк') || groupValue.startsWith('етикетк') ||
-                         groupValue.startsWith('наклейк') || groupValue.startsWith('наклейк') ||
-                         groupValue.includes(' стикер') || groupValue.includes(' этикетк') || groupValue.includes(' етикетк') ||
-                         groupValue.includes(' наклейк') || groupValue.includes(' наклейк')) {
+                    groupValue === 'этикетка' || groupValue === 'этикетки' || groupValue === 'етикетка' || groupValue === 'етикетки' ||
+                    groupValue === 'наклейка' || groupValue === 'наклейки' || groupValue === 'наклейка' || groupValue === 'наклейки' ||
+                    groupValue.startsWith('стикер') || groupValue.startsWith('этикетк') || groupValue.startsWith('етикетк') ||
+                    groupValue.startsWith('наклейк') || groupValue.startsWith('наклейк') ||
+                    groupValue.includes(' стикер') || groupValue.includes(' этикетк') || groupValue.includes(' етикетк') ||
+                    groupValue.includes(' наклейк') || groupValue.includes(' наклейк')) {
                     category = 'sticker';
                 }
                 // 4. Картонная упаковка - отдельная категория (проверяем ПЕРЕД конвертами и общей упаковкой)
@@ -397,76 +401,94 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 }
                 // 5. Конверты - отдельная категория (проверяем ПОСЛЕ картона)
                 else if (groupValue === 'envelope' || groupValue === 'конверт' || groupValue === 'конверты' || groupValue === 'конверти' ||
-                         groupValue.startsWith('конверт') || groupValue.includes(' конверт')) {
+                    groupValue.startsWith('конверт') || groupValue.includes(' конверт')) {
                     // Убрали проверку по названию nameLower.includes('конверт'), чтобы картон не попадал в конверты
                     category = 'envelope';
                 }
                 // 5a. Коробки и пачки - теперь это картонная упаковка
                 else if (groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
-                         (groupValue.includes('коробк') && !groupValue.includes('гофро'))) {
+                    (groupValue.includes('коробк') && !groupValue.includes('гофро'))) {
                     category = 'packaging_cardboard';
                 }
                 // 6. Гофроящики - отдельная категория (проверяем ПЕРЕД общей упаковкой)
                 else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('гофроящик') ||
-                         (groupValue.includes('ящик') && groupValue.includes('гофро'))) {
+                    (groupValue.includes('ящик') && groupValue.includes('гофро'))) {
                     category = 'packaging_crate';
                 }
                 // 7. Мягкая упаковка (м/у) - отдельная категория
                 else if (groupValue === 'soft_packaging' || groupValue === 'м/у' || groupValue === 'м\'яка упаковка' ||
-                         groupValue.includes('мягкая упаковка') || groupValue.includes('м\'яка упаковка') ||
-                         (groupValue.includes('упаковк') && (groupValue.includes('мягк') || groupValue.includes('м\'як')))) {
+                    groupValue.includes('мягкая упаковка') || groupValue.includes('м\'яка упаковка') ||
+                    (groupValue.includes('упаковк') && (groupValue.includes('мягк') || groupValue.includes('м\'як')))) {
                     category = 'soft_packaging';
                 }
                 // 8. Пачки - теперь это картонная упаковка (проверяем ПЕРЕД общей упаковкой)
                 else if (groupValue === 'пачка' || groupValue === 'пачки' || groupValue.startsWith('пачка') ||
-                         (groupValue.includes('пачка') && !groupValue.includes('упаковк'))) {
+                    (groupValue.includes('пачка') && !groupValue.includes('упаковк'))) {
                     category = 'packaging_cardboard';
                 }
                 // 9. Упаковка (общая) - только если НЕ картон, НЕ гофро, НЕ мягкая (пленка, пакет, бумага, нитки)
-                else if ((groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') || 
-                         groupValue.includes('папір') || groupValue.includes('нитки') || groupValue === 'packaging_consumable') &&
-                         !groupValue.includes('картон') && !groupValue.includes('гофро') && 
-                         !groupValue.includes('мягк') && !groupValue.includes('м\'як')) {
+                else if ((groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') ||
+                    groupValue.includes('папір') || groupValue.includes('нитки') || groupValue === 'packaging_consumable') &&
+                    !groupValue.includes('картон') && !groupValue.includes('гофро') &&
+                    !groupValue.includes('мягк') && !groupValue.includes('м\'як')) {
                     category = 'packaging_consumable';
                 }
                 // 10. Сырье, цедра, травы, чай
-                else if (groupValue === 'tea_bulk' || groupValue.includes('сировин') || groupValue.includes('цедра') || 
-                         groupValue.includes('трав') || groupValue.includes('чай') ||
-                         (groupValue.includes('чай') && !groupValue.includes('упаковк'))) {
+                else if (groupValue === 'tea_bulk' || groupValue.includes('сировин') || groupValue.includes('цедра') ||
+                    groupValue.includes('трав') || groupValue.includes('чай') ||
+                    (groupValue.includes('чай') && !groupValue.includes('упаковк'))) {
                     category = 'tea_bulk';
                 }
+
+                // FALLBACK: Check Name for specific keywords if category is still 'other' (or to override generic groups)
+                const nameLower = name.toLowerCase();
+
+                if (category === 'other') {
+                    if (nameLower.includes('ярлык') || nameLower.includes('ярлик') || nameLower.includes('label')) {
+                        category = 'label';
+                    } else if (nameLower.includes('стикер') || nameLower.includes('наклейк') || nameLower.includes('етикетк')) {
+                        category = 'sticker';
+                    } else if (nameLower.includes('ароматизатор') || nameLower.includes('flavor')) {
+                        category = 'flavor';
+                    } else if (nameLower.includes('конверт') || nameLower.includes('envelope')) {
+                        category = 'envelope';
+                    }
+                }
+
                 // 11. Если значение существует, но не совпадает с известными категориями
-                // Сохраняем его как динамическую категорию (нормализованную)
-                else {
-                    const validCategories: string[] = ['tea_bulk', 'flavor', 'packaging_consumable', 'packaging_crate', 'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard', 'other'];
+                const KNOWN_CATEGORIES = [
+                    'tea_bulk', 'flavor', 'packaging_consumable', 'packaging_crate',
+                    'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard'
+                ];
+
+                if (category === 'other' && groupValue && groupValue !== '') {
+                    const validCategories: string[] = [...KNOWN_CATEGORIES, 'other'];
                     if (validCategories.includes(groupValue)) {
                         category = groupValue as any;
                     } else {
                         // If unknown category, normalize and use it as dynamic category
-                        // Normalize: lowercase, trim, replace spaces with underscores, remove special chars
                         const normalizedGroup = groupValue
                             .toLowerCase()
                             .trim()
                             .replace(/\s+/g, '_')
                             .replace(/[^a-z0-9_а-яёіїє]/g, '')
-                            .substring(0, 50); // Limit length
-                        
+                            .substring(0, 50);
+
                         if (normalizedGroup && normalizedGroup.length > 0) {
                             category = normalizedGroup;
                             console.log(`[Category Debug] Using dynamic category: "${normalizedGroup}" from groupValue: "${groupValue}"`);
                         } else {
-                            // Fallback to 'other' if normalization failed
                             category = 'other';
                         }
                     }
                 }
-                
+
                 // Find stock columns
                 // Формат: "залишки на [дата] [склад]"
                 // Примеры: "залишки на 30.11 база", "залишки на 30.11 ТС", "залишки на 31.10 Кава"
                 let stockMain = 0; // Общий остаток (база/1С)
                 const stockWarehouses: Record<string, number> = {}; // Остатки на складах подрядчиков
-                
+
                 // Маппинг названий складов на их ID
                 const warehouseNameMap: Record<string, string> = {
                     'база': 'wh-kotsyubinske',
@@ -491,13 +513,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'ts treyd': 'wh-ts-treyd',
                     'ts treyt': 'wh-ts-treyd'
                 };
-                
+
                 // Find storage location column
                 const storageLocation = findColumn(row, [
                     'Место хранения', 'Место хранения', 'Местонахождение', 'Локация', 'Location',
                     'Місце зберігання', 'Місцезнаходження', 'Локація'
                 ]);
-                
+
                 // Look for stock columns - iterate through headers directly
                 // Формат: "залишки на [дата] [склад]"
                 for (let i = 0; i < headers.length; i++) {
@@ -505,17 +527,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const headerLower = header.toLowerCase();
                     const value = row[headers[i]] || row[`__EMPTY_${i}`];
                     const numValue = Number(value) || 0;
-                    
+
                     // Skip if this is a planned consumption column
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
                         continue;
                     }
-                    
+
                     // Skip if not a stock column
                     if (!headerLower.includes('залишки') && !headerLower.includes('зал') && !headerLower.includes('остаток')) {
                         continue;
                     }
-                    
+
                     // Парсим формат "залишки на [дата] [склад]"
                     // Примеры: "залишки на 30.11 база", "залишки на 30.11 ТС", "залишки на 31.10 Кава"
                     const stockMatch = headerLower.match(/залишки\s+на\s+(\d{1,2})\.(\d{1,2})\s+(.+)/);
@@ -523,7 +545,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         const day = parseInt(stockMatch[1]);
                         const month = parseInt(stockMatch[2]);
                         const warehouseName = stockMatch[3].trim();
-                        
+
                         // Определяем склад по названию
                         let warehouseId: string | null = null;
                         for (const [name, id] of Object.entries(warehouseNameMap)) {
@@ -532,7 +554,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 break;
                             }
                         }
-                        
+
                         // Специальная логика для ТС Трейд: был только до 28.05, потом стал просто ТС
                         if (warehouseName.includes('тс трейд') || warehouseName.includes('ts treyd')) {
                             // Проверяем дату: если дата <= 28.05, то это ТС Трейд, иначе ТС
@@ -542,7 +564,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 warehouseId = 'wh-ts';
                             }
                         }
-                        
+
                         if (warehouseId) {
                             if (warehouseId === 'wh-kotsyubinske') {
                                 // Основной склад (база)
@@ -557,7 +579,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         }
                         continue;
                     }
-                    
+
                     // Fallback: старый формат "залишки на 1 число, [склад]"
                     // Check for 1С/база - это ОБЩИЙ остаток
                     if ((headerLower.includes('1с') || headerLower.includes('1 с') || headerLower.includes('1c') || headerLower.includes('база')) &&
@@ -569,21 +591,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                     // Check for Коцюбинське - отдельная колонка
                     else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское')) &&
-                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
+                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
                         if (stockMain === 0) {
                             stockMain = numValue;
                         }
                     }
                     // Check for ТС/Май
                     else if ((headerLower.includes('май') || (headerLower.includes('тс') && !headerLower.includes('трейд'))) &&
-                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
-                             !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
+                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
+                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
                         stockWarehouses['wh-ts'] = numValue;
                     }
                     // Check for Фито/Фото
                     else if ((headerLower.includes('фито') || headerLower.includes('фіто') || headerLower.includes('fito') ||
-                             headerLower.includes('фото') || headerLower.includes('photo')) &&
-                             !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
+                        headerLower.includes('фото') || headerLower.includes('photo')) &&
+                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
                         stockWarehouses['wh-fito'] = numValue;
                     }
                     // Check for Кава
@@ -611,21 +633,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Под прошедшими месяцами - фактический расход
                 // Под будущим и текущим месяцем - плановый расход
                 const plannedConsumption: Array<{ date: string; quantity: number; isActual?: boolean }> = [];
-                
+
                 const now = new Date();
                 const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                
+
                 // Parse date columns (e.g., "01.12.2025", "01.01.2026") - these are consumption columns
                 const datePattern = /\d{2}\.\d{2}\.\d{4}/;
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    
+
                     // Skip stock columns
                     if (headerLower.includes('залишки') || headerLower.includes('зал') || headerLower.includes('остаток')) {
                         continue;
                     }
-                    
+
                     // Check if this is a date column (DD.MM.YYYY format)
                     const dateMatch = String(header || '').match(datePattern);
                     if (dateMatch) {
@@ -635,22 +657,22 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             const day = parseInt(dateParts[0]);
                             const month = parseInt(dateParts[1]);
                             const year = parseInt(dateParts[2]);
-                            
+
                             if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
                                 const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
                                 const monthDateObj = new Date(year, month - 1, 1);
-                                
+
                                 // Determine if this is actual (past month) or planned (current/future month)
                                 const isActual = monthDateObj < currentMonth;
-                                
+
                                 const value = row[headers[i]] || row[`__EMPTY_${i}`];
                                 const quantity = Number(value) || 0;
-                                
+
                                 if (quantity > 0) {
-                                    plannedConsumption.push({ 
-                                        date: monthDate, 
+                                    plannedConsumption.push({
+                                        date: monthDate,
                                         quantity,
-                                        isActual 
+                                        isActual
                                     });
                                     console.log(`[Excel Import] Item "${name}" (code: ${code}): Date column "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
                                 }
@@ -658,19 +680,19 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         }
                         continue; // Skip to next column
                     }
-                    
+
                     // Parse month name columns (октябрь 2024, ноябрь 2024 и т.д.)
                     // Skip if it's explicitly "план витрат" or "залишки"
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
                         continue;
                     }
-                    
+
                     // Try to parse month name from header
                     const monthMatch = headerLower.match(/(январь|февраль|март|апрель|май|июнь|июль|август|сентябрь|октябрь|ноябрь|декабрь|січень|лютий|березень|квітень|травень|червень|липень|серпень|вересень|жовтень|листопад|грудень)\s*(\d{4})?/);
                     if (monthMatch) {
                         const monthName = monthMatch[1];
                         const year = monthMatch[2] ? parseInt(monthMatch[2]) : now.getFullYear();
-                        
+
                         const monthMap: Record<string, number> = {
                             'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
                             'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
@@ -685,49 +707,49 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
                             'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
                         };
-                        
+
                         const month = monthMap[monthName.toLowerCase()];
                         if (month) {
                             const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
                             const monthDateObj = new Date(year, month - 1, 1);
-                            
+
                             // Determine if this is actual (past month) or planned (current/future month)
                             const isActual = monthDateObj < currentMonth;
-                            
+
                             const value = row[headers[i]] || row[`__EMPTY_${i}`];
                             const quantity = Number(value) || 0;
-                            
+
                             if (quantity > 0) {
-                                plannedConsumption.push({ 
-                                    date: monthDate, 
+                                plannedConsumption.push({
+                                    date: monthDate,
                                     quantity,
-                                    isActual 
+                                    isActual
                                 });
                                 console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
                             }
                         }
                     }
                 }
-                
+
                 // Also check for explicit "план витрат" columns (for backward compatibility)
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    
+
                     // Check if this is a planned consumption column
                     const isPlannedConsumption = (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) ||
-                                                headerLower.includes('план витрат') || headerLower.includes('план расход');
-                    
+                        headerLower.includes('план витрат') || headerLower.includes('план расход');
+
                     if (isPlannedConsumption) {
                         // ONLY use if we have month mapped from row above
                         if (columnToMonthMap.has(i)) {
                             const monthDate = columnToMonthMap.get(i)!;
                             const monthDateObj = new Date(monthDate);
                             const isActual = monthDateObj < currentMonth;
-                            
+
                             const value = row[headers[i]] || row[`__EMPTY_${i}`];
                             const quantity = Number(value) || 0;
-                            
+
                             // Only add non-zero quantities
                             if (quantity > 0) {
                                 // Check if we already have this month from month name columns
@@ -753,22 +775,22 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Always include plannedConsumption array, even if empty (for debugging)
                     plannedConsumption: plannedConsumption,
                 };
-                
+
                 // Debug logging for planned consumption
                 if (plannedConsumption.length > 0) {
                     console.log(`[Planned Consumption Debug] Item "${name}" (code: ${code}):`, plannedConsumption);
                 }
-                
+
                 // Debug logging for stock parsing
                 if (stockMain > 0 || Object.keys(stockWarehouses).length > 0) {
                     console.log(`[Stock Debug] Item "${name}" (code: ${code}): stockMain=${stockMain}, stockWarehouses=`, stockWarehouses);
                 }
-                
+
                 // Debug logging if category doesn't match group (e.g., картон -> envelope)
                 if (groupValue && groupValue.toLowerCase().includes('картон') && category !== 'packaging_cardboard') {
                     console.warn(`[Category Mismatch] Item "${name}" (code: ${code}): groupValue="${groupValue}" but category="${category}"`);
                 }
-                
+
                 // Debug logging for flavor and sticker categories
                 if (category === 'flavor') {
                     console.log(`[Category Debug] Parsed item "${name}" (code: ${code}) -> category: ${category}, groupValue: "${groupValue}"`);
@@ -776,7 +798,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (category === 'sticker') {
                     console.log(`[Category Debug] Parsed item "${name}" (code: ${code}) -> category: ${category}, groupValue: "${groupValue}"`);
                 }
-                
+
                 return result;
             }).filter((i): i is ParsedItem => {
                 // Skip null items (from early return)
@@ -786,17 +808,19 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Skip items where name is just "0" or starts with "0" as placeholder
                 const nameTrimmed = i.name.trim();
                 if (nameTrimmed === '0' || nameTrimmed === '0 ') return false;
-                // Skip items without code
-                if (!i.code || i.code.trim() === '') return false;
+                if (!i.code || i.code.trim() === '') {
+                    console.log(`[Import Skipped] Item "${i.name}" skipped: missing code`);
+                    return false;
+                }
                 return true;
             });
 
             if (items.length === 0) {
                 // Show found columns for debugging
-                const foundColumns = columnNames.length > 0 
-                    ? columnNames.join(', ') 
+                const foundColumns = columnNames.length > 0
+                    ? columnNames.join(', ')
                     : headers.filter((h: string) => h && !h.startsWith('__EMPTY')).join(', ') || 'не найдены';
-                
+
                 setError(
                     `Не удалось найти данные. Найдены колонки: ${foundColumns}\n\n` +
                     `Ожидаются колонки с названиями:\n` +
@@ -822,7 +846,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'Основной поставщик', 'Supplier Name', 'Поставщик товара',
                     'Постачальник товара', 'SupplierName', 'ПоставщикТовара'
                 ])?.trim();
-                
+
                 if (supplierName && supplierName !== '' && supplierName !== '0') {
                     const nameLower = supplierName.toLowerCase();
                     if (!suppliersMap.has(nameLower)) {
@@ -852,25 +876,25 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
         setError(null);
         try {
             console.log('Начинаем импорт данных...', parsedData.length, 'позиций');
-            
+
             // Import materials first
             await inventoryService.importData(parsedData);
             console.log('Материалы импортированы');
-            
+
             // Import suppliers if any
             if (parsedSuppliers.length > 0) {
                 console.log('Импортируем поставщиков...', parsedSuppliers.length);
                 await inventoryService.importSuppliers(parsedSuppliers);
                 console.log('Поставщики импортированы');
             }
-            
+
             console.log('Импорт завершен, обновляем список...');
             await refresh(); // Reload inventory list
-            
+
             // Notify other tabs/components about the update
             localStorage.setItem('inventory_updated', Date.now().toString());
             localStorage.setItem('planned_consumption_updated', Date.now().toString());
-            
+
             setStep('success');
         } catch (err: any) {
             console.error('Ошибка импорта:', err);
@@ -955,7 +979,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                                     reader.onload = (evt) => {
                                                         try {
                                                             const bstr = evt.target?.result;
-                                                            const wb = XLSX.read(bstr, { 
+                                                            const wb = XLSX.read(bstr, {
                                                                 type: 'binary',
                                                                 cellText: true,
                                                                 dense: false
@@ -1022,14 +1046,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                         }
                                     });
                                     const sortedMonths = Array.from(allMonths).sort();
-                                    
+
                                     // Helper to format month name
                                     const formatMonth = (monthStr: string) => {
                                         const [year, month] = monthStr.split('-');
                                         const date = new Date(parseInt(year), parseInt(month) - 1, 1);
                                         return date.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
                                     };
-                                    
+
                                     // Helper to get planned consumption for a specific month
                                     const getPlannedForMonth = (item: ParsedItem, monthStr: string) => {
                                         if (!item.plannedConsumption || item.plannedConsumption.length === 0) return 0;
@@ -1039,7 +1063,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                         });
                                         return found ? found.quantity : 0;
                                     };
-                                    
+
                                     // Собираем все уникальные склады из всех элементов
                                     const allWarehouses = new Set<string>();
                                     parsedData.forEach(item => {
@@ -1054,7 +1078,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                         'wh-ts-treyd': 'ТС Трейд'
                                     };
                                     const sortedWarehouses = Array.from(allWarehouses).sort();
-                                    
+
                                     return (
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">

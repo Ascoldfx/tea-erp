@@ -7,6 +7,7 @@ import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../context/LanguageContext';
 import { MOCK_RECIPES } from '../../data/mockProduction';
+import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
 
 interface MaterialDetailsModalProps {
@@ -22,10 +23,13 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
     const [movementHistory, setMovementHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [plannedConsumption, setPlannedConsumption] = useState<any[]>([]);
+    const [loadingPlanned, setLoadingPlanned] = useState(false);
 
     useEffect(() => {
         if (item && isOpen) {
             loadMovementHistory();
+            loadPlannedConsumption();
         }
     }, [item, isOpen]);
 
@@ -45,6 +49,21 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
             setMovementHistory(data || []);
         }
         setLoadingHistory(false);
+    };
+
+    const loadPlannedConsumption = async () => {
+        if (!item) return;
+        setLoadingPlanned(true);
+        try {
+            // Fetch directly from service
+            const data = await inventoryService.getPlannedConsumption(item.id);
+            // Filter only future/planned items if needed, or show all
+            setPlannedConsumption(data || []);
+        } catch (error) {
+            console.error('Error loading planned consumption:', error);
+        } finally {
+            setLoadingPlanned(false);
+        }
     };
 
     const copyToClipboard = async (text: string) => {
@@ -160,6 +179,37 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                 <p className="text-slate-500 text-sm col-span-2">Нет данных о размещении.</p>
                             )}
                         </div>
+
+                        {/* Planned Consumption Section */}
+                        {(plannedConsumption.length > 0 || loadingPlanned) && (
+                            <>
+                                <h4 className="text-sm font-medium text-slate-400 uppercase mt-6 flex items-center gap-2">
+                                    <History className="w-4 h-4" />
+                                    {t('materials.plannedConsumption') || 'Плановый расход'}
+                                </h4>
+                                {loadingPlanned ? (
+                                    <p className="text-slate-500 text-sm italic">Загрузка плана...</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {plannedConsumption.map((plan, idx) => (
+                                            <div key={plan.id || idx} className="bg-blue-900/10 p-3 rounded-lg border border-blue-900/30 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-slate-200 text-sm font-medium">
+                                                        {new Date(plan.plannedDate).toLocaleDateString(t('common.locale') || 'ru-RU', { month: 'long', year: 'numeric' })}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500 mt-1">{plan.notes || 'План из Excel'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-bold text-blue-400">
+                                                        {plan.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
 
                         {/* Finished Goods Using This Material */}
                         {finishedGoodsUsingMaterial.length > 0 && (

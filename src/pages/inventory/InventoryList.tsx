@@ -64,7 +64,7 @@ export default function InventoryList() {
         if (translated !== translationKey) {
             return translated;
         }
-        
+
         // Map common English category names to Russian/Ukrainian
         const categoryMap: Record<string, string> = {
             'envelope': language === 'uk' ? 'Конверти' : 'Конверты',
@@ -78,12 +78,12 @@ export default function InventoryList() {
             'other': language === 'uk' ? 'Інше' : 'Прочее',
             'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка'
         };
-        
+
         // Check if we have a mapping for this category
         if (categoryMap[category]) {
             return categoryMap[category];
         }
-        
+
         // If no translation or mapping, format the category name nicely
         // Replace underscores with spaces and capitalize words
         return category
@@ -118,7 +118,7 @@ export default function InventoryList() {
                 // For other categories, sum all warehouses
                 totalStock = relevantStockLevels.reduce((acc, curr) => acc + curr.quantity, 0);
             }
-            
+
             // Get planned consumption for this item
             const itemPlannedConsumption = plannedConsumption.filter(pc => pc.itemId === item.id);
             const totalPlannedConsumption = itemPlannedConsumption.reduce((acc, curr) => acc + curr.quantity, 0);
@@ -130,34 +130,34 @@ export default function InventoryList() {
                 totalPlannedConsumption // Total planned consumption
             };
         });
-        
+
         // Debug: log categories for troubleshooting
         if (selectedCategory !== 'all' && mapped.length > 0) {
             const categories = [...new Set(mapped.map(i => i.category))];
             console.log(`[Filter Debug] Selected category: ${selectedCategory}, Available categories:`, categories);
         }
-        
+
         return mapped.filter(item => {
             // Filter by warehouse
             if (selectedWarehouseId && item.totalStock === 0) return false;
-            
+
             // Filter by category
             if (selectedCategory === 'all') return true;
-            
+
             // Exact match for specific categories
             const matches = item.category === selectedCategory;
             if (!matches && selectedCategory === 'flavor') {
                 // Debug: log items that should be flavor but aren't
                 console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match flavor filter. Expected: flavor, got: ${item.category}`);
             }
-            
+
             // Hide cardboard packaging with zero stock and zero planned consumption
             if (item.category === 'packaging_cardboard' && !showZeroStockCardboard) {
                 if (item.totalStock === 0 && item.totalPlannedConsumption === 0) {
                     return false; // Hide this item
                 }
             }
-            
+
             return matches;
         });
     }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroStockCardboard]);
@@ -217,7 +217,7 @@ export default function InventoryList() {
             'Упаковка для чаю',
             'Упаковка на чай'
         ];
-        
+
         for (const prefix of prefixesToRemove) {
             // Check if name starts with prefix (case-insensitive)
             if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
@@ -227,7 +227,7 @@ export default function InventoryList() {
                 break;
             }
         }
-        
+
         return shortened.trim();
     };
 
@@ -271,7 +271,7 @@ export default function InventoryList() {
         return (
             <div className="flex flex-wrap gap-1.5">
                 {locations.map((loc, idx) => (
-                    <span 
+                    <span
                         key={idx}
                         className="inline-flex items-center px-2 py-1 rounded-md bg-slate-800/50 border border-slate-700 text-slate-300 text-xs font-medium"
                     >
@@ -331,13 +331,13 @@ export default function InventoryList() {
                         onClick={() => setShowZeroStockCardboard(!showZeroStockCardboard)}
                         className={clsx(
                             "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
-                            showZeroStockCardboard 
-                                ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40" 
+                            showZeroStockCardboard
+                                ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40"
                                 : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
                         )}
                     >
                         <Filter className="w-4 h-4" />
-                        {showZeroStockCardboard 
+                        {showZeroStockCardboard
                             ? (t('materials.hideZeroStockCardboard') || 'Скрыть картонную упаковку с нулевыми остатками')
                             : (t('materials.showZeroStockCardboard') || 'Показать картонную упаковку с нулевыми остатками')
                         }
@@ -349,7 +349,7 @@ export default function InventoryList() {
             <div className="flex flex-wrap gap-2 pb-4 items-center">
                 <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span className="text-sm text-slate-400 mr-2 flex-shrink-0">{t('materials.filter.group')}:</span>
-                
+
                 {/* All Groups Button */}
                 <button
                     onClick={() => setSelectedCategory('all')}
@@ -360,7 +360,7 @@ export default function InventoryList() {
                 >
                     {t('materials.filter.allGroups')}
                 </button>
-                
+
                 {/* Dynamic Category Buttons (all categories from database) */}
                 {dynamicCategories.length > 0 ? (
                     dynamicCategories.map(category => {
@@ -390,7 +390,7 @@ export default function InventoryList() {
             {(() => {
                 // Determine which groups to show based on filter
                 let groupsToShow: Array<'tea_bulk' | 'flavor' | 'packaging_consumable' | 'packaging_crate' | 'label' | 'sticker' | 'soft_packaging' | 'envelope' | 'packaging_cardboard' | 'other'> = [];
-                
+
                 if (selectedCategory === 'all') {
                     // Show all groups when "all" is selected (including dynamic categories)
                     groupsToShow = allCategories as any[];
@@ -404,7 +404,7 @@ export default function InventoryList() {
                     let groupTitle: string;
                     const translationKey = `materials.group.${group}`;
                     const translated = t(translationKey);
-                    
+
                     if (translated !== translationKey) {
                         // Standard category with translation
                         groupTitle = translated;
@@ -412,7 +412,7 @@ export default function InventoryList() {
                         // Dynamic category - format the name
                         groupTitle = formatCategoryName(group);
                     }
-                    
+
                     const itemsInGroup = inventoryCombined.filter(item => {
                         // Exact match for the group category
                         return item.category === group;
@@ -420,81 +420,76 @@ export default function InventoryList() {
 
                     if (itemsInGroup.length === 0) return null;
 
-                return (
-                    <Card key={group}>
-                        <CardHeader>
-                            <CardTitle>{groupTitle}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {/* ... table ... */}
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-slate-900 border-b border-slate-800">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.code')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.name')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.location')}</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.totalStock')}</th>
-                                            {(user?.role === 'admin' || user?.role === 'procurement') && (
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.actions')}</th>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800">
-                                        {itemsInGroup.map(item => {
-                                            return (
-                                                <tr
-                                                    key={item.id}
-                                                    className="hover:bg-slate-800/50 transition-colors group"
-                                                >
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs cursor-pointer"
-                                                        onDoubleClick={() => handleItemClick(item)}
+                    return (
+                        <Card key={group}>
+                            <CardHeader>
+                                <CardTitle>{groupTitle}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {/* ... table ... */}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-slate-900 border-b border-slate-800">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.code')}</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.name')}</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.location')}</th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.totalStock')}</th>
+                                                {(user?.role === 'admin' || user?.role === 'procurement') && (
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">{t('materials.actions')}</th>
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800">
+                                            {itemsInGroup.map(item => {
+                                                return (
+                                                    <tr
+                                                        key={item.id}
+                                                        className="hover:bg-slate-800/50 transition-colors group"
                                                     >
-                                                        {item.sku}
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap font-medium text-slate-200 group-hover:text-emerald-400 transition-colors cursor-pointer"
-                                                        onDoubleClick={() => handleItemClick(item)}
-                                                    >
-                                                        {shortenMaterialName(item.name)}
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                                                        onDoubleClick={() => handleItemClick(item)}
-                                                    >
-                                                        {renderLocationBadges(item.stockLevels, item)}
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
-                                                        onDoubleClick={() => handleItemClick(item)}
-                                                    >
-                                                        {item.totalStock} {item.unit === 'pcs' ? 'шт' : item.unit}
-                                                    </td>
-                                                    {(user?.role === 'admin' || user?.role === 'procurement') && (
-                                                        <td 
-                                                            className="px-6 py-4 whitespace-nowrap"
-                                                            onClick={(e) => e.stopPropagation()}
+                                                        <td
+                                                            className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs cursor-pointer"
+                                                            onDoubleClick={() => handleItemClick(item)}
                                                         >
-                                                            <button
-                                                                onClick={() => setItemToDelete(item)}
-                                                                className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-900/20 rounded"
-                                                                           title={t('materials.deleteMaterial')}
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                            {item.sku}
                                                         </td>
-                                                    )}
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                );
-            })})()}
+                                                        <td
+                                                            className="px-6 py-4 whitespace-nowrap font-medium text-slate-200 group-hover:text-emerald-400 transition-colors cursor-pointer"
+                                                            onDoubleClick={() => handleItemClick(item)}
+                                                        >
+                                                            {shortenMaterialName(item.name)}
+                                                        </td>
+                                                        <td
+                                                            className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
+                                                            onDoubleClick={() => handleItemClick(item)}
+                                                        >
+                                                            {item.totalStock} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                        </td>
+                                                        {(user?.role === 'admin' || user?.role === 'procurement') && (
+                                                            <td
+                                                                className="px-6 py-4 whitespace-nowrap"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <button
+                                                                    onClick={() => setItemToDelete(item)}
+                                                                    className="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-900/20 rounded"
+                                                                    title={t('materials.deleteMaterial')}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })
+            })()}
 
             {/* Modals */}
             <ExcelImportModal
@@ -593,15 +588,15 @@ export default function InventoryList() {
                         ⚠️ {t('materials.deleteWarning')}
                     </p>
                     <div className="flex justify-end gap-3 pt-4">
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
+                        <Button
+                            type="button"
+                            variant="ghost"
                             onClick={() => setItemToDelete(null)}
                             disabled={isDeleting}
                         >
                             {t('common.cancel')}
                         </Button>
-                        <Button 
+                        <Button
                             type="button"
                             onClick={handleDeleteItem}
                             disabled={isDeleting}

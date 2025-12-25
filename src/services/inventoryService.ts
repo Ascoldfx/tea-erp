@@ -11,7 +11,12 @@ export const inventoryService = {
             console.error('Error fetching items:', error);
             return MOCK_ITEMS;
         }
-        return data as InventoryItem[];
+
+        // Map database columns to TypeScript interface
+        return (data || []).map((item: any) => ({
+            ...item,
+            // Map other snake_case fields if needed (e.g. min_stock_level -> minStockLevel is handled by convention or potential type mismatch, but let's at least handle the new field explicitly)
+        })) as InventoryItem[];
     },
 
     async getWarehouses(): Promise<Warehouse[]> {
@@ -19,7 +24,7 @@ export const inventoryService = {
 
         const { data, error } = await supabase.from('warehouses').select('*');
         if (error) return MOCK_WAREHOUSES;
-        
+
         // Ensure wh-ts warehouse is always named "ТС" instead of "Май"
         const warehouses = (data as Warehouse[]).map(w => {
             if (w.id === 'wh-ts') {
@@ -31,7 +36,7 @@ export const inventoryService = {
             }
             return w;
         });
-        
+
         return warehouses;
     },
 
@@ -103,7 +108,7 @@ export const inventoryService = {
                 }
             });
         }
-        
+
         console.log(`[Import] Found ${existingItemsMap.size} existing items that may be updated`);
 
         // 2. Prepare items for upsert
@@ -111,7 +116,7 @@ export const inventoryService = {
         // If item with same SKU exists, use its existing ID
         // IMPORTANT: Remove duplicates by ID to avoid PostgreSQL error
         const itemsMap = new Map<string, any>();
-        
+
         items.forEach(i => {
             const code = i.code?.trim();
             if (!code) {
@@ -121,7 +126,7 @@ export const inventoryService = {
 
             // Check if we have existing item with this SKU
             let itemId = skuToIdMap.get(code);
-            
+
             // If not found, use code as ID (assuming code is valid text identifier)
             if (!itemId) {
                 itemId = code; // Use code as ID (items.id is TEXT, so this should work)
@@ -138,13 +143,13 @@ export const inventoryService = {
             // IMPORTANT: Always use the category from the current import to ensure correct grouping
             // This ensures that new imports take priority and clarify/update existing data
             const category = i.category || 'other';
-            
+
             // Check if this is an update to existing material
             const existingItem = existingItemsMap.get(code);
             if (existingItem) {
                 const isCategoryChange = existingItem.category !== category;
                 const isNameChange = existingItem.name !== (i.name?.trim() || 'Без названия');
-                
+
                 if (isCategoryChange || isNameChange) {
                     console.log(`[Import] Updating existing material: ${code} (${existingItem.name})`);
                     if (isCategoryChange) {
@@ -159,20 +164,20 @@ export const inventoryService = {
             } else {
                 console.log(`[Import] New material: ${code} (${i.name?.trim() || 'Без названия'}) - category: ${category}`);
             }
-            
+
             if (category === 'flavor') {
                 console.log(`[Category Debug] Material "${i.name}" assigned to flavor category`);
             }
             if (category === 'packaging_cardboard') {
                 console.log(`[Category Debug] Material "${i.name}" assigned to packaging_cardboard category`);
             }
-            
+
             // Normalize unit: convert pcs to шт
             let normalizedUnit = i.unit || 'шт';
             if (normalizedUnit.toLowerCase() === 'pcs') {
                 normalizedUnit = 'шт';
             }
-            
+
             // IMPORTANT: Always use the category from the NEW import (priority to new data)
             itemsMap.set(itemId, {
                 id: itemId,
@@ -187,14 +192,14 @@ export const inventoryService = {
 
         // Convert map to array (removes duplicates)
         const dbItems = Array.from(itemsMap.values());
-        
+
         const duplicatesCount = items.length - dbItems.length;
         if (duplicatesCount > 0) {
             console.warn(`Обнаружено ${duplicatesCount} дубликатов по коду. Будут импортированы только уникальные записи.`);
         }
 
         console.log(`Подготовлено ${dbItems.length} уникальных материалов для импорта (из ${items.length} строк)`);
-        
+
         // Debug: log category distribution
         const categoryCounts = dbItems.reduce((acc, item) => {
             acc[item.category] = (acc[item.category] || 0) + 1;
@@ -211,7 +216,7 @@ export const inventoryService = {
         // IMPORTANT: Do not use .select() after upsert to avoid potential field errors
         const { error: itemsError } = await supabase
             .from('items')
-            .upsert(dbItems, { 
+            .upsert(dbItems, {
                 onConflict: 'id',
                 ignoreDuplicates: false
             });
@@ -222,7 +227,7 @@ export const inventoryService = {
         }
 
         console.log(`Успешно сохранено/обновлено ${dbItems.length} материалов`);
-        
+
         // CRITICAL: Refresh skuToIdMap after items are saved to include newly created items
         // This ensures planned consumption can be linked to the correct item IDs
         dbItems.forEach(item => {
@@ -231,7 +236,7 @@ export const inventoryService = {
             }
         });
         console.log(`[Import] Refreshed skuToIdMap after items save: ${skuToIdMap.size} items mapped`);
-        
+
         // Debug: verify categories were saved correctly by fetching from DB
         const itemIds = dbItems.map(item => item.id);
         const { data: savedItems, error: categoryFetchError } = await supabase
@@ -247,7 +252,7 @@ export const inventoryService = {
                 return acc;
             }, {} as Record<string, number>);
             console.log('[Category Debug] Saved category distribution (from DB):', savedCategoryCounts);
-            
+
             // Log flavor items specifically
             if (savedCategoryCounts['flavor']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['flavor']} items with flavor category`);
@@ -256,7 +261,7 @@ export const inventoryService = {
                     console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
                 });
             }
-            
+
             // Log sticker items specifically
             if (savedCategoryCounts['sticker']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['sticker']} items with sticker category`);
@@ -271,7 +276,7 @@ export const inventoryService = {
         // Group stock by item_id and warehouse_id to avoid duplicates
         // If same item appears multiple times, sum the quantities
         const stockMap = new Map<string, { item_id: string; warehouse_id: string; quantity: number }>();
-        
+
         // Get item categories to check if it's cardboard packaging
         const itemCategories = new Map<string, string>();
         for (const item of items) {
@@ -280,7 +285,7 @@ export const inventoryService = {
             const itemId = skuToIdMap.get(code) || code;
             itemCategories.set(itemId, item.category || 'other');
         }
-        
+
         for (const item of items) {
             const code = item.code?.trim();
             if (!code) continue;
@@ -325,7 +330,7 @@ export const inventoryService = {
                         quantity: maiQty
                     });
                 }
-                
+
                 const fitoQty = Number((item as any).stockFito) || 0;
                 if (fitoQty > 0) {
                     const fitoKey = `${itemId}_wh-fito`;
@@ -337,7 +342,7 @@ export const inventoryService = {
                 }
             }
         }
-        
+
         const stockInserts = Array.from(stockMap.values());
 
         // 5. Upsert stock levels
@@ -371,17 +376,17 @@ export const inventoryService = {
         for (const item of items) {
             const code = item.code?.trim();
             if (!code) continue;
-            
+
             if (item.plannedConsumption && item.plannedConsumption.length > 0) {
                 item.plannedConsumption.forEach((pc: { date: string; quantity: number; isActual?: boolean }) => {
                     if (pc.quantity <= 0) return;
-                    
+
                     // Фактический расход (isActual === true) - сохраним в stock_movements после сохранения items
                     if (pc.isActual === true) {
                         actualConsumptionData.push({ code, date: pc.date, quantity: pc.quantity });
                         return;
                     }
-                    
+
                     // Плановый расход (isActual === false или undefined) - сохраняем в planned_consumption
                     allPlannedConsumption.push({ code, date: pc.date, quantity: pc.quantity });
                 });
@@ -392,15 +397,15 @@ export const inventoryService = {
         for (const pcData of allPlannedConsumption) {
             const code = pcData.code;
             const itemId = skuToIdMap.get(code);
-            
+
             if (!itemId) {
                 console.warn(`[Import] Skipping planned consumption for code ${code}: item not found in database after save`);
                 continue;
             }
-            
+
             // Use composite key to prevent duplicates: item_id + planned_date
             const key = `${itemId}_${pcData.date}`;
-            
+
             // Ensure date is in YYYY-MM-01 format (first day of month)
             let normalizedDate = pcData.date;
             if (normalizedDate && !normalizedDate.endsWith('-01')) {
@@ -414,7 +419,7 @@ export const inventoryService = {
                     console.warn(`[Import] Invalid date format: ${normalizedDate}, using as-is`);
                 }
             }
-            
+
             // If duplicate exists, use the last (most recent) value
             plannedConsumptionMap.set(key, {
                 item_id: itemId, // Always use UUID
@@ -430,10 +435,10 @@ export const inventoryService = {
         if (plannedConsumptionInserts.length > 0) {
             console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей (после удаления дубликатов)...`);
             console.log('[Import] Sample planned consumption to insert:', plannedConsumptionInserts.slice(0, 5));
-            
+
             const { error: plannedError, data: insertedData } = await supabase
                 .from('planned_consumption')
-                .upsert(plannedConsumptionInserts, { 
+                .upsert(plannedConsumptionInserts, {
                     onConflict: 'item_id,planned_date',
                     ignoreDuplicates: false
                 })
@@ -448,7 +453,7 @@ export const inventoryService = {
                 if (insertedData && insertedData.length > 0) {
                     console.log('[Import] Sample inserted planned consumption:', insertedData.slice(0, 3));
                 }
-                
+
                 // Уведомляем о обновлении planned consumption через localStorage
                 if (typeof window !== 'undefined') {
                     localStorage.setItem('planned_consumption_updated', Date.now().toString());
@@ -464,7 +469,7 @@ export const inventoryService = {
         // Process actual consumption AFTER items are saved (so we have correct item IDs)
         if (actualConsumptionData.length > 0) {
             console.log(`Импортируем фактический расход для ${actualConsumptionData.length} записей...`);
-            
+
             const actualConsumptionMovements: Array<{
                 item_id: string;
                 quantity: number;
@@ -472,17 +477,17 @@ export const inventoryService = {
                 type: 'out';
                 comment?: string;
             }> = [];
-            
+
             // Process actual consumption data using refreshed skuToIdMap
             for (const acData of actualConsumptionData) {
                 const code = acData.code;
                 const itemId = skuToIdMap.get(code);
-                
+
                 if (!itemId) {
                     console.warn(`[Import] Skipping actual consumption for code ${code}: item not found in database after save`);
                     continue;
                 }
-                
+
                 // Normalize date to first day of month
                 let normalizedDate = acData.date;
                 if (normalizedDate && !normalizedDate.endsWith('-01')) {
@@ -496,11 +501,11 @@ export const inventoryService = {
                         continue;
                     }
                 }
-                
+
                 // Use 15th day of the month for the movement date
                 const dateObj = new Date(normalizedDate);
                 const movementDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-15`;
-                
+
                 actualConsumptionMovements.push({
                     item_id: itemId,
                     quantity: acData.quantity,
@@ -510,7 +515,7 @@ export const inventoryService = {
                 });
                 console.log(`[Import] Saving actual consumption: itemId=${itemId} (code=${code}), date=${movementDate}, quantity=${acData.quantity}`);
             }
-            
+
             // Group by item_id and date to avoid duplicates (sum quantities if same item+date)
             const movementsMap = new Map<string, {
                 item_id: string;
@@ -519,7 +524,7 @@ export const inventoryService = {
                 type: 'out';
                 comment?: string;
             }>();
-            
+
             actualConsumptionMovements.forEach(movement => {
                 const key = `${movement.item_id}_${movement.date}`;
                 const existing = movementsMap.get(key);
@@ -529,10 +534,10 @@ export const inventoryService = {
                     movementsMap.set(key, { ...movement });
                 }
             });
-            
+
             const uniqueMovements = Array.from(movementsMap.values());
             console.log(`[Import] Unique actual consumption movements: ${uniqueMovements.length} (from ${actualConsumptionMovements.length} total)`);
-            
+
             // Insert stock movements
             // Use date field if available, otherwise use created_at (which will be set automatically)
             const { error: movementsError } = await supabase
@@ -545,7 +550,7 @@ export const inventoryService = {
                         comment: m.comment,
                         source_warehouse_id: 'wh-kotsyubinske' // Default warehouse for imported consumption
                     };
-                    
+
                     // Try to set date field if it exists in the table
                     // If date field doesn't exist, Supabase will ignore it
                     // The created_at will be set automatically
@@ -554,10 +559,10 @@ export const inventoryService = {
                     } catch (e) {
                         // Ignore if date field doesn't exist
                     }
-                    
+
                     return movementData;
                 }));
-            
+
             if (movementsError) {
                 console.error('Error inserting actual consumption movements:', movementsError);
                 // Don't throw - actual consumption is optional
@@ -596,15 +601,15 @@ export const inventoryService = {
         // Use Maps to ensure uniqueness of IDs and codes within the batch
         const usedIds = new Map<string, number>();
         const usedCodes = new Map<string, number>();
-        
+
         const dbSuppliers = uniqueSuppliers.map((supplier) => {
             const name = supplier.name.trim();
             const nameLower = name.toLowerCase();
-            
+
             // Generate base ID from name
             let baseId = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
             let id = baseId;
-            
+
             // Ensure ID uniqueness within the batch
             if (usedIds.has(id)) {
                 const count = usedIds.get(id)! + 1;
@@ -634,9 +639,9 @@ export const inventoryService = {
             if (!baseCode || baseCode.length < 3) {
                 baseCode = `SUP_${id.slice(-8)}`;
             }
-            
+
             let code = baseCode;
-            
+
             // Ensure code uniqueness within the batch
             if (usedCodes.has(code)) {
                 const count = usedCodes.get(code)! + 1;
@@ -665,9 +670,9 @@ export const inventoryService = {
                 console.warn(`Duplicate ID detected and removed: ${supplier.id} (${supplier.name})`);
             }
         });
-        
+
         const finalSuppliers = Array.from(finalSuppliersMap.values());
-        
+
         console.log(`Подготовлено ${finalSuppliers.length} уникальных поставщиков для импорта (из ${dbSuppliers.length} после обработки)`);
 
         // Upsert suppliers
@@ -675,7 +680,7 @@ export const inventoryService = {
         // The database trigger will handle updated_at automatically
         const { error: suppliersError } = await supabase
             .from('contractors')
-            .upsert(finalSuppliers, { 
+            .upsert(finalSuppliers, {
                 onConflict: 'id',
                 ignoreDuplicates: false
             });

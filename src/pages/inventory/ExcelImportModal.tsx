@@ -522,18 +522,33 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 // Look for stock columns - iterate through headers directly
                 // Формат: "залишки на [дата] [склад]"
+
+                // Track the latest date score for each warehouse to handle fallback logic
+                const warehouseStockDates: Record<string, { dateScore: number, val: number }> = {};
+
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    const value = row[headers[i]] || row[`__EMPTY_${i}`];
-                    const numValue = Number(value) || 0;
+                    // Helper to parse flexible numbers (spaces, commas)
+                    const parseStockValue = (val: any): number | null => {
+                        if (val === undefined || val === null || val === '') return null;
+                        const str = String(val).trim();
+                        if (str === '-') return 0; // Sometimes '-' means 0
+                        // Remove spaces (thousand separators), replace comma with dot
+                        const cleanStr = str.replace(/\s/g, '').replace(',', '.');
+                        const num = parseFloat(cleanStr);
+                        return isNaN(num) ? null : num;
+                    };
+
+                    const rawValue = row[header] || row[`__EMPTY_${i}`];
+                    const stockVal = parseStockValue(rawValue);
 
                     // Debug log for every header to see what we are processing
-                    console.log(`[Import Debug] Processing header [${i}]: "${header}"`);
+                    // console.log(`[Import Debug] Processing header [${i}]: "${header}". Raw: "${rawValue}", Parsed: ${stockVal}`);
 
                     // Skip if this is a planned consumption column
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
-                        console.log(`[Import Debug] Skipping planned consumption: "${header}"`);
+                        // console.log(`[Import Debug] Skipping planned consumption: "${header}"`);
                         continue;
                     }
 
@@ -560,7 +575,12 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         const month = parseInt(stockMatch[2]);
                         const warehouseName = stockMatch[3].trim();
 
-                        console.log(`[Import Debug] Matched stock column: "${header}" -> Day: ${day}, Month: ${month}, Warehouse: "${warehouseName}"`);
+                        // Construct a comparable date value (Month * 100 + Day) just for comparison
+                        // Assuming same year mostly, or we don't care about year wrapping for short term
+                        // Better: 2024 (default) ... let's use a simple score: Month * 32 + Day
+                        const dateScore = month * 32 + day;
+
+                        console.log(`[Import Debug] Matched stock column: "${header}" -> D:${day}/M:${month}, Warehouse: "${warehouseName}". RawValue: "${rawValue}"`);
 
                         // Определяем склад по названию
                         let warehouseId: string | null = null;
@@ -573,7 +593,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                         // Специальная логика для ТС Трейд: был только до 28.05, потом стал просто ТС
                         if (warehouseName.includes('тс трейд') || warehouseName.includes('ts treyd')) {
-                            // Проверяем дату: если дата <= 28.05, то это ТС Трейд, иначе ТС
                             if (month === 5 && day <= 28) {
                                 warehouseId = 'wh-ts-treyd';
                             } else {
@@ -582,14 +601,33 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         }
 
                         if (warehouseId) {
-                            if (warehouseId === 'wh-kotsyubinske') {
-                                // Основной склад (база)
-                                stockMain = numValue;
+                            // Only update if:
+                            // 1. We have a valid parsed value (stockVal !== null)
+                            // 2. AND (We haven't recorded this warehouse yet OR This column is for a newer date)
+
+                            const existing = warehouseStockDates[warehouseId];
+
+                            if (stockVal !== null) {
+                                if (!existing || dateScore >= existing.dateScore) {
+                                    // Special case: if dateScore is SAME, we overwrite (later column > earlier column)
+
+                                    // Update the main stock vars
+                                    if (warehouseId === 'wh-kotsyubinske') {
+                                        stockMain = stockVal;
+                                    } else {
+                                        stockWarehouses[warehouseId] = stockVal;
+                                    }
+
+                                    // Update our tracking map
+                                    warehouseStockDates[warehouseId] = { dateScore, val: stockVal };
+                                    console.log(`[Excel Import] STOCK SAVED/UPDATED "${header}" -> ${warehouseId}: ${stockVal} (DateScore: ${dateScore})`);
+                                } else {
+                                    console.log(`[Excel Import] IGNORING OLD DATA "${header}" -> ${warehouseId}. Current DateScore: ${existing.dateScore}, New: ${dateScore}`);
+                                }
                             } else {
-                                // Склад подрядчика
-                                stockWarehouses[warehouseId] = numValue;
+                                console.log(`[Excel Import] EMPTY/INVALID VALUE "${header}" -> ${warehouseId}. Keeping previous value if any.`);
                             }
-                            console.log(`[Excel Import] STOCK SAVED "${header}" -> ${warehouseId}: ${numValue}`);
+
                         } else {
                             console.warn(`[Excel Import] Unknown warehouse name in column "${header}": "${warehouseName}"`);
                         }

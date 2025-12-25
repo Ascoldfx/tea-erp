@@ -530,6 +530,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
                     // Helper to parse flexible numbers (spaces, commas, dots)
+                    // Now context-aware: checks category to make smarter decisions
                     const parseStockValue = (val: any): number | null => {
                         if (val === undefined || val === null || val === '') return null;
                         let str = String(val).trim();
@@ -546,9 +547,15 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             nameLower.includes('стикер');
 
                         if (isIntegerItem) {
+                            // DEBUG LOGGING for Labels
+                            // console.log(`[Import Debug] Label Item: "${name}", Raw: "${val}", Cleaned: "${str}"`);
+
                             // For labels: remove ALL dots (treat as thousand separators).
                             // Treat comma as decimal (unlikely for labels but let's keep it standard).
+                            const originalStr = str;
                             str = str.replace(/\./g, '').replace(',', '.');
+
+                            // console.log(`[Import Debug] Label Logic: "${originalStr}" -> "${str}"`);
                         } else {
                             // General logic
                             const dotCount = (str.match(/\./g) || []).length;

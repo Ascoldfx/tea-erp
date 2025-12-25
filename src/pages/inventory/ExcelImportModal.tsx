@@ -541,16 +541,22 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                         // Special handling for labels/stickers (always integer pieces).
                         // In RU/UA locale, dots are often thousand separators (e.g. 1.551 or 2.124.770).
-                        const isIntegerItem = category === 'label' ||
+                        // AGGRESSIVE INTEGER LOGIC:
+                        // If item is measured in 'pcs' (шт) OR is a label/sticker/envelope,
+                        // then it CANNOT have decimals. Therefore, any dots are purely thousand separators.
+                        // "2.124" -> 2124 pcs (not 2.124 pcs)
+                        // "1.551" -> 1551 pcs (not 1.551 pcs)
+                        const isIntegerItem =
+                            unit === 'шт' ||
+                            category === 'label' ||
                             category === 'sticker' ||
+                            category === 'envelope' ||
+                            category === 'packaging_cardboard' ||
                             nameLower.includes('ярлик') ||
                             nameLower.includes('стикер');
 
                         if (isIntegerItem) {
-                            // DEBUG LOGGING for Labels
-                            // console.log(`[Import Debug] Label Item: "${name}", Raw: "${val}", Cleaned: "${str}"`);
-
-                            // For labels: remove ALL dots (treat as thousand separators).
+                            // For integer items: remove ALL dots (treat as thousand separators).
                             // Treat comma as decimal (unlikely for labels but let's keep it standard).
                             str = str.replace(/\./g, '').replace(',', '.');
 

@@ -21,22 +21,16 @@ export const parseStockValueStrict = (
     // Remove spaces (common thousand separators)
     str = str.replace(/\s/g, '');
 
-    // CHECK FOR INTEGER MODE
-    // If an item is counted in pieces (шт/pcs) OR is a known integer type (label, sticker, envelope, box),
-    // it physically cannot have decimal places.
-    // Therefore, any dots or commas are strictly thousand separators (except maybe comma if someone wrote "1,5 pcs" which is weird but we can handle it).
-    // In UA/RU locale: "1.234" usually means 1234.
+    // CHECK FOR INTEGER MODE (Regex for safety)
     const isIntegerType =
-        unitLower === 'шт' ||
-        unitLower === 'pcs' ||
-        unitLower === 'штук' ||
-        categoryLower === 'label' ||
-        categoryLower === 'sticker' ||
-        categoryLower === 'envelope' ||
-        categoryLower === 'packaging_cardboard' || // Boxes
-        nameLower.includes('ярлик') ||
-        nameLower.includes('стикер') ||
-        nameLower.includes('конверт');
+        /шт|pcs|штук|od|од/i.test(unitLower) ||
+        /label|sticker|sticker|envelope|box|картон|ярлик|стикер|конверт/i.test(categoryLower) ||
+        /ярлик|стикер|конверт/i.test(nameLower);
+
+    // Debug specific values to catch the 1.551 case
+    if (val && (String(val).includes('1.551') || String(val).includes('2.124'))) {
+        console.log(`[PARSER v2.6] Val: "${val}", Unit: "${unitLower}", Cat: "${categoryLower}" => IntMode: ${isIntegerType}`);
+    }
 
     if (isIntegerType) {
         // AGGRESSIVE INTEGER PARSING

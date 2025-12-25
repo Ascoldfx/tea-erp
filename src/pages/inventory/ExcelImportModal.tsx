@@ -643,38 +643,38 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         !headerLower.includes('фито') && !headerLower.includes('фіто') && !headerLower.includes('фото') &&
                         !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское') &&
                         !headerLower.includes('кава') && !headerLower.includes('бакалея')) {
-                        stockMain = numValue;
+                        stockMain = stockVal ?? 0;
                     }
                     // Check for Коцюбинське - отдельная колонка
                     else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское')) &&
                         !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
                         if (stockMain === 0) {
-                            stockMain = numValue;
+                            stockMain = stockVal ?? 0;
                         }
                     }
                     // Check for ТС/Май
                     else if ((headerLower.includes('май') || (headerLower.includes('тс') && !headerLower.includes('трейд'))) &&
                         !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
                         !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
-                        stockWarehouses['wh-ts'] = numValue;
+                        stockWarehouses['wh-ts'] = stockVal ?? 0;
                     }
                     // Check for Фито/Фото
                     else if ((headerLower.includes('фито') || headerLower.includes('фіто') || headerLower.includes('fito') ||
                         headerLower.includes('фото') || headerLower.includes('photo')) &&
                         !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
-                        stockWarehouses['wh-fito'] = numValue;
+                        stockWarehouses['wh-fito'] = stockVal ?? 0;
                     }
                     // Check for Кава
                     else if (headerLower.includes('кава') || headerLower.includes('kava')) {
-                        stockWarehouses['wh-kava'] = numValue;
+                        stockWarehouses['wh-kava'] = stockVal ?? 0;
                     }
                     // Check for Бакалея
                     else if (headerLower.includes('бакалея') || headerLower.includes('bakaleya')) {
-                        stockWarehouses['wh-bakaleya'] = numValue;
+                        stockWarehouses['wh-bakaleya'] = stockVal ?? 0;
                     }
                     // Check for ТС Трейд
                     else if (headerLower.includes('тс трейд') || headerLower.includes('ts treyd')) {
-                        stockWarehouses['wh-ts-treyd'] = numValue;
+                        stockWarehouses['wh-ts-treyd'] = stockVal ?? 0;
                     }
                 }
 

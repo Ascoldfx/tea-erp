@@ -529,14 +529,36 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    // Helper to parse flexible numbers (spaces, commas)
+                    // Helper to parse flexible numbers (spaces, commas, dots)
                     const parseStockValue = (val: any): number | null => {
                         if (val === undefined || val === null || val === '') return null;
-                        const str = String(val).trim();
+                        let str = String(val).trim();
                         if (str === '-') return 0; // Sometimes '-' means 0
-                        // Remove spaces (thousand separators), replace comma with dot
-                        const cleanStr = str.replace(/\s/g, '').replace(',', '.');
-                        const num = parseFloat(cleanStr);
+
+                        // Remove spaces (thousand separators)
+                        str = str.replace(/\s/g, '');
+
+                        // Count dots and check for comma
+                        const dotCount = (str.match(/\./g) || []).length;
+                        const hasComma = str.includes(',');
+
+                        // Logic to distinguish thousand separators from decimal points
+                        if (hasComma) {
+                            // If comma is present, it is the decimal separator (UA/RU standard)
+                            // Remove all dots (thousand separators) and replace comma with dot
+                            str = str.replace(/\./g, '').replace(',', '.');
+                        } else if (dotCount > 1) {
+                            // If multiple dots are present, they are definitely thousand separators (e.g. 1.550.000)
+                            str = str.replace(/\./g, '');
+                        } else {
+                            // Single dot (or no dot) and no comma
+                            // Ambiguous case: "1.500" could be 1.5 or 1500.
+                            // Default to standard float parsing (dot is decimal) to support international decimals
+                            // However, strictly "2.124" for a label (integer) suggests 2000, but we can't know for sure without type.
+                            // Given the "multiple dots" fix, the reported millions-issues are solved.
+                        }
+
+                        const num = parseFloat(str);
                         return isNaN(num) ? null : num;
                     };
 

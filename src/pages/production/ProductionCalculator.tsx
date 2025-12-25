@@ -1,35 +1,76 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 
-import { MOCK_RECIPES } from '../../data/mockProduction';
-import { MOCK_STOCK, MOCK_ITEMS } from '../../data/mockInventory';
-import { Calculator, AlertTriangle, CheckCircle, TrendingUp, CalendarClock } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle, TrendingUp, CalendarClock, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useInventory } from '../../hooks/useInventory';
+import { recipesService } from '../../services/recipesService';
+import type { Recipe } from '../../types/production';
 
 export default function ProductionCalculator() {
     const [mode, setMode] = useState<'analyze' | 'plan'>('analyze');
     const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
     const [targetQuantity, setTargetQuantity] = useState<number>(0);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [loadingRecipes, setLoadingRecipes] = useState(false);
+
+    // Data from Inventory
+    const { items, stock, loading: loadingInventory } = useInventory();
+
+    // Load Recipes
+    useEffect(() => {
+        const loadRecipes = async () => {
+            setLoadingRecipes(true);
+            try {
+                const data = await recipesService.getRecipes();
+                setRecipes(data);
+            } catch (error) {
+                console.error("Failed to load recipes", error);
+            } finally {
+                setLoadingRecipes(false);
+            }
+        };
+        loadRecipes();
+    }, []);
+
+    // Helper to get total stock for an item
+    const getItemTotalStock = (itemId: string) => {
+        return stock
+            .filter(s => s.itemId === itemId)
+            .reduce((acc, curr) => acc + curr.quantity, 0);
+    };
+
+    const getItemDetails = (itemId: string) => {
+        return items.find(i => i.id === itemId);
+    };
 
     // --- Mode 1: Max Output Analysis ---
     const analysisResults = useMemo(() => {
-        if (!selectedRecipeId) return null;
-        const recipe = MOCK_RECIPES.find(r => r.id === selectedRecipeId);
+        if (!selectedRecipeId || recipes.length === 0) return null;
+        const recipe = recipes.find(r => r.id === selectedRecipeId);
         if (!recipe) return null;
 
-        const results = recipe.ingredients.map(ing => {
-            const item = MOCK_ITEMS.find(i => i.id === ing.itemId);
-            const totalStock = MOCK_STOCK
-                .filter(s => s.itemId === ing.itemId)
-                .reduce((acc, curr) => acc + curr.quantity, 0);
+        // Ignore ingredients with 0 quantity (e.g. placeholders)
+        const validIngredients = recipe.ingredients.filter(ing => ing.quantity > 0);
 
-            const requiredPerBatch = ing.quantity; // amount for Recipe base (1 pack)
-            // Recipe defines requirements for 1 pack.
-            // We need to know how many "packs" total can be made.
-            // Recipe: "outputQuantity" = 1. "ing.quantity" is for 1 pack.
+        if (validIngredients.length === 0) return {
+            recipeName: recipe.name,
+            ingredients: [],
+            overallMaxBatches: 999999,
+            overallMaxUnits: 999999,
+            limitingFactor: null
+        };
 
+        const results = validIngredients.map(ing => {
+            const item = getItemDetails(ing.itemId);
+            const totalStock = getItemTotalStock(ing.itemId);
+
+            const requiredPerBatch = ing.quantity; // amount for Recipe base output (e.g. 60kg or 1 unit)
+            // recipe.outputQuantity is the amount produced by one "run" of these ingredients.
+
+            // How many full runs can we make?
             const maxBatches = requiredPerBatch > 0 ? Math.floor(totalStock / requiredPerBatch) : 999999;
             const maxTotalUnits = maxBatches * recipe.outputQuantity;
 
@@ -37,8 +78,8 @@ export default function ProductionCalculator() {
 
             return {
                 itemId: ing.itemId,
-                itemName: item?.name || ing.itemId,
-                unit: item?.unit || '',
+                itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
+                unit: item?.unit || ing.unit || '',
                 requiredPerBatch,
                 totalStock,
                 maxBatches,
@@ -53,21 +94,19 @@ export default function ProductionCalculator() {
         const limitingFactor = results.find(r => r.maxBatches === overallMaxBatches);
 
         return { recipeName: recipe.name, ingredients: results, overallMaxBatches, overallMaxUnits, limitingFactor };
-    }, [selectedRecipeId]);
+    }, [selectedRecipeId, recipes, stock, items]);
 
     // --- Mode 2: Forward Planning ---
     const planningResults = useMemo(() => {
-        if (!selectedRecipeId || targetQuantity <= 0) return null;
-        const recipe = MOCK_RECIPES.find(r => r.id === selectedRecipeId);
+        if (!selectedRecipeId || targetQuantity <= 0 || recipes.length === 0) return null;
+        const recipe = recipes.find(r => r.id === selectedRecipeId);
         if (!recipe) return null;
 
         const batchesNeeded = targetQuantity / recipe.outputQuantity;
 
         const results = recipe.ingredients.map(ing => {
-            const item = MOCK_ITEMS.find(i => i.id === ing.itemId);
-            const totalStock = MOCK_STOCK
-                .filter(s => s.itemId === ing.itemId)
-                .reduce((acc, curr) => acc + curr.quantity, 0);
+            const item = getItemDetails(ing.itemId);
+            const totalStock = getItemTotalStock(ing.itemId);
 
             const requiredTotal = ing.quantity * batchesNeeded;
             const projectedBalance = totalStock - requiredTotal;
@@ -75,8 +114,8 @@ export default function ProductionCalculator() {
 
             return {
                 itemId: ing.itemId,
-                itemName: item?.name || ing.itemId,
-                unit: item?.unit || '',
+                itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
+                unit: item?.unit || ing.unit || '',
                 requiredTotal,
                 totalStock,
                 projectedBalance,
@@ -84,9 +123,23 @@ export default function ProductionCalculator() {
             };
         });
 
-        return { recipeName: recipe.name, ingredients: results, batchesNeeded };
-    }, [selectedRecipeId, targetQuantity]);
+        // Filter out 0 requirement items if they have plenty of stock?
+        // Or just show all? Showing all is better for completeness.
+        // We might filter out items where quantity is 0 in recipe.
+        const activeResults = results.filter(r => r.requiredTotal > 0);
 
+        return { recipeName: recipe.name, ingredients: activeResults, batchesNeeded };
+    }, [selectedRecipeId, targetQuantity, recipes, stock, items]);
+
+
+    if (loadingRecipes || loadingInventory) {
+        return (
+            <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                <span className="ml-3 text-slate-400">Загрузка данных...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -133,7 +186,7 @@ export default function ProductionCalculator() {
                         label="Выберите продукт (Тех. Карту)"
                         options={[
                             { value: '', label: 'Не выбрано...' },
-                            ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
+                            ...recipes.map(r => ({ value: r.id, label: r.name }))
                         ]}
                         value={selectedRecipeId}
                         onChange={e => setSelectedRecipeId(e.target.value)}
@@ -143,33 +196,24 @@ export default function ProductionCalculator() {
                         <div className="pt-2 space-y-4">
                             <div>
                                 <Input
-                                    label="Планируемый объем (КГ)"
+                                    label="Планируемый объем (КГ / Ед)"
                                     type="number"
                                     placeholder="Например: 500"
                                     value={targetQuantity || ''}
-                                    onChange={(e) => setTargetQuantity(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setTargetQuantity(parseFloat(e.target.value) || 0)}
                                 />
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Введите вес готовой продукции.
+                                    Введите количество готовой продукции, которое вы хотите произвести.
                                 </p>
                             </div>
 
                             {targetQuantity > 0 && selectedRecipeId && (
                                 <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex gap-8">
+                                    {/* Mock conversions or estimates if needed. For now just show output quantity relation */}
                                     <div>
-                                        <p className="text-xs text-slate-400 uppercase">Штук (Пачек)</p>
+                                        <p className="text-xs text-slate-400 uppercase">Потребуется варок/замесов</p>
                                         <p className="text-xl font-bold text-slate-100">
-                                            {/* Recipe outputQuantity = 1 pack.
-                                                Conversion: 1 kg = 10 packs (example conversion factor).
-                                            */}
-                                            {(targetQuantity * 10).toLocaleString()} шт
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-400 uppercase">Ящиков</p>
-                                        <p className="text-xl font-bold text-slate-100">
-                                            {/* Mock: 1 box = 20 packs */}
-                                            {Math.ceil((targetQuantity * 10) / 20).toLocaleString()} ящ
+                                            {planningResults ? planningResults.batchesNeeded.toFixed(2) : '-'}
                                         </p>
                                     </div>
                                 </div>
@@ -189,10 +233,10 @@ export default function ProductionCalculator() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-5xl font-bold text-slate-100 mb-2">
-                                    {analysisResults.overallMaxUnits} шт
+                                    {analysisResults.overallMaxUnits.toLocaleString()} ед
                                 </div>
                                 <p className="text-slate-400">
-                                    ~{analysisResults.overallMaxBatches} партий
+                                    ~{analysisResults.overallMaxBatches} партий (замесов)
                                 </p>
                             </CardContent>
                         </Card>
@@ -208,11 +252,14 @@ export default function ProductionCalculator() {
                                             {analysisResults.limitingFactor.itemName}
                                         </div>
                                         <p className="text-slate-400">
-                                            Хватит только на {analysisResults.limitingFactor.maxTotalUnits} шт
+                                            Хватит только на {analysisResults.limitingFactor.maxTotalUnits.toLocaleString()} шт
                                         </p>
+                                        <div className="mt-2 text-sm text-slate-500">
+                                            На складе: {analysisResults.limitingFactor.totalStock} {analysisResults.limitingFactor.unit}
+                                        </div>
                                     </>
                                 ) : (
-                                    <p className="text-emerald-500 font-medium">Ограничений нет</p>
+                                    <p className="text-emerald-500 font-medium">Ограничений нет (или техкарта пуста)</p>
                                 )}
                             </CardContent>
                         </Card>
@@ -243,14 +290,17 @@ export default function ProductionCalculator() {
                                         <tr key={row.itemId} className="hover:bg-slate-800/50">
                                             <td className="px-6 py-4 font-medium text-slate-200">{row.itemName}</td>
                                             <td className="px-6 py-4 text-right text-slate-400">
-                                                {row.totalStock} <span className="text-xs">{row.unit}</span>
+                                                {row.totalStock.toLocaleString()} <span className="text-xs">{row.unit}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right text-blue-300 font-medium">
-                                                {row.requiredTotal.toFixed(2)} <span className="text-xs">{row.unit}</span>
+                                                {row.requiredTotal.toFixed(3)} <span className="text-xs">{row.unit}</span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className={row.isShortage ? 'text-red-500 font-bold' : 'text-emerald-400'}>
-                                                    {row.projectedBalance.toFixed(2)}
+                                                <span className={clsx(
+                                                    "font-medium",
+                                                    row.isShortage ? "text-red-500" : "text-emerald-400"
+                                                )}>
+                                                    {row.projectedBalance.toFixed(3)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">

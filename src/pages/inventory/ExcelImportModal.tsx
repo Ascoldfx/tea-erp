@@ -528,23 +528,39 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const value = row[headers[i]] || row[`__EMPTY_${i}`];
                     const numValue = Number(value) || 0;
 
+                    // Debug log for every header to see what we are processing
+                    console.log(`[Import Debug] Processing header [${i}]: "${header}"`);
+
                     // Skip if this is a planned consumption column
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
+                        console.log(`[Import Debug] Skipping planned consumption: "${header}"`);
                         continue;
                     }
 
                     // Skip if not a stock column
+                    // Relaxed check: allow 'залишки', 'зал', 'остаток', or just 'на [date]' pattern if needed, but let's stick to keywords first
                     if (!headerLower.includes('залишки') && !headerLower.includes('зал') && !headerLower.includes('остаток')) {
+                        // console.log(`[Import Debug] Not a stock keyword: "${header}"`);
                         continue;
                     }
 
                     // Парсим формат "залишки [на] [дата] [склад]"
                     // Примеры: "залишки на 30.11 база", "залишки 30.11 ТС", "залишки 31.10 Кава"
-                    const stockMatch = headerLower.match(/залишки(?:\s+на)?\s+(\d{1,2})\.(\d{1,2})\s+(.+)/);
+                    // Regex explanation:
+                    // залишки: keyword
+                    // (?:\s+на)?: optional "на" word
+                    // \s*: optional spaces
+                    // (\d{1,2})[\./-](\d{1,2}): date day.month (dot, slash or dash)
+                    // \s*: optional spaces
+                    // (.+): warehouse name
+                    const stockMatch = headerLower.match(/залишки(?:.*на)?\s*(\d{1,2})[\./-](\d{1,2})\s*(.+)/);
+
                     if (stockMatch) {
                         const day = parseInt(stockMatch[1]);
                         const month = parseInt(stockMatch[2]);
                         const warehouseName = stockMatch[3].trim();
+
+                        console.log(`[Import Debug] Matched stock column: "${header}" -> Day: ${day}, Month: ${month}, Warehouse: "${warehouseName}"`);
 
                         // Определяем склад по названию
                         let warehouseId: string | null = null;
@@ -573,11 +589,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                                 // Склад подрядчика
                                 stockWarehouses[warehouseId] = numValue;
                             }
-                            console.log(`[Excel Import] Stock column "${header}" -> ${warehouseId}: ${numValue}`);
+                            console.log(`[Excel Import] STOCK SAVED "${header}" -> ${warehouseId}: ${numValue}`);
                         } else {
                             console.warn(`[Excel Import] Unknown warehouse name in column "${header}": "${warehouseName}"`);
                         }
                         continue;
+                    } else {
+                        console.log(`[Import Debug] Header "${header}" contained keywords but failed Regex match.`);
                     }
 
                     // Fallback: старый формат "залишки на 1 число, [склад]"

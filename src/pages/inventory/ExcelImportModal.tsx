@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
+import { parseStockValueStrict } from '../../utils/excelParser';
 
 interface ExcelImportModalProps {
     isOpen: boolean;
@@ -529,61 +530,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
-                    // Helper to parse flexible numbers (spaces, commas, dots)
-                    // Now context-aware: checks category to make smarter decisions
-                    const parseStockValue = (val: any): number | null => {
-                        if (val === undefined || val === null || val === '') return null;
-                        let str = String(val).trim();
-                        if (str === '-') return 0; // Sometimes '-' means 0
-
-                        // Remove spaces (thousand separators)
-                        str = str.replace(/\s/g, '');
-
-                        // Special handling for labels/stickers (always integer pieces).
-                        // In RU/UA locale, dots are often thousand separators (e.g. 1.551 or 2.124.770).
-                        // AGGRESSIVE INTEGER LOGIC:
-                        // If item is measured in 'pcs' (шт) OR is a label/sticker/envelope,
-                        // then it CANNOT have decimals. Therefore, any dots are purely thousand separators.
-                        // "2.124" -> 2124 pcs (not 2.124 pcs)
-                        // "1.551" -> 1551 pcs (not 1.551 pcs)
-                        const isIntegerItem =
-                            unit === 'шт' ||
-                            category === 'label' ||
-                            category === 'sticker' ||
-                            category === 'envelope' ||
-                            category === 'packaging_cardboard' ||
-                            nameLower.includes('ярлик') ||
-                            nameLower.includes('стикер');
-
-                        if (isIntegerItem) {
-                            // For integer items: remove ALL dots (treat as thousand separators).
-                            // Treat comma as decimal (unlikely for labels but let's keep it standard).
-                            str = str.replace(/\./g, '').replace(',', '.');
-
-                            // console.log(`[Import Debug] Label Logic: "${originalStr}" -> "${str}"`);
-                        } else {
-                            // General logic
-                            const dotCount = (str.match(/\./g) || []).length;
-                            const hasComma = str.includes(',');
-
-                            if (hasComma) {
-                                // Comma is decimal separator -> remove dots, replace comma
-                                str = str.replace(/\./g, '').replace(',', '.');
-                            } else if (dotCount > 1) {
-                                // Multiple dots -> thousand separators
-                                str = str.replace(/\./g, '');
-                            } else {
-                                // Single dot -> ambiguous context, treat as decimal for non-labels
-                                // "1.500" -> 1.5
-                            }
-                        }
-
-                        const num = parseFloat(str);
-                        return isNaN(num) ? null : num;
-                    };
-
                     const rawValue = row[header] || row[`__EMPTY_${i}`];
-                    const stockVal = parseStockValue(rawValue);
+                    // Use strict parser utility
+                    const stockVal = parseStockValueStrict(rawValue, unit, category, name);
 
                     // Debug log for every header to see what we are processing
                     // console.log(`[Import Debug] Processing header [${i}]: "${header}". Raw: "${rawValue}", Parsed: ${stockVal}`);

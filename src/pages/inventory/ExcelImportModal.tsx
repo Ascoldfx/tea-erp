@@ -531,12 +531,13 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
                     const rawValue = row[header] || row[`__EMPTY_${i}`];
-                    // Use strict parser utility (v2.3 Debug)
-                    console.log(`[v2.3] Parsing: "${rawValue}", Unit: "${unit}", Cat: "${category}"`);
+                    // Use strict parser utility (v2.8 VERIFIED)
+                    // console.log(`[v2.8 Input] Raw: "${rawValue}", Unit: "${unit}", Cat: "${category}"`);
                     const stockVal = parseStockValueStrict(rawValue, unit, category, name);
 
-                    // Debug log for every header to see what we are processing
-                    // console.log(`[Import Debug] Processing header [${i}]: "${header}". Raw: "${rawValue}", Parsed: ${stockVal}`);
+                    if (headerLower.includes('тс') && rawValue && String(rawValue).includes('2.124')) {
+                        console.log(`[v2.8 CRITICAL DEBUG] "${rawValue}" -> ${stockVal} (Type: ${typeof stockVal})`);
+                    }
 
                     // Skip if this is a planned consumption column
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {

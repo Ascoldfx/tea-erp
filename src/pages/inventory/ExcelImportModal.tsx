@@ -538,9 +538,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue;
                     }
 
-                    // Парсим формат "залишки на [дата] [склад]"
-                    // Примеры: "залишки на 30.11 база", "залишки на 30.11 ТС", "залишки на 31.10 Кава"
-                    const stockMatch = headerLower.match(/залишки\s+на\s+(\d{1,2})\.(\d{1,2})\s+(.+)/);
+                    // Парсим формат "залишки [на] [дата] [склад]"
+                    // Примеры: "залишки на 30.11 база", "залишки 30.11 ТС", "залишки 31.10 Кава"
+                    const stockMatch = headerLower.match(/залишки(?:\s+на)?\s+(\d{1,2})\.(\d{1,2})\s+(.+)/);
                     if (stockMatch) {
                         const day = parseInt(stockMatch[1]);
                         const month = parseInt(stockMatch[2]);

@@ -538,24 +538,32 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         // Remove spaces (thousand separators)
                         str = str.replace(/\s/g, '');
 
-                        // Count dots and check for comma
-                        const dotCount = (str.match(/\./g) || []).length;
-                        const hasComma = str.includes(',');
+                        // Special handling for labels/stickers (always integer pieces).
+                        // In RU/UA locale, dots are often thousand separators (e.g. 1.551 or 2.124.770).
+                        const isIntegerItem = detectedCategory === 'label' ||
+                            detectedCategory === 'sticker' ||
+                            item.name?.toLowerCase().includes('ярлик') ||
+                            item.name?.toLowerCase().includes('стикер');
 
-                        // Logic to distinguish thousand separators from decimal points
-                        if (hasComma) {
-                            // If comma is present, it is the decimal separator (UA/RU standard)
-                            // Remove all dots (thousand separators) and replace comma with dot
+                        if (isIntegerItem) {
+                            // For labels: remove ALL dots (treat as thousand separators).
+                            // Treat comma as decimal (unlikely for labels but let's keep it standard).
                             str = str.replace(/\./g, '').replace(',', '.');
-                        } else if (dotCount > 1) {
-                            // If multiple dots are present, they are definitely thousand separators (e.g. 1.550.000)
-                            str = str.replace(/\./g, '');
                         } else {
-                            // Single dot (or no dot) and no comma
-                            // Ambiguous case: "1.500" could be 1.5 or 1500.
-                            // Default to standard float parsing (dot is decimal) to support international decimals
-                            // However, strictly "2.124" for a label (integer) suggests 2000, but we can't know for sure without type.
-                            // Given the "multiple dots" fix, the reported millions-issues are solved.
+                            // General logic
+                            const dotCount = (str.match(/\./g) || []).length;
+                            const hasComma = str.includes(',');
+
+                            if (hasComma) {
+                                // Comma is decimal separator -> remove dots, replace comma
+                                str = str.replace(/\./g, '').replace(',', '.');
+                            } else if (dotCount > 1) {
+                                // Multiple dots -> thousand separators
+                                str = str.replace(/\./g, '');
+                            } else {
+                                // Single dot -> ambiguous context, treat as decimal for non-labels
+                                // "1.500" -> 1.5
+                            }
                         }
 
                         const num = parseFloat(str);

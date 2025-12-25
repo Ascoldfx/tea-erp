@@ -460,6 +460,12 @@ export default function InventoryList() {
                                                             {shortenMaterialName(item.name)}
                                                         </td>
                                                         <td
+                                                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                                                            onDoubleClick={() => handleItemClick(item)}
+                                                        >
+                                                            {renderLocationBadges(item.stockLevels, item)}
+                                                        </td>
+                                                        <td
                                                             className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
                                                             onDoubleClick={() => handleItemClick(item)}
                                                         >

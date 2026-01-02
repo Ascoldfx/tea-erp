@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 
-import { Calculator, TrendingUp, CalendarClock, Loader2 } from 'lucide-react';
+import { Calculator, TrendingUp, CalendarClock, Loader2, Star, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useInventory } from '../../hooks/useInventory';
 import { recipesService } from '../../services/recipesService';
-import type { Recipe } from '../../types/production';
+import type { Recipe, RecipeIngredient } from '../../types/production';
+import { TOP_25_SKUS } from '../../data/top25Skus';
 
 export default function ProductionCalculator() {
     const [mode, setMode] = useState<'analyze' | 'plan'>('analyze');
@@ -44,6 +45,92 @@ export default function ProductionCalculator() {
         };
         loadRecipes();
     }, []);
+
+    // --- Helper: Check Priority (Top 25) ---
+    const isPriorityRecipe = (recipe: Recipe): boolean => {
+        // Try to find SKU in items or description
+        let sku = '';
+        const finishedGood = items.find(i => i.id === recipe.outputItemId);
+        if (finishedGood) sku = finishedGood.sku;
+
+        if (!sku && recipe.description) {
+            const skuMatch = recipe.description.match(/Артикул:\s*(\d+)/i);
+            if (skuMatch) sku = skuMatch[1];
+            else {
+                const directMatch = recipe.description.match(/^(\d+)/);
+                if (directMatch) sku = directMatch[1];
+            }
+        }
+
+        // Fallback: Check if outputItemId IS the SKU (digits only) or temp-SKU
+        if (!sku && recipe.outputItemId) {
+            if (recipe.outputItemId.startsWith('temp-')) {
+                const part = recipe.outputItemId.replace('temp-', '');
+                if (/^\d+$/.test(part)) sku = part;
+            } else if (/^\d+$/.test(recipe.outputItemId)) {
+                sku = recipe.outputItemId;
+            }
+        }
+
+        return TOP_25_SKUS.some(s => s === sku);
+    };
+
+    // Sorted Recipes: Priority first, then Alphabetical
+    const sortedRecipesOptions = useMemo(() => {
+        // We separate recipes into two buckets
+        const priority: Recipe[] = [];
+        const others: Recipe[] = [];
+
+        recipes.forEach(r => {
+            if (isPriorityRecipe(r)) priority.push(r);
+            else others.push(r);
+        });
+
+        priority.sort((a, b) => a.name.localeCompare(b.name));
+        others.sort((a, b) => a.name.localeCompare(b.name));
+
+        const options = [
+            { value: '', label: 'Не выбрано...' },
+            ...priority.map(r => ({ value: r.id, label: `⭐ ${r.name}` })), // Mark priority
+            ...others.map(r => ({ value: r.id, label: r.name }))
+        ];
+        return options;
+    }, [recipes, items]);
+
+    // --- Helper: Smart Stock Lookup ---
+    const getSmartTotalStock = (itemId: string, ingredient?: RecipeIngredient) => {
+        // 1. Direct ID Match
+        const byId = stock.filter(s => s.itemId === itemId).reduce((acc, curr) => acc + curr.quantity, 0);
+        if (byId > 0) return byId;
+
+        // 2. Variable ID fallback (if itemId is temp-...)
+        // Try to find SKU from the ingredient or tempMaterial
+        let skuToSearch = '';
+
+        // If we have access to the ingredient object
+        if (ingredient) {
+            if (ingredient.tempMaterial?.sku) skuToSearch = ingredient.tempMaterial.sku;
+            else {
+                // Try to find item details to get SKU
+                const item = items.find(i => i.id === itemId);
+                if (item?.sku) skuToSearch = item.sku;
+            }
+        } else {
+            const item = items.find(i => i.id === itemId);
+            if (item?.sku) skuToSearch = item.sku;
+        }
+
+        // If we have a SKU, find the real item
+        if (skuToSearch) {
+            const realItem = items.find(i => i.sku === skuToSearch);
+            if (realItem) {
+                // Sum stock for the REAL item ID
+                return stock.filter(s => s.itemId === realItem.id).reduce((acc, curr) => acc + curr.quantity, 0);
+            }
+        }
+
+        return 0;
+    };
 
     // Helper to get total stock for an item
     const getItemTotalStock = (itemId: string) => {
@@ -127,7 +214,7 @@ export default function ProductionCalculator() {
 
         const results = validIngredients.map(ing => {
             const item = getItemDetails(ing.itemId);
-            const totalStock = getItemTotalStock(ing.itemId);
+            const totalStock = getSmartTotalStock(ing.itemId, ing);
 
             const requiredPerBatch = ing.effectiveQuantity.value;
 
@@ -182,7 +269,7 @@ export default function ProductionCalculator() {
 
         const results = recipe.ingredients.map(ing => {
             const item = getItemDetails(ing.itemId);
-            const totalStock = getItemTotalStock(ing.itemId);
+            const totalStock = getSmartTotalStock(ing.itemId, ing);
 
             const effective = getEffectiveQuantity(ing);
             const requiredTotal = effective.value * batchesNeeded;
@@ -263,10 +350,7 @@ export default function ProductionCalculator() {
                 <CardContent className="space-y-4">
                     <Select
                         label="Выберите продукт (Тех. Карту)"
-                        options={[
-                            { value: '', label: 'Не выбрано...' },
-                            ...recipes.map(r => ({ value: r.id, label: r.name }))
-                        ]}
+                        options={sortedRecipesOptions}
                         value={selectedRecipeId}
                         onChange={e => setSelectedRecipeId(e.target.value)}
                     />
@@ -361,56 +445,63 @@ export default function ProductionCalculator() {
                         <CardTitle>Расчет потребности материалов</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-950 text-slate-400 font-medium uppercase">
-                                    <tr>
-                                        <th className="px-6 py-3">Артикул</th>
-                                        <th className="px-6 py-3">Материал</th>
-                                        <th className="px-6 py-3 text-right">На складе</th>
-                                        <th className="px-6 py-3 text-right text-blue-400">Требуется</th>
-                                        <th className="px-6 py-3 text-right">Остаток после</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800">
-                                    {planningResults.ingredients.map(row => (
-                                        <tr key={row.itemId} className="hover:bg-slate-800/50">
-                                            <td className="px-6 py-4 font-mono text-slate-500">
-                                                {row.sku}
-                                            </td>
-                                            <td className="px-6 py-4 font-medium text-slate-200">
-                                                <div className="flex flex-col">
-                                                    <span>{row.itemName}</span>
-                                                    <span className="text-xs text-slate-500 font-normal">
-                                                        Норма: {row.effectiveValue} {row.unit}
-                                                        <span className={clsx("ml-1",
-                                                            row.normSource === 'current' ? "text-emerald-500" :
-                                                                row.normSource === 'recent' ? "text-amber-500" : "text-slate-600"
-                                                        )}>
-                                                            ({row.normSource === 'current' ? 'Тек.месяц' : row.normSource === 'recent' ? `из ${new Date(row.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-400">
-                                                {row.totalStock.toLocaleString()} <span className="text-xs">{row.unit}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-blue-300 font-medium">
-                                                {row.requiredTotal.toFixed(3)} <span className="text-xs">{row.unit}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className={clsx(
-                                                    "font-medium",
-                                                    row.isShortage ? "text-red-500" : "text-emerald-400"
-                                                )}>
-                                                    {row.projectedBalance.toFixed(3)}
-                                                </span>
-                                            </td>
+                        {planningResults.ingredients.length === 0 ? (
+                            <div className="p-8 text-center flex flex-col items-center justify-center text-slate-500">
+                                <AlertCircle className="w-12 h-12 mb-3 text-slate-600" />
+                                <p className="text-lg font-medium text-slate-400">Нет данных о материалах</p>
+                                <p className="text-sm mt-1">Для выбранной техкарты не найдены активные нормы расхода или ингредиенты.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-950 text-slate-400 font-medium uppercase">
+                                        <tr>
+                                            <th className="px-6 py-3">Артикул</th>
+                                            <th className="px-6 py-3">Материал</th>
+                                            <th className="px-6 py-3 text-right">На складе</th>
+                                            <th className="px-6 py-3 text-right text-blue-400">Требуется</th>
+                                            <th className="px-6 py-3 text-right">Остаток после</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800">
+                                        {planningResults.ingredients.map(row => (
+                                            <tr key={row.itemId} className="hover:bg-slate-800/50">
+                                                <td className="px-6 py-4 font-mono text-slate-500">
+                                                    {row.sku}
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-slate-200">
+                                                    <div className="flex flex-col">
+                                                        <span>{row.itemName}</span>
+                                                        <span className="text-xs text-slate-500 font-normal">
+                                                            Норма: {row.effectiveValue} {row.unit}
+                                                            <span className={clsx("ml-1",
+                                                                row.normSource === 'current' ? "text-emerald-500" :
+                                                                    row.normSource === 'recent' ? "text-amber-500" : "text-slate-600"
+                                                            )}>
+                                                                ({row.normSource === 'current' ? 'Тек.месяц' : row.normSource === 'recent' ? `из ${new Date(row.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-slate-400">
+                                                    {row.totalStock.toLocaleString()} <span className="text-xs">{row.unit}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-blue-300 font-medium">
+                                                    {row.requiredTotal.toFixed(3)} <span className="text-xs">{row.unit}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={clsx(
+                                                        "font-medium",
+                                                        row.isShortage ? "text-red-500" : "text-emerald-400"
+                                                    )}>
+                                                        {row.projectedBalance.toFixed(3)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                     </CardContent>
                 </Card>
             )}

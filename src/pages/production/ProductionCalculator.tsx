@@ -256,8 +256,8 @@ export default function ProductionCalculator() {
     }, [selectedRecipeId, targetQuantity, recipes, stock, items]);
 
 
-    const handleRecipeChange = (val: string) => {
-        setSelectedRecipeId(val);
+    const handleRecipeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedRecipeId(e.target.value);
     };
 
     return (
@@ -309,7 +309,6 @@ export default function ProductionCalculator() {
                                 value={selectedRecipeId}
                                 options={sortedRecipesOptions}
                                 onChange={handleRecipeChange}
-                                placeholder="Поиск рецепта..."
                                 className="w-full"
                             />
                         </div>

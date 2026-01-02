@@ -26,6 +26,8 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
     const [loading, setLoading] = useState(false);
     const [importedCount, setImportedCount] = useState(0);
 
+    const [existingRecipes, setExistingRecipes] = useState<Recipe[]>([]);
+
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
@@ -37,6 +39,15 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             setWorkbook(null);
             setLoading(false);
             setImportedCount(0);
+
+            // Fetch existing recipes to check for duplicates
+            const fetchExisting = async () => {
+                const recipes = await recipesService.getRecipes();
+                setExistingRecipes(recipes);
+                console.log(`[Import] Loaded ${recipes.length} existing recipes for de-duplication lookup`);
+            };
+            fetchExisting();
+
             // Reset file input
             const fileInput = document.getElementById('tech-cards-file-upload') as HTMLInputElement;
             if (fileInput) {
@@ -147,6 +158,34 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 // Если не найдено, используем временный ID для объекта Recipe
                 // ВАЖНО: При сохранении в БД (в recipesService) null будет преобразован из temp-*
                 const outputItemId = finishedGood?.id || `temp-${techCard.gpSku}`; // Используем temp-* для объекта Recipe
+
+                // --- DE-DUPLICATION LOGIC START ---
+                // Check if we already have a recipe for this output item (SKU)
+                let existingRecipe: Recipe | undefined;
+
+                if (finishedGood) {
+                    // Match by Output Item ID
+                    existingRecipe = existingRecipes.find(r => r.outputItemId === finishedGood?.id);
+                }
+
+                // If not found by ID, try fuzzy match by name or SKU description
+                if (!existingRecipe) {
+                    existingRecipe = existingRecipes.find(r => {
+                        // Check explicit SKU in description
+                        if (r.description && r.description.includes(techCard.gpSku)) return true;
+                        // Check name match
+                        if (r.name.toLowerCase().trim() === techCard.gpName.toLowerCase().trim()) return true;
+                        return false;
+                    });
+                }
+
+                // Reuse ID if found, otherwise create new
+                const recipeId = existingRecipe?.id || `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                if (existingRecipe) {
+                    console.log(`[Import] Found existing recipe for SKU ${techCard.gpSku}: updating ID ${recipeId}`);
+                }
+                // --- DE-DUPLICATION LOGIC END ---
 
                 const ingredients: RecipeIngredient[] = [];
 
@@ -291,7 +330,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
                 if (ingredients.length > 0) {
                     recipes.push({
-                        id: `rcp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        id: recipeId, // Reused ID or New ID
                         name: techCard.gpName,
                         description: `Артикул: ${techCard.gpSku}`,
                         outputItemId,

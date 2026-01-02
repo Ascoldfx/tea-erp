@@ -132,27 +132,10 @@ export default function ProductionCalculator() {
         return 0;
     };
 
-    // Helper to get total stock for an item
-    const getItemTotalStock = (itemId: string) => {
-        // Debug specific item stock lookup
-        // const itemStockEntries = stock.filter(s => s.itemId === itemId);
-        // if (itemStockEntries.length > 0) {
-        //     console.log(`[Calc Debug] Found stock for ${itemId}:`, itemStockEntries);
-        // }
-
-        return stock
-            .filter(s => s.itemId === itemId)
-            .reduce((acc, curr) => acc + curr.quantity, 0);
-    };
-
     const getItemDetails = (itemId: string) => {
         return items.find(i => i.id === itemId);
     };
 
-    // Helper to get effective quantity based on monthly norms (Smart Logic)
-    // 1. Current Month Norm
-    // 2. Most Recent Past Norm (Fallback)
-    // 3. Base Quantity
     // Helper to get effective quantity based on monthly norms (Smart Logic)
     // 1. Current Month Norm
     // 2. Most Recent Past Norm (Fallback)
@@ -198,313 +181,293 @@ export default function ProductionCalculator() {
         const validIngredients = recipe.ingredients
             .map(ing => {
                 const effective = getEffectiveQuantity(ing);
-                return { ...ing, effectiveQuantity: effective };
+                return { ...ing, quantity: effective.value, effectiveSource: effective.source, effectiveDate: effective.date };
             })
-            .filter(ing => ing.effectiveQuantity.value > 0);
+            .filter(ing => ing.quantity > 0);
 
-        if (validIngredients.length === 0) return {
-            recipeName: recipe.name,
-            ingredients: [],
-            overallMaxBatches: 999999,
-            overallMaxUnits: 999999,
-            limitingFactor: null,
-            isUnlimited: true,
-            unlimitedReason: 'Нет ингредиентов или норм'
-        };
+        if (validIngredients.length === 0) return null;
 
-        const results = validIngredients.map(ing => {
-            const item = getItemDetails(ing.itemId);
-            const totalStock = getSmartTotalStock(ing.itemId, ing);
-
-            const requiredPerBatch = ing.effectiveQuantity.value;
-
-            // How many full runs can we make?
-            const maxBatches = requiredPerBatch > 0 ? Math.floor(totalStock / requiredPerBatch) : 999999;
-            const maxTotalUnits = maxBatches * recipe.outputQuantity;
-
-            const status = maxBatches <= 0 ? 'critical' : maxBatches < 10 ? 'warning' : 'ok';
-
+        const ingredientLimits = validIngredients.map(ing => {
+            const stockQty = getSmartTotalStock(ing.itemId, ing);
+            const canProduce = Math.floor(stockQty / ing.quantity);
+            const isUnlimited = ing.tempMaterial?.sku === '2010420'; // Example unlimited item
             return {
-                itemId: ing.itemId,
-                sku: item?.sku || ing.tempMaterial?.sku || '-',
-                itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
-                unit: item?.unit || ing.unit || '',
-                requiredPerBatch,
-                totalStock,
-                maxBatches,
-                maxTotalUnits,
-                status,
-                normSource: ing.effectiveQuantity.source,
-                normDate: ing.effectiveQuantity.date
+                ingredientName: ing.tempMaterial?.name || getItemDetails(ing.itemId)?.name || 'Unknown',
+                requiredPerUnit: ing.quantity,
+                inStock: stockQty,
+                maxOutput: isUnlimited ? Infinity : canProduce,
+                isLimiting: false, // will calculate below
+                isUnlimited,
+                unlimitedReason: isUnlimited ? 'Всегда в наличии' : undefined,
+                effectiveSource: ing.effectiveSource,
+                sku: ing.tempMaterial?.sku || getItemDetails(ing.itemId)?.sku || ''
             };
         });
 
-        results.sort((a, b) => a.maxBatches - b.maxBatches);
-        const overallMaxBatches = Math.min(...results.map(r => r.maxBatches));
+        // Find min output (ignoring unlimited items)
+        const finiteLimits = ingredientLimits.filter(i => !i.isUnlimited);
+        const maxPossibleOutput = finiteLimits.length > 0
+            ? Math.min(...finiteLimits.map(i => i.maxOutput))
+            : Infinity; // If all unlimited (rare)
 
-        // If overallMaxBatches is still super high, it means we have enough stock for "infinite" production practically, or error
-        const isUnlimited = overallMaxBatches >= 999999;
-
-        const overallMaxUnits = isUnlimited ? 999999 : overallMaxBatches * recipe.outputQuantity;
-        const limitingFactor = isUnlimited ? null : results.find(r => r.maxBatches === overallMaxBatches);
+        // Mark limiting factors
+        const limitingIngredients = ingredientLimits.filter(i => !i.isUnlimited && i.maxOutput === maxPossibleOutput);
+        limitingIngredients.forEach(i => i.isLimiting = true);
 
         return {
             recipeName: recipe.name,
-            ingredients: results,
-            overallMaxBatches,
-            overallMaxUnits,
-            limitingFactor,
-            isUnlimited,
-            unlimitedReason: isUnlimited ? 'Нет ограничений по материалам' : null
+            maxPossibleOutput: maxPossibleOutput === Infinity ? '∞' : maxPossibleOutput,
+            ingredients: ingredientLimits
         };
     }, [selectedRecipeId, recipes, stock, items]);
 
-    // --- Mode 2: Forward Planning ---
+    // --- Mode 2: Plan Requirement ---
     const planningResults = useMemo(() => {
         if (!selectedRecipeId || targetQuantity <= 0 || recipes.length === 0) return null;
         const recipe = recipes.find(r => r.id === selectedRecipeId);
         if (!recipe) return null;
 
-        const batchesNeeded = targetQuantity / recipe.outputQuantity;
+        const requirements = recipe.ingredients
+            .map(ing => {
+                const effective = getEffectiveQuantity(ing);
+                return { ...ing, quantity: effective.value, effectiveSource: effective.source };
+            })
+            .filter(ing => ing.quantity > 0)
+            .map(ing => {
+                const requiredTotal = ing.quantity * targetQuantity;
+                const stockQty = getSmartTotalStock(ing.itemId, ing);
+                const balance = stockQty - requiredTotal;
+                const isUnlimited = ing.tempMaterial?.sku === '2010420'; // Example
 
-        const results = recipe.ingredients.map(ing => {
-            const item = getItemDetails(ing.itemId);
-            const totalStock = getSmartTotalStock(ing.itemId, ing);
+                return {
+                    ingredientName: ing.tempMaterial?.name || getItemDetails(ing.itemId)?.name || 'Unknown',
+                    requiredTotal,
+                    inStock: stockQty,
+                    balance,
+                    status: isUnlimited ? 'OK' : (balance >= 0 ? 'OK' : 'Deficit'),
+                    sku: ing.tempMaterial?.sku || getItemDetails(ing.itemId)?.sku || ''
+                };
+            });
 
-            const effective = getEffectiveQuantity(ing);
-            const requiredTotal = effective.value * batchesNeeded;
-            const projectedBalance = totalStock - requiredTotal;
-            const isShortage = projectedBalance < 0;
-
-            return {
-                itemId: ing.itemId,
-                sku: item?.sku || ing.tempMaterial?.sku || '-',
-                itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
-                unit: item?.unit || ing.unit || '',
-                requiredTotal,
-                totalStock,
-                projectedBalance,
-                isShortage,
-                effectiveValue: effective.value,
-                normSource: effective.source,
-                normDate: effective.date
-            };
-        });
-
-        // Filter out items with 0 requirement (if using effective quantity)
-        const activeResults = results.filter(r => r.requiredTotal > 0);
-
-        return { recipeName: recipe.name, ingredients: activeResults, batchesNeeded };
+        return {
+            recipeName: recipe.name,
+            ingredients: requirements
+        };
     }, [selectedRecipeId, targetQuantity, recipes, stock, items]);
 
 
-    if (loadingRecipes || loadingInventory) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                <span className="ml-3 text-slate-400">Загрузка данных...</span>
-            </div>
-        );
-    }
+    const handleRecipeChange = (val: string) => {
+        setSelectedRecipeId(val);
+    };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex justify-between items-start">
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2">
                         <Calculator className="w-8 h-8 text-blue-500" />
-                        Калькулятор
+                        Производственный Калькулятор
                     </h1>
-                    <p className="text-slate-400 mt-1">Планирование производства и расчет потребности в материалах</p>
+                    <p className="text-slate-400 mt-1">Расчет доступного производства и планирование потребностей</p>
+                </div>
+
+                <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+                    <button
+                        onClick={() => setMode('analyze')}
+                        className={clsx(
+                            "px-4 py-2 rounded-md text-sm font-medium transition-all",
+                            mode === 'analyze'
+                                ? "bg-blue-600 text-white shadow-lg"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        )}
+                    >
+                        <TrendingUp className="w-4 h-4 inline mr-2" />
+                        Анализ остатков
+                    </button>
+                    <button
+                        onClick={() => setMode('plan')}
+                        className={clsx(
+                            "px-4 py-2 rounded-md text-sm font-medium transition-all",
+                            mode === 'plan'
+                                ? "bg-purple-600 text-white shadow-lg"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        )}
+                    >
+                        <CalendarClock className="w-4 h-4 inline mr-2" />
+                        Планирование заказа
+                    </button>
                 </div>
             </div>
 
-            {/* Mode Toggle */}
-            <div className="flex gap-4 border-b border-slate-700">
-                <button
-                    onClick={() => setMode('analyze')}
-                    className={clsx(
-                        "px-6 py-3 font-medium transition-colors border-b-2 flex items-center gap-2",
-                        mode === 'analyze' ? "border-emerald-500 text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-200"
-                    )}
-                >
-                    <TrendingUp size={18} />
-                    Анализ возможностей
-                </button>
-                <button
-                    onClick={() => setMode('plan')}
-                    className={clsx(
-                        "px-6 py-3 font-medium transition-colors border-b-2 flex items-center gap-2",
-                        mode === 'plan' ? "border-blue-500 text-blue-400" : "border-transparent text-slate-400 hover:text-slate-200"
-                    )}
-                >
-                    <CalendarClock size={18} />
-                    Планирование заказа
-                </button>
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Параметры {mode === 'analyze' ? 'анализа' : 'планирования'}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Select
-                        label="Выберите продукт (Тех. Карту)"
-                        options={sortedRecipesOptions}
-                        value={selectedRecipeId}
-                        onChange={e => setSelectedRecipeId(e.target.value)}
-                    />
-
-                    {mode === 'plan' && (
-                        <div className="pt-2 space-y-4">
-                            <div>
-                                <Input
-                                    label="Планируемый объем (КГ / Ед)"
-                                    type="number"
-                                    placeholder="Например: 500"
-                                    value={targetQuantity || ''}
-                                    onChange={(e) => setTargetQuantity(parseFloat(e.target.value) || 0)}
-                                />
-                                <p className="text-xs text-slate-500 mt-1">
-                                    Введите количество готовой продукции, которое вы хотите произвести.
-                                </p>
-                            </div>
-
-                            {targetQuantity > 0 && selectedRecipeId && (
-                                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex gap-8">
-                                    {/* Mock conversions or estimates if needed. For now just show output quantity relation */}
-                                    <div>
-                                        <p className="text-xs text-slate-400 uppercase">Потребуется варок/замесов</p>
-                                        <p className="text-xl font-bold text-slate-100">
-                                            {planningResults ? planningResults.batchesNeeded.toFixed(2) : '-'}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+            {/* Controls */}
+            <Card className="border-slate-800 bg-slate-900/50">
+                <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Выберите техкарту (рецепт)</label>
+                            <Select
+                                value={selectedRecipeId}
+                                options={sortedRecipesOptions}
+                                onChange={handleRecipeChange}
+                                placeholder="Поиск рецепта..."
+                                className="w-full"
+                            />
                         </div>
-                    )}
+
+                        {mode === 'plan' && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-left-4">
+                                <label className="text-sm font-medium text-slate-300">Планируемый выпуск (ящиков)</label>
+                                <Input
+                                    type="number"
+                                    value={targetQuantity || ''}
+                                    onChange={(e) => setTargetQuantity(parseInt(e.target.value) || 0)}
+                                    placeholder="Введите количество..."
+                                    className="bg-slate-950 border-slate-700"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
-            {/* --- VIEW: ANALYZE --- */}
-            {mode === 'analyze' && analysisResults && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="bg-slate-900 border-emerald-900/50">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-emerald-400 text-lg">Максимальный выпуск</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-5xl font-bold text-slate-100 mb-2">
-                                    {analysisResults.isUnlimited ? '∞' : analysisResults.overallMaxUnits.toLocaleString() + ' ед'}
-                                </div>
-                                <p className="text-slate-400">
-                                    {analysisResults.isUnlimited
-                                        ? (analysisResults.unlimitedReason || 'Нет ограничений')
-                                        : `~${analysisResults.overallMaxBatches} партий (замесов)`
-                                    }
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className={`border-l-4 ${analysisResults.limitingFactor ? 'border-l-amber-500' : 'border-l-emerald-500'}`}>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-slate-200 text-lg">Лимитирующий фактор (Узкое горлышко)</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {analysisResults.limitingFactor ? (
-                                    <>
-                                        <div className="text-xl font-medium text-slate-100 mb-1">
-                                            {analysisResults.limitingFactor.itemName}
-                                        </div>
-                                        <p className="text-slate-400">
-                                            Хватит только на {analysisResults.limitingFactor.maxTotalUnits.toLocaleString()} шт
-                                        </p>
-                                        <div className="mt-2 text-sm text-slate-500">
-                                            На складе: {analysisResults.limitingFactor.totalStock} {analysisResults.limitingFactor.unit}
-                                        </div>
-                                        <div className="mt-1 text-xs text-slate-600">
-                                            Норма: {analysisResults.limitingFactor.requiredPerBatch} ({analysisResults.limitingFactor.normSource === 'current' ? 'Тек.месяц' : analysisResults.limitingFactor.normSource === 'recent' ? `План ${new Date(analysisResults.limitingFactor.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p className="text-emerald-500 font-medium">
-                                        {analysisResults.isUnlimited ? "Недостаточно данных для расчета ограничений" : "Ограничений нет"}
-                                    </p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+            {/* Results Area */}
+            {loadingRecipes ? (
+                <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                 </div>
-            )}
+            ) : (
+                <>
+                    {/* Mode 1: Analysis Results */}
+                    {mode === 'analyze' && analysisResults && (
+                        <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+                                    <CardContent className="pt-6">
+                                        <div className="text-slate-400 text-sm font-medium">Максимально возможно</div>
+                                        <div className="text-4xl font-bold text-white mt-2">
+                                            {analysisResults.maxPossibleOutput}
+                                            <span className="text-lg text-slate-500 font-normal ml-2">ящ</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-            {/* --- VIEW: PLAN --- */}
-            {mode === 'plan' && planningResults && (
-                <Card className="border-t-4 border-t-blue-500">
-                    <CardHeader>
-                        <CardTitle>Расчет потребности материалов</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {planningResults.ingredients.length === 0 ? (
-                            <div className="p-8 text-center flex flex-col items-center justify-center text-slate-500">
-                                <AlertCircle className="w-12 h-12 mb-3 text-slate-600" />
-                                <p className="text-lg font-medium text-slate-400">Нет данных о материалах</p>
-                                <p className="text-sm mt-1">Для выбранной техкарты не найдены активные нормы расхода или ингредиенты.</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-950 text-slate-400 font-medium uppercase">
-                                        <tr>
-                                            <th className="px-6 py-3">Артикул</th>
-                                            <th className="px-6 py-3">Материал</th>
-                                            <th className="px-6 py-3 text-right">На складе</th>
-                                            <th className="px-6 py-3 text-right text-blue-400">Требуется</th>
-                                            <th className="px-6 py-3 text-right">Остаток после</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800">
-                                        {planningResults.ingredients.map(row => (
-                                            <tr key={row.itemId} className="hover:bg-slate-800/50">
-                                                <td className="px-6 py-4 font-mono text-slate-500">
-                                                    {row.sku}
-                                                </td>
-                                                <td className="px-6 py-4 font-medium text-slate-200">
-                                                    <div className="flex flex-col">
-                                                        <span>{row.itemName}</span>
-                                                        <span className="text-xs text-slate-500 font-normal">
-                                                            Норма: {row.effectiveValue} {row.unit}
-                                                            <span className={clsx("ml-1",
-                                                                row.normSource === 'current' ? "text-emerald-500" :
-                                                                    row.normSource === 'recent' ? "text-amber-500" : "text-slate-600"
-                                                            )}>
-                                                                ({row.normSource === 'current' ? 'Тек.месяц' : row.normSource === 'recent' ? `из ${new Date(row.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
-                                                            </span>
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-slate-400">
-                                                    {row.totalStock.toLocaleString()} <span className="text-xs">{row.unit}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-blue-300 font-medium">
-                                                    {row.requiredTotal.toFixed(3)} <span className="text-xs">{row.unit}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className={clsx(
-                                                        "font-medium",
-                                                        row.isShortage ? "text-red-500" : "text-emerald-400"
+                            {/* Detailed Breakdown */}
+                            <Card className="border-slate-800">
+                                <CardHeader>
+                                    <CardTitle>Детализация по компонентам</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-slate-400 border-b border-slate-800">
+                                                <tr>
+                                                    <th className="py-3 px-4">Компонент</th>
+                                                    <th className="py-3 px-4">Артикул</th>
+                                                    <th className="py-3 px-4 text-right">На 1 ящ</th>
+                                                    <th className="py-3 px-4 text-right">На остатке</th>
+                                                    <th className="py-3 px-4 text-right">Хватит на</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-800">
+                                                {analysisResults.ingredients.map((ing, idx) => (
+                                                    <tr key={idx} className={clsx(
+                                                        "transition-colors hover:bg-slate-800/50",
+                                                        ing.isLimiting && "bg-red-900/10"
                                                     )}>
-                                                        {row.projectedBalance.toFixed(3)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                                        <td className="py-3 px-4 font-medium text-slate-200">
+                                                            {ing.ingredientName}
+                                                            {ing.effectiveSource !== 'base' && (
+                                                                <span className="ml-2 text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">
+                                                                    {ing.effectiveSource === 'current' ? 'Тек.месяц' : 'Прошлый'}
+                                                                </span>
+                                                            )}
+                                                            {ing.isLimiting && (
+                                                                <span className="ml-2 text-xs text-red-400 border border-red-400/30 px-1.5 py-0.5 rounded">
+                                                                    Лимитирует
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-slate-400">{ing.sku}</td>
+                                                        <td className="py-3 px-4 text-right text-slate-300">{ing.requiredPerUnit}</td>
+                                                        <td className="py-3 px-4 text-right text-slate-300">{ing.inStock}</td>
+                                                        <td className={clsx(
+                                                            "py-3 px-4 text-right font-bold",
+                                                            ing.isLimiting ? "text-red-400" : "text-emerald-400"
+                                                        )}>
+                                                            {ing.isUnlimited ? (
+                                                                <span className="text-xs text-emerald-500/70">{ing.unlimitedReason}</span>
+                                                            ) : (
+                                                                Math.floor(ing.maxOutput)
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* Mode 2: Plan Results */}
+                    {mode === 'plan' && planningResults && (
+                        <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                            {planningResults.ingredients.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>Нет ингредиентов для расчета</p>
+                                </div>
+                            ) : (
+                                <Card className="border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle>План закупки / Производства</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-slate-400 border-b border-slate-800">
+                                                    <tr>
+                                                        <th className="py-3 px-4">Компонент</th>
+                                                        <th className="py-3 px-4">Артикул</th>
+                                                        <th className="py-3 px-4 text-right">Потребуется</th>
+                                                        <th className="py-3 px-4 text-right">Есть на складе</th>
+                                                        <th className="py-3 px-4 text-right">Баланс</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-800">
+                                                    {planningResults.ingredients.map((ing, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-800/50 transition-colors">
+                                                            <td className="py-3 px-4 font-medium text-slate-200">{ing.ingredientName}</td>
+                                                            <td className="py-3 px-4 text-slate-400">{ing.sku}</td>
+                                                            <td className="py-3 px-4 text-right text-slate-300">{ing.requiredTotal.toFixed(2)}</td>
+                                                            <td className="py-3 px-4 text-right text-slate-300">{ing.inStock}</td>
+                                                            <td className={clsx(
+                                                                "py-3 px-4 text-right font-bold",
+                                                                ing.balance >= 0 ? "text-emerald-400" : "text-red-400"
+                                                            )}>
+                                                                {ing.balance >= 0 ? `+${ing.balance.toFixed(2)}` : ing.balance.toFixed(2)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    )}
+
+                    {!selectedRecipeId && (
+                        <div className="text-center py-20 text-slate-500 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/30">
+                            <Calculator className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <p className="text-lg">Выберите техкарту чтобы начать расчет</p>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

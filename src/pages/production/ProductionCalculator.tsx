@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 
-import { Calculator, TrendingUp, CalendarClock, Loader2, Star, AlertCircle } from 'lucide-react';
+import { Calculator, TrendingUp, CalendarClock, Loader2, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useInventory } from '../../hooks/useInventory';
 import { recipesService } from '../../services/recipesService';

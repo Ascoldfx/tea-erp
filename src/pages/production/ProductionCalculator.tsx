@@ -104,7 +104,9 @@ export default function ProductionCalculator() {
             ingredients: [],
             overallMaxBatches: 999999,
             overallMaxUnits: 999999,
-            limitingFactor: null
+            limitingFactor: null,
+            isUnlimited: true,
+            unlimitedReason: 'Нет ингредиентов или норм'
         };
 
         const results = validIngredients.map(ing => {
@@ -121,6 +123,7 @@ export default function ProductionCalculator() {
 
             return {
                 itemId: ing.itemId,
+                sku: item?.sku || ing.tempMaterial?.sku || '-',
                 itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
                 unit: item?.unit || ing.unit || '',
                 requiredPerBatch,
@@ -135,10 +138,22 @@ export default function ProductionCalculator() {
 
         results.sort((a, b) => a.maxBatches - b.maxBatches);
         const overallMaxBatches = Math.min(...results.map(r => r.maxBatches));
-        const overallMaxUnits = overallMaxBatches * recipe.outputQuantity;
-        const limitingFactor = results.find(r => r.maxBatches === overallMaxBatches);
 
-        return { recipeName: recipe.name, ingredients: results, overallMaxBatches, overallMaxUnits, limitingFactor };
+        // If overallMaxBatches is still super high, it means we have enough stock for "infinite" production practically, or error
+        const isUnlimited = overallMaxBatches >= 999999;
+
+        const overallMaxUnits = isUnlimited ? 999999 : overallMaxBatches * recipe.outputQuantity;
+        const limitingFactor = isUnlimited ? null : results.find(r => r.maxBatches === overallMaxBatches);
+
+        return {
+            recipeName: recipe.name,
+            ingredients: results,
+            overallMaxBatches,
+            overallMaxUnits,
+            limitingFactor,
+            isUnlimited,
+            unlimitedReason: isUnlimited ? 'Нет ограничений по материалам' : null
+        };
     }, [selectedRecipeId, recipes, stock, items]);
 
     // --- Mode 2: Forward Planning ---
@@ -160,6 +175,7 @@ export default function ProductionCalculator() {
 
             return {
                 itemId: ing.itemId,
+                sku: item?.sku || ing.tempMaterial?.sku || '-',
                 itemName: item?.name || ing.tempMaterial?.name || ing.itemId,
                 unit: item?.unit || ing.unit || '',
                 requiredTotal,
@@ -280,15 +296,18 @@ export default function ProductionCalculator() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-5xl font-bold text-slate-100 mb-2">
-                                    {analysisResults.overallMaxUnits.toLocaleString()} ед
+                                    {analysisResults.isUnlimited ? '∞' : analysisResults.overallMaxUnits.toLocaleString() + ' ед'}
                                 </div>
                                 <p className="text-slate-400">
-                                    ~{analysisResults.overallMaxBatches} партий (замесов)
+                                    {analysisResults.isUnlimited
+                                        ? (analysisResults.unlimitedReason || 'Нет ограничений')
+                                        : `~${analysisResults.overallMaxBatches} партий (замесов)`
+                                    }
                                 </p>
                             </CardContent>
                         </Card>
 
-                        <Card className={`border-l-4 ${analysisResults.overallMaxBatches === 0 ? 'border-l-red-500' : 'border-l-amber-500'}`}>
+                        <Card className={`border-l-4 ${analysisResults.limitingFactor ? 'border-l-amber-500' : 'border-l-emerald-500'}`}>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-slate-200 text-lg">Лимитирующий фактор (Узкое горлышко)</CardTitle>
                             </CardHeader>
@@ -309,7 +328,9 @@ export default function ProductionCalculator() {
                                         </div>
                                     </>
                                 ) : (
-                                    <p className="text-emerald-500 font-medium">Ограничений нет (или техкарта пуста)</p>
+                                    <p className="text-emerald-500 font-medium">
+                                        {analysisResults.isUnlimited ? "Недостаточно данных для расчета ограничений" : "Ограничений нет"}
+                                    </p>
                                 )}
                             </CardContent>
                         </Card>
@@ -328,16 +349,19 @@ export default function ProductionCalculator() {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-slate-950 text-slate-400 font-medium uppercase">
                                     <tr>
+                                        <th className="px-6 py-3">Артикул</th>
                                         <th className="px-6 py-3">Материал</th>
                                         <th className="px-6 py-3 text-right">На складе</th>
                                         <th className="px-6 py-3 text-right text-blue-400">Требуется</th>
                                         <th className="px-6 py-3 text-right">Остаток после</th>
-                                        <th className="px-6 py-3">Статус</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
                                     {planningResults.ingredients.map(row => (
                                         <tr key={row.itemId} className="hover:bg-slate-800/50">
+                                            <td className="px-6 py-4 font-mono text-slate-500">
+                                                {row.sku}
+                                            </td>
                                             <td className="px-6 py-4 font-medium text-slate-200">
                                                 <div className="flex flex-col">
                                                     <span>{row.itemName}</span>
@@ -365,19 +389,6 @@ export default function ProductionCalculator() {
                                                 )}>
                                                     {row.projectedBalance.toFixed(3)}
                                                 </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {row.isShortage ? (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs font-bold">
-                                                        <AlertTriangle className="w-3 h-3 mr-1" />
-                                                        ДЕФИЦИТ
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded bg-emerald-900/30 text-emerald-400 text-xs font-medium">
-                                                        <CheckCircle className="w-3 h-3 mr-1" />
-                                                        ХВАТАЕТ
-                                                    </span>
-                                                )}
                                             </td>
                                         </tr>
                                     ))}

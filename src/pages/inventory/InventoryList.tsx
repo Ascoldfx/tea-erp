@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { ShoppingCart, Loader2, Trash2, Filter } from 'lucide-react';
+import { ShoppingCart, Loader2, Trash2, Filter, Search } from 'lucide-react';
 import MaterialDetailsModal from './MaterialDetailsModal';
 import ReceiveGoodsModal from './ReceiveGoodsModal';
 import CreateOrderModal from './CreateOrderModal';
@@ -36,6 +36,7 @@ export default function InventoryList() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all'>('all');
     const [showZeroStockCardboard, setShowZeroStockCardboard] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [transferData, setTransferData] = useState({
         sourceWarehouseId: '',
@@ -131,13 +132,17 @@ export default function InventoryList() {
             };
         });
 
-        // Debug: log categories for troubleshooting
-        if (selectedCategory !== 'all' && mapped.length > 0) {
-            const categories = [...new Set(mapped.map(i => i.category))];
-            console.log(`[Filter Debug] Selected category: ${selectedCategory}, Available categories:`, categories);
-        }
-
         return mapped.filter(item => {
+            // Filter by search query
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const skuMatch = item.sku.toLowerCase().includes(query);
+                const nameMatch = item.name.toLowerCase().includes(query);
+                const locationMatch = item.storage_location?.toLowerCase().includes(query);
+
+                if (!skuMatch && !nameMatch && !locationMatch) return false;
+            }
+
             // Filter by warehouse
             if (selectedWarehouseId && item.totalStock === 0) return false;
 
@@ -146,10 +151,6 @@ export default function InventoryList() {
 
             // Exact match for specific categories
             const matches = item.category === selectedCategory;
-            if (!matches && selectedCategory === 'flavor') {
-                // Debug: log items that should be flavor but aren't
-                console.log(`[Filter Debug] Item "${item.name}" (category: ${item.category}) doesn't match flavor filter. Expected: flavor, got: ${item.category}`);
-            }
 
             // Hide cardboard packaging with zero stock and zero planned consumption
             if (item.category === 'packaging_cardboard' && !showZeroStockCardboard) {
@@ -160,7 +161,7 @@ export default function InventoryList() {
 
             return matches;
         });
-    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroStockCardboard]);
+    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroStockCardboard, searchQuery]);
 
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
@@ -299,29 +300,41 @@ export default function InventoryList() {
                 </div>
             </div>
 
-            {/* Warehouse Filter */}
-            <div className="flex gap-2 pb-2 overflow-x-auto items-center">
-                <button
-                    onClick={() => setSelectedWarehouseId(null)}
-                    className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                        !selectedWarehouseId ? "bg-slate-100 text-slate-900 border-slate-100" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.allGroups').replace('группы', 'склады') || 'Всі склади'}
-                </button>
-                {warehouses.map(w => (
+            {/* Search and Warehouse Filter */}
+            <div className="flex flex-col gap-4">
+                <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <Input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Поиск по названию, артикулу или месту..."
+                        className="pl-10"
+                    />
+                </div>
+
+                <div className="flex gap-2 pb-2 overflow-x-auto items-center">
                     <button
-                        key={w.id}
-                        onClick={() => setSelectedWarehouseId(w.id)}
+                        onClick={() => setSelectedWarehouseId(null)}
                         className={clsx(
-                            "px-4 py-2 rounded-full text-sm font-medium transition-colors border whitespace-nowrap",
-                            selectedWarehouseId === w.id ? "bg-emerald-600 text-white border-emerald-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                            "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
+                            !selectedWarehouseId ? "bg-slate-100 text-slate-900 border-slate-100" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                         )}
                     >
-                        {w.name}
+                        {t('materials.filter.allGroups').replace('группы', 'склады') || 'Всі склади'}
                     </button>
-                ))}
+                    {warehouses.map(w => (
+                        <button
+                            key={w.id}
+                            onClick={() => setSelectedWarehouseId(w.id)}
+                            className={clsx(
+                                "px-4 py-2 rounded-full text-sm font-medium transition-colors border whitespace-nowrap",
+                                selectedWarehouseId === w.id ? "bg-emerald-600 text-white border-emerald-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                            )}
+                        >
+                            {w.name}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Button to show zero stock cardboard */}

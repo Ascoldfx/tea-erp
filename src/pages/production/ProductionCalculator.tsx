@@ -502,6 +502,7 @@ export default function ProductionCalculator() {
                                     </tbody>
                                 </table>
                             </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

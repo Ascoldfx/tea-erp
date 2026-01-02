@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 
-import { Calculator, AlertTriangle, CheckCircle, TrendingUp, CalendarClock, Loader2 } from 'lucide-react';
+import { Calculator, TrendingUp, CalendarClock, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useInventory } from '../../hooks/useInventory';
 import { recipesService } from '../../services/recipesService';
@@ -18,6 +18,16 @@ export default function ProductionCalculator() {
 
     // Data from Inventory
     const { items, stock, loading: loadingInventory } = useInventory();
+
+    // Debug: Check if stock is loaded correctly
+    useEffect(() => {
+        if (!loadingInventory && stock.length > 0) {
+            console.log(`[Calc Debug] Loaded ${stock.length} stock entries.`);
+            // console.log('[Calc Debug] Sample stock:', stock.slice(0, 3));
+        } else if (!loadingInventory && stock.length === 0) {
+            console.warn('[Calc Debug] Stock array is empty! Check useInventory or API.');
+        }
+    }, [stock, loadingInventory]);
 
     // Load Recipes
     useEffect(() => {
@@ -37,6 +47,12 @@ export default function ProductionCalculator() {
 
     // Helper to get total stock for an item
     const getItemTotalStock = (itemId: string) => {
+        // Debug specific item stock lookup
+        // const itemStockEntries = stock.filter(s => s.itemId === itemId);
+        // if (itemStockEntries.length > 0) {
+        //     console.log(`[Calc Debug] Found stock for ${itemId}:`, itemStockEntries);
+        // }
+
         return stock
             .filter(s => s.itemId === itemId)
             .reduce((acc, curr) => acc + curr.quantity, 0);

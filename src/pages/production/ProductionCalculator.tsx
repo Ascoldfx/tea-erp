@@ -46,14 +46,54 @@ export default function ProductionCalculator() {
         return items.find(i => i.id === itemId);
     };
 
+    // Helper to get effective quantity based on monthly norms (Smart Logic)
+    // 1. Current Month Norm
+    // 2. Most Recent Past Norm (Fallback)
+    // 3. Base Quantity
+    const getEffectiveQuantity = (ing: any): { value: number; source: 'current' | 'recent' | 'base'; date?: string } => {
+        const now = new Date();
+        const currentMonthIdx = now.getMonth();
+        const currentYear = now.getFullYear();
+        // Format: YYYY-MM-01
+        const currentMonthStr = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}-01`;
+
+        if (!ing.monthlyNorms || ing.monthlyNorms.length === 0) {
+            return { value: ing.quantity, source: 'base' };
+        }
+
+        // 1. Try Exact Match
+        const exactMatch = ing.monthlyNorms.find((n: any) => n.date === currentMonthStr);
+        if (exactMatch && exactMatch.quantity > 0) {
+            return { value: exactMatch.quantity, source: 'current', date: exactMatch.date };
+        }
+
+        // 2. Try Most Recent Past
+        // Filter norms that are strictly in the past (< currentMonthStr)
+        const pastNorms = ing.monthlyNorms.filter((n: any) => n.date < currentMonthStr && n.quantity > 0);
+        if (pastNorms.length > 0) {
+            // Sort descending (newest first)
+            pastNorms.sort((a: any, b: any) => b.date.localeCompare(a.date));
+            const recent = pastNorms[0];
+            return { value: recent.quantity, source: 'recent', date: recent.date };
+        }
+
+        // 3. Fallback to Base
+        return { value: ing.quantity, source: 'base' };
+    };
+
     // --- Mode 1: Max Output Analysis ---
     const analysisResults = useMemo(() => {
         if (!selectedRecipeId || recipes.length === 0) return null;
         const recipe = recipes.find(r => r.id === selectedRecipeId);
         if (!recipe) return null;
 
-        // Ignore ingredients with 0 quantity (e.g. placeholders)
-        const validIngredients = recipe.ingredients.filter(ing => ing.quantity > 0);
+        // Use effective quantity to filter
+        const validIngredients = recipe.ingredients
+            .map(ing => {
+                const effective = getEffectiveQuantity(ing);
+                return { ...ing, effectiveQuantity: effective };
+            })
+            .filter(ing => ing.effectiveQuantity.value > 0);
 
         if (validIngredients.length === 0) return {
             recipeName: recipe.name,
@@ -67,8 +107,7 @@ export default function ProductionCalculator() {
             const item = getItemDetails(ing.itemId);
             const totalStock = getItemTotalStock(ing.itemId);
 
-            const requiredPerBatch = ing.quantity; // amount for Recipe base output (e.g. 60kg or 1 unit)
-            // recipe.outputQuantity is the amount produced by one "run" of these ingredients.
+            const requiredPerBatch = ing.effectiveQuantity.value;
 
             // How many full runs can we make?
             const maxBatches = requiredPerBatch > 0 ? Math.floor(totalStock / requiredPerBatch) : 999999;
@@ -84,7 +123,9 @@ export default function ProductionCalculator() {
                 totalStock,
                 maxBatches,
                 maxTotalUnits,
-                status
+                status,
+                normSource: ing.effectiveQuantity.source,
+                normDate: ing.effectiveQuantity.date
             };
         });
 
@@ -108,7 +149,8 @@ export default function ProductionCalculator() {
             const item = getItemDetails(ing.itemId);
             const totalStock = getItemTotalStock(ing.itemId);
 
-            const requiredTotal = ing.quantity * batchesNeeded;
+            const effective = getEffectiveQuantity(ing);
+            const requiredTotal = effective.value * batchesNeeded;
             const projectedBalance = totalStock - requiredTotal;
             const isShortage = projectedBalance < 0;
 
@@ -119,13 +161,14 @@ export default function ProductionCalculator() {
                 requiredTotal,
                 totalStock,
                 projectedBalance,
-                isShortage
+                isShortage,
+                effectiveValue: effective.value,
+                normSource: effective.source,
+                normDate: effective.date
             };
         });
 
-        // Filter out 0 requirement items if they have plenty of stock?
-        // Or just show all? Showing all is better for completeness.
-        // We might filter out items where quantity is 0 in recipe.
+        // Filter out items with 0 requirement (if using effective quantity)
         const activeResults = results.filter(r => r.requiredTotal > 0);
 
         return { recipeName: recipe.name, ingredients: activeResults, batchesNeeded };
@@ -257,6 +300,9 @@ export default function ProductionCalculator() {
                                         <div className="mt-2 text-sm text-slate-500">
                                             На складе: {analysisResults.limitingFactor.totalStock} {analysisResults.limitingFactor.unit}
                                         </div>
+                                        <div className="mt-1 text-xs text-slate-600">
+                                            Норма: {analysisResults.limitingFactor.requiredPerBatch} ({analysisResults.limitingFactor.normSource === 'current' ? 'Тек.месяц' : analysisResults.limitingFactor.normSource === 'recent' ? `План ${new Date(analysisResults.limitingFactor.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
+                                        </div>
                                     </>
                                 ) : (
                                     <p className="text-emerald-500 font-medium">Ограничений нет (или техкарта пуста)</p>
@@ -288,7 +334,20 @@ export default function ProductionCalculator() {
                                 <tbody className="divide-y divide-slate-800">
                                     {planningResults.ingredients.map(row => (
                                         <tr key={row.itemId} className="hover:bg-slate-800/50">
-                                            <td className="px-6 py-4 font-medium text-slate-200">{row.itemName}</td>
+                                            <td className="px-6 py-4 font-medium text-slate-200">
+                                                <div className="flex flex-col">
+                                                    <span>{row.itemName}</span>
+                                                    <span className="text-xs text-slate-500 font-normal">
+                                                        Норма: {row.effectiveValue} {row.unit}
+                                                        <span className={clsx("ml-1",
+                                                            row.normSource === 'current' ? "text-emerald-500" :
+                                                                row.normSource === 'recent' ? "text-amber-500" : "text-slate-600"
+                                                        )}>
+                                                            ({row.normSource === 'current' ? 'Тек.месяц' : row.normSource === 'recent' ? `из ${new Date(row.normDate!).toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' })}` : 'Базовая'})
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 text-right text-slate-400">
                                                 {row.totalStock.toLocaleString()} <span className="text-xs">{row.unit}</span>
                                             </td>

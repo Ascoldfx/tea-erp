@@ -212,9 +212,11 @@ export const recipesService = {
                         const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
 
                         // Создаем ключ для уникальности: recipe_id + item_id (или temp_material_sku для NULL)
+                        // ВАЖНО: Для временных материалов (itemId=temp-...) используем их уникальный ID (ing.itemId),
+                        // а не SKU из tempMaterial, так как SKU может быть 'UNKNOWN' и повторяться.
                         const uniqueKey = itemId
                             ? `${recipe.id}_${itemId}`
-                            : `${recipe.id}_null_${ing.tempMaterial?.sku || ing.itemId}`;
+                            : `${recipe.id}_temp_${ing.itemId}`;
 
                         // Если уже есть такой ингредиент, заменяем его (берем последний)
                         // ВАЖНО: Всегда сохраняем temp_material_name и temp_material_sku, даже если материал найден в БД

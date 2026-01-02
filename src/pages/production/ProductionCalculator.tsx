@@ -50,6 +50,10 @@ export default function ProductionCalculator() {
     // 1. Current Month Norm
     // 2. Most Recent Past Norm (Fallback)
     // 3. Base Quantity
+    // Helper to get effective quantity based on monthly norms (Smart Logic)
+    // 1. Current Month Norm
+    // 2. Most Recent Past Norm (Fallback)
+    // 3. Base Quantity
     const getEffectiveQuantity = (ing: any): { value: number; source: 'current' | 'recent' | 'base'; date?: string } => {
         const now = new Date();
         const currentMonthIdx = now.getMonth();
@@ -57,13 +61,19 @@ export default function ProductionCalculator() {
         // Format: YYYY-MM-01
         const currentMonthStr = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}-01`;
 
+        const logPrefix = `[Calc Debug] item ${ing.itemId} (${ing.tempMaterial?.name || '?'})`;
+
         if (!ing.monthlyNorms || ing.monthlyNorms.length === 0) {
+            // console.log(`${logPrefix}: No monthly norms. Using base: ${ing.quantity}`);
             return { value: ing.quantity, source: 'base' };
         }
+
+        console.log(`${logPrefix}: Checking norms against ${currentMonthStr}`, ing.monthlyNorms);
 
         // 1. Try Exact Match
         const exactMatch = ing.monthlyNorms.find((n: any) => n.date === currentMonthStr);
         if (exactMatch && exactMatch.quantity > 0) {
+            console.log(`${logPrefix}: Exact match found: ${exactMatch.quantity}`);
             return { value: exactMatch.quantity, source: 'current', date: exactMatch.date };
         }
 
@@ -74,10 +84,12 @@ export default function ProductionCalculator() {
             // Sort descending (newest first)
             pastNorms.sort((a: any, b: any) => b.date.localeCompare(a.date));
             const recent = pastNorms[0];
+            console.log(`${logPrefix}: Recent match found from ${recent.date}: ${recent.quantity}`);
             return { value: recent.quantity, source: 'recent', date: recent.date };
         }
 
         // 3. Fallback to Base
+        console.log(`${logPrefix}: No valid monthly norms found. Fallback to base: ${ing.quantity}`);
         return { value: ing.quantity, source: 'base' };
     };
 

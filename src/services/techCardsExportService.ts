@@ -392,7 +392,7 @@ export function parseTechCardsFromExcel(
     // 4. Парсим строки
     const techCardsMap = new Map<string, ImportedTechCard>();
     // Map<OriginalSKU, Array<{name: string, assignedSku: string}>>
-    const skuVariationsMap = new Map<string, Array<{ name: string, assignedSku: string }>>();
+    // const skuVariationsMap = new Map<string, Array<{ name: string, assignedSku: string }>>();
 
     let lastTechCard: ImportedTechCard | null = null;
     const result: ImportedTechCard[] = [];
@@ -419,7 +419,7 @@ export function parseTechCardsFromExcel(
 
         if (hasGpInfo) {
             let finalSku = gpSku || '';
-            const normalizedName = gpName.toLowerCase().trim();
+            // const normalizedName = gpName.toLowerCase().trim();
 
             /* 
                OLD LOGIC: Split by name variations (Solo vs Non-Solo)

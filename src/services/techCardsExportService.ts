@@ -421,41 +421,17 @@ export function parseTechCardsFromExcel(
             let finalSku = gpSku || '';
             const normalizedName = gpName.toLowerCase().trim();
 
-            if (gpSku) {
-                if (!skuVariationsMap.has(gpSku)) {
-                    skuVariationsMap.set(gpSku, []);
-                }
-                const variations = skuVariationsMap.get(gpSku)!;
+            /* 
+               OLD LOGIC: Split by name variations (Solo vs Non-Solo)
+               This caused fragmentation because header rows had "Solo" but ingredient rows didn't.
+               
+               NEW LOGIC: Unified by SKU.
+               If SKU is present, all rows with this SKU belong to the SAME card.
+               The first Name encountered becomes the card name.
+            */
 
-                // Ищем уже существующую вариацию по названию
-                // Если названия немного отличаются, считаем их одним, если отличие только в регистре?
-                // User said "different names" -> duplicate card. "Different name" implies significant difference usually.
-                // But previously I unified them. Now I separate them.
-                // Let's use strict name comparison (normalized) to separate.
-
-                const existingVar = variations.find(v => v.name === normalizedName);
-
-                if (existingVar) {
-                    finalSku = existingVar.assignedSku;
-                } else {
-                    // New variation
-                    // If it's the VERY first one, keep original SKU.
-                    // If subsequent, append (1), (2)...
-                    // Exception: If normalizedName is empty (just SKU provided), treat as base.
-
-                    const count = variations.length;
-                    if (count === 0) {
-                        finalSku = gpSku;
-                    } else {
-                        // User requested adding symbol (1)
-                        // Example: 282186 (1)
-                        finalSku = `${gpSku} (${count})`;
-                    }
-                    variations.push({ name: normalizedName, assignedSku: finalSku });
-                }
-            }
-
-            // Key is now the potentially modified SKU
+            // Простая логика: ключ - это SKU (если есть) или Название
+            // Это объединяет "Solo" и "Не-Solo" в одну карту, если у них одинаковый артикул.
             const key = finalSku ? finalSku : gpName;
 
             if (!techCardsMap.has(key)) {

@@ -402,6 +402,13 @@ export default function TechCardsList() {
                                                         <span className="flex items-center gap-2">
                                                             {tempMaterial ? (
                                                                 <span className="italic text-slate-500">
+                                                                    <span className={
+                                                                        tempMaterial.sku === '0' || tempMaterial.sku.length < 3 || tempMaterial.sku === 'UNKNOWN'
+                                                                            ? "text-red-500 font-bold"
+                                                                            : ""
+                                                                    }>
+                                                                        {tempMaterial.sku === 'UNKNOWN' ? '' : `[${tempMaterial.sku}] `}
+                                                                    </span>
                                                                     {tempMaterial.name}
                                                                 </span>
                                                             ) : (

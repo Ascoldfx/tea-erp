@@ -206,7 +206,7 @@ export async function exportTechCardsToExcel(
  * Парсит единицу измерения из Excel формата
  */
 function parseUnit(unitStr: string | undefined): string {
-    if (!unitStr) return 'pcs';
+    if (!unitStr) return 'kg'; // Default to kg as requested
 
     const unitMap: Record<string, string> = {
         'шт': 'pcs',
@@ -221,7 +221,12 @@ function parseUnit(unitStr: string | undefined): string {
         'ml': 'ml'
     };
 
-    return unitMap[unitStr.toLowerCase().trim()] || 'pcs';
+    const cleanUnit = unitStr.toLowerCase().trim();
+    // If unit is just a number or weird symbol, default to kg? 
+    // User said "missing designations kg or pcs, then default kg".
+    // If it's explicitly "шт", it becomes "pcs".
+
+    return unitMap[cleanUnit] || 'kg';
 }
 
 /**
@@ -457,7 +462,7 @@ export function parseTechCardsFromExcel(
 
         // Если это строка с материалом
         if (materialSku || materialName) {
-            const unit = getCell(unitIndex) || 'шт';
+            const unit = getCell(unitIndex) || 'kg'; // Default to kg
 
             // Парсинг Базовой Нормы
             let normVal = 0;

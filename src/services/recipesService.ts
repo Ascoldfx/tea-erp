@@ -173,8 +173,59 @@ export const recipesService = {
                 return false;
             }
 
-            // Удаляем старые ингредиенты ПЕРЕД вставкой новых
-            // ВАЖНО: Это должно происходить до вставки, чтобы избежать конфликтов UNIQUE
+            // Подготавливаем новые ингредиенты ПЕРЕД удалением старых
+            // Это позволяет проверить, есть ли что сохранять, и избежать удаления данных если импорт пустой
+            let ingredientsData: RecipeIngredientDB[] = [];
+
+            if (recipe.ingredients && recipe.ingredients.length > 0) {
+                // ВАЖНО: Фильтруем ингредиенты с временными ID (temp-...)
+                const validIngredients = recipe.ingredients.filter(ing => {
+                    // Пропускаем ингредиенты с временным ID, если нет tempMaterial
+                    if (ing.itemId.startsWith('temp-') && !ing.tempMaterial) {
+                        console.warn(`[RecipesService] [SAFEGUARD] Пропущен ингредиент с временным ID без tempMaterial: ${ing.itemId}`);
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (validIngredients.length > 0) {
+                    // Группируем и подготавливаем данные
+                    const ingredientsMap = new Map<string, RecipeIngredientDB>();
+
+                    validIngredients.forEach(ing => {
+                        const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
+                        const uniqueKey = itemId ? `${recipe.id}_${itemId}` : `${recipe.id}_temp_${ing.itemId}`;
+                        const tempSku = ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined);
+                        const tempName = ing.tempMaterial?.name || undefined;
+
+                        ingredientsMap.set(uniqueKey, {
+                            recipe_id: recipe.id,
+                            item_id: itemId,
+                            quantity: ing.quantity,
+                            tolerance: ing.tolerance || undefined,
+                            is_duplicate_sku: ing.isDuplicateSku || false,
+                            is_auto_created: ing.isAutoCreated || false,
+                            temp_material_sku: tempSku,
+                            temp_material_name: tempName,
+                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
+                                ? (ing.monthlyNorms as any)
+                                : null
+                        });
+                    });
+
+                    ingredientsData = Array.from(ingredientsMap.values());
+                }
+            }
+
+            // БЛОКИРОВКА УДАЛЕНИЯ: Если нет валидных ингредиентов для сохранения, НЕ удаляем старые
+            // Это защита от случайного стирания рецептов при ошибках парсинга
+            if (ingredientsData.length === 0) {
+                console.warn(`[RecipesService] ⚠️ Recipe "${recipe.name}" (${recipe.id}) has NO valid ingredients to save. Skipping DB update to prevent data loss.`);
+                // Возвращаем true, чтобы не прерывать общий процесс (это "мягкая" ошибка)
+                return true;
+            }
+
+            // Если данные есть - удаляем старые и вставляем новые
             const { error: deleteError } = await supabase
                 .from('recipe_ingredients')
                 .delete()
@@ -182,112 +233,24 @@ export const recipesService = {
 
             if (deleteError) {
                 console.error('[RecipesService] Error deleting old ingredients:', deleteError);
-                // НЕ продолжаем, если не удалось удалить старые - это может привести к дубликатам
                 return false;
             }
 
-            // Сохраняем новые ингредиенты
-            if (recipe.ingredients && recipe.ingredients.length > 0) {
-                // ВАЖНО: Фильтруем ингредиенты с временными ID (temp-...)
-                // Они не могут быть сохранены в recipe_ingredients, так как item_id должен ссылаться на существующий items.id
-                // Но мы сохраняем информацию о них в temp_material_sku и temp_material_name
-                const validIngredients = recipe.ingredients.filter(ing => {
-                    // Пропускаем ингредиенты с временным ID, если нет tempMaterial
-                    if (ing.itemId.startsWith('temp-') && !ing.tempMaterial) {
-                        console.warn(`[RecipesService] Пропущен ингредиент с временным ID без tempMaterial: ${ing.itemId}`);
-                        return false;
-                    }
-                    return true;
-                });
+            // Вставляем новые
+            const { error: ingredientsError, data: insertedIngredients } = await supabase
+                .from('recipe_ingredients')
+                .insert(ingredientsData)
+                .select();
 
-                if (validIngredients.length > 0) {
-                    // ВАЖНО: Убираем дубликаты ТОЛЬКО в рамках одной техкарты (recipe_id)
-                    // Один и тот же материал (item_id) может использоваться в разных техкартах - это нормально
-                    // Группируем по (recipe_id, item_id) и берем последний (самый актуальный)
-                    const ingredientsMap = new Map<string, RecipeIngredientDB>();
-
-                    validIngredients.forEach(ing => {
-                        // Если itemId начинается с temp-, используем null для item_id
-                        // Но сохраняем информацию в temp_material_sku и temp_material_name
-                        const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
-
-                        // Создаем ключ для уникальности: recipe_id + item_id (или temp_material_sku для NULL)
-                        // ВАЖНО: Для временных материалов (itemId=temp-...) используем их уникальный ID (ing.itemId),
-                        // а не SKU из tempMaterial, так как SKU может быть 'UNKNOWN' и повторяться.
-                        const uniqueKey = itemId
-                            ? `${recipe.id}_${itemId}`
-                            : `${recipe.id}_temp_${ing.itemId}`;
-
-                        // Если уже есть такой ингредиент, заменяем его (берем последний)
-                        // ВАЖНО: Всегда сохраняем temp_material_name и temp_material_sku, даже если материал найден в БД
-                        // Это нужно для отображения правильных названий
-                        const tempSku = ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined);
-                        const tempName = ing.tempMaterial?.name || undefined;
-
-                        ingredientsMap.set(uniqueKey, {
-                            recipe_id: recipe.id,
-                            item_id: itemId, // NULL для временных материалов, string для существующих
-                            quantity: ing.quantity,
-                            tolerance: ing.tolerance || undefined,
-                            is_duplicate_sku: ing.isDuplicateSku || false,
-                            is_auto_created: ing.isAutoCreated || false,
-                            // ВАЖНО: Сохраняем tempMaterial даже для существующих материалов, чтобы название было доступно
-                            temp_material_sku: tempSku,
-                            temp_material_name: tempName,
-                            // ВАЖНО: Сохраняем monthly_norms даже если они все равны 0
-                            // Это нужно для отображения структуры норм по месяцам
-                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
-                                ? (ing.monthlyNorms as any) // JSONB в PostgreSQL принимает массив напрямую
-                                : null
-                        });
-
-                        if (tempName) {
-                            console.log(`[RecipesService] Saving ingredient with tempMaterial: ${tempName} (${tempSku})`);
-                        }
-                        if (ing.monthlyNorms && ing.monthlyNorms.length > 0) {
-                            console.log(`[RecipesService] Saving ingredient with ${ing.monthlyNorms.length} monthly norms`);
-                        }
-                    });
-
-                    const ingredientsData = Array.from(ingredientsMap.values());
-
-                    // Сохраняем ВСЕ ингредиенты, включая временные (с NULL item_id)
-                    console.log(`[RecipesService] Сохранение ${ingredientsData.length} ингредиентов для тех.карты "${recipe.name}" (после удаления дубликатов из ${validIngredients.length})`);
-
-                    // Логируем нормы по месяцам перед сохранением
-                    ingredientsData.forEach((ingData, idx) => {
-                        if (ingData.monthly_norms && Array.isArray(ingData.monthly_norms) && ingData.monthly_norms.length > 0) {
-                            const normsCount = ingData.monthly_norms.length;
-                            console.log(`[RecipesService] ✅ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) имеет ${normsCount} норм по месяцам`);
-                        } else if (ingData.quantity > 0) {
-                            // Если есть базовая норма - это нормально, не шумим
-                            console.log(`[RecipesService] ℹ️ Ингредиент ${idx + 1} использует базовую норму: ${ingData.quantity}`);
-                        } else {
-                            console.warn(`[RecipesService] ❌ Ингредиент ${idx + 1} (${ingData.temp_material_sku || ingData.item_id}) НЕ имеет ни норм по месяцам, ни базовой нормы (0)`);
-                        }
-                    });
-
-                    const { error: ingredientsError, data: insertedIngredients } = await supabase
-                        .from('recipe_ingredients')
-                        .insert(ingredientsData)
-                        .select();
-
-                    if (ingredientsError) {
-                        console.error('[RecipesService] Error saving ingredients:', ingredientsError);
-                        console.error('[RecipesService] Ingredients data (first 3):', ingredientsData.slice(0, 3));
-                        console.error('[RecipesService] Full error details:', JSON.stringify(ingredientsError, null, 2));
-                        return false;
-                    }
-
-                    const validCount = ingredientsData.filter(ing => ing.item_id).length;
-                    const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
-                    console.log(`[RecipesService] ✅ Сохранено ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
-                } else {
-                    console.warn(`[RecipesService] Recipe "${recipe.name}" has no valid ingredients to save`);
-                }
+            if (ingredientsError) {
+                console.error('[RecipesService] Error saving ingredients:', ingredientsError);
+                return false;
             }
 
-            console.log(`[RecipesService] Recipe "${recipe.name}" saved successfully`);
+            const validCount = ingredientsData.filter(ing => ing.item_id).length;
+            const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
+            console.log(`[RecipesService] ✅ Перезаписано ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
+
             return true;
         } catch (error) {
             console.error('[RecipesService] Exception saving recipe:', error);

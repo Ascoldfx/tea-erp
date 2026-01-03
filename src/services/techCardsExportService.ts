@@ -418,6 +418,11 @@ export function parseTechCardsFromExcel(
         // Пропускаем совсем пустые
         if (!gpSku && !gpName && !materialSku && !materialName) continue;
 
+        // DEBUG: Логируем обработку строки для проблемных артикулов (или всех для дебага)
+        if (gpSku.includes('282085') || gpSku.includes('282090')) {
+            console.log(`[Parser] Row ${i}: GP=${gpSku} '${gpName}', Mat=${materialSku} '${materialName}' (HasGP=${Boolean(gpSku || gpName)}, HasMat=${Boolean(materialSku || materialName)})`);
+        }
+
         // Определяем ТехКарту (Parent)
         let currentTechCard: ImportedTechCard;
         const hasGpInfo = gpSku || gpName;

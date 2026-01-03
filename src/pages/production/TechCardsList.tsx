@@ -176,7 +176,18 @@ export default function TechCardsList() {
 
     // Сортировка и фильтрация техкарт
     const filteredAndSortedRecipes = useMemo(() => {
-        const filtered = recipes.filter(r => {
+        useEffect(() => {
+            if (recipes.length > 0) {
+                console.log(`[TechCardsList DEBUG] Loaded ${recipes.length} recipes.`);
+                const problemRecipe = recipes.find(r => r.description?.includes('282085'));
+                if (problemRecipe) {
+                    console.log(`[TechCardsList DEBUG] Found problematic recipe 282085:`, problemRecipe);
+                    console.log(`[TechCardsList DEBUG] Ingredients count: ${problemRecipe.ingredients?.length}`);
+                } else {
+                    console.log(`[TechCardsList DEBUG] Recipe 282085 NOT FOUND in list.`);
+                }
+            }
+        }, [recipes]); const filtered = recipes.filter(r => {
             const term = searchTerm.toLowerCase();
             return (
                 r.name.toLowerCase().includes(term) ||

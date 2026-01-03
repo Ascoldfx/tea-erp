@@ -394,6 +394,8 @@ export function parseTechCardsFromExcel(
         throw new Error(`Не найдены ключевые столбцы: ${missingColumns.join(', ')}. Проверьте файл.`);
     }
 
+    console.log('[Parser] Detected Columns:', { gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex, unitIndex });
+
     // 4. Парсим строки
     const techCardsMap = new Map<string, ImportedTechCard>();
     // Map<OriginalSKU, Array<{name: string, assignedSku: string}>>
@@ -422,6 +424,14 @@ export function parseTechCardsFromExcel(
         const gpName = getCell(gpNameIndex);
         const materialSku = getCell(materialSkuIndex);
         const materialName = getCell(materialNameIndex);
+
+        // DEBUG: Verbose logging for problematic rows
+        if (gpSku.includes('282085') || materialSku.includes('2010331') || i < 15) { // Log first few rows + problems
+            console.log(`[Parser DEBUG] Row ${i}:`, {
+                gpSku, gpName, materialSku, materialName,
+                rawRow: JSON.stringify(row)
+            });
+        }
 
         // Пропускаем совсем пустые
         if (!gpSku && !gpName && !materialSku && !materialName) continue;

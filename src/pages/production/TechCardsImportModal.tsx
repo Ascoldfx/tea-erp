@@ -500,7 +500,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                 {step === 'importing' && (
                     <div className="flex flex-col items-center justify-center py-8 space-y-4">
                         <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
-                        <p className="text-slate-300">Импорт тех.карт...</p>
+                        <h2 className="text-xl font-bold">Импорт Технологических Карт (v2.1 debug)</h2>
                     </div>
                 )}
 

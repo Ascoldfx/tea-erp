@@ -407,8 +407,16 @@ export function parseTechCardsFromExcel(
         const row = rawData[i];
         if (!row || row.length === 0) continue;
 
-        // Безопасное чтение ячеек
-        const getCell = (idx: number) => (idx >= 0 && row[idx] !== undefined) ? String(row[idx]).trim() : '';
+        // Безопасное чтение ячеек: поддерживает примитивы и объекты (если sheet_to_json вернул raw объекты)
+        const getCell = (idx: number): string => {
+            if (idx < 0 || row[idx] === undefined || row[idx] === null) return '';
+            const cell = row[idx];
+            if (typeof cell === 'object' && cell !== null) {
+                // Если это объект ячейки с полями v (value), w (formatted text)
+                return String((cell as any).w || (cell as any).v || '').trim();
+            }
+            return String(cell).trim();
+        };
 
         const gpSku = getCell(gpSkuIndex);
         const gpName = getCell(gpNameIndex);

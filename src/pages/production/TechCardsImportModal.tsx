@@ -7,7 +7,7 @@ import { parseTechCardsFromExcel } from '../../services/techCardsExportService';
 import type { ImportedTechCard } from '../../services/techCardsExportService';
 import { useInventory } from '../../hooks/useInventory';
 import type { Recipe, RecipeIngredient } from '../../types/production';
-// import { supabase } from '../../lib/supabase';
+import { recipesService } from '../../services/recipesService';
 
 interface TechCardsImportModalProps {
     isOpen: boolean;

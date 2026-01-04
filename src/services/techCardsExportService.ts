@@ -302,28 +302,45 @@ export function parseTechCardsFromExcel(
     console.log('[parseTechCardsFromExcel] Normalized Headers (Row ' + headerRowIndex + '):', JSON.stringify(headers));
 
     // Helper: Find index prioritizing exact match, then loose match
+    // Added allowUsed (default false) to specifically prevent reusing columns
+    const usedIndices = new Set<number>();
+
     const findColumnIndex = (possibleNames: string[]): number => {
         const normalizedNames = possibleNames.map(n => n.toLowerCase());
 
         // 1. Exact match (case insensitive)
         for (const name of normalizedNames) {
-            const idx = headers.findIndex(h => h.toLowerCase() === name);
-            if (idx !== -1) return idx;
+            const idx = headers.findIndex((h, i) => !usedIndices.has(i) && h.toLowerCase() === name);
+            if (idx !== -1) {
+                usedIndices.add(idx);
+                return idx;
+            }
         }
         // 2. Contains match
         for (const name of normalizedNames) {
-            const idx = headers.findIndex(h => h.toLowerCase().includes(name));
-            if (idx !== -1) return idx;
+            const idx = headers.findIndex((h, i) => !usedIndices.has(i) && h.toLowerCase().includes(name));
+            if (idx !== -1) {
+                usedIndices.add(idx);
+                return idx;
+            }
         }
         return -1;
     };
 
     // 2. Определяем индексы основных колонок
-    const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции', 'Код ГП', 'Item Code', 'Артикул', 'Артикул.']);
-    const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции', 'Назва', 'Наименование', 'Item Name']);
+    // ВАЖНО: Порядок поиска имеет значение. Сначала ищем ГП, потом Материалы.
+
+    const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции', 'Код ГП', 'Item Code', 'Артикул', 'Артикул.']); // "Артикул" is risky but common for first col
+    const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции', 'Назва', 'Наименование', 'Item Name', 'Товар']);
+
     const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category', 'Тип']);
-    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM', 'Component Code']);
-    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM', 'Component Name']);
+
+    // Для материалов добавляем "Артикул" и "Код", так как ГП уже найдены и исключены из поиска
+    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM', 'Component Code', 'Артикул', 'Item Code']);
+
+    // Аналогично для названия материала
+    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM', 'Component Name', 'Назва', 'Наименование', 'Название']);
+
     const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм', 'UOM']);
 
     // Ищем колонку Нормы

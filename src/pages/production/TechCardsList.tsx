@@ -104,12 +104,7 @@ export default function TechCardsList() {
             const isPriority = Boolean(sku && TOP_25_SKUS.includes(sku));
 
             // Логирование для отладки
-            if (isPriority) {
-                console.log(`[Priority] Recipe "${recipe.name}" is priority (SKU: ${sku})`);
-            } else if (sku) {
-                // Логируем только если SKU найден, но не в топ-25 (для отладки)
-                console.log(`[Priority] Recipe "${recipe.name}" SKU: ${sku} (not in TOP-25)`);
-            }
+
 
             return isPriority;
         };

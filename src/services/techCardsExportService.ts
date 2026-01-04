@@ -556,9 +556,9 @@ export function parseTechCardsFromExcel(
                 });
             }
 
-            // START DEBUG for SKU 282057
-            if ((gpSku && gpSku.includes('282057')) || (gpName && gpName.includes('282057')) || (lastTechCard && lastTechCard.gpSku.includes('282057'))) {
-                console.log(`[DEBUG 282057] Row ${i}:`, {
+            // START DEBUG for SKU 262178 (User Reported Issue)
+            if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {
+                console.log(`[DEBUG 262178] Row ${i}:`, {
                     gpSku,
                     gpName: gpName?.substring(0, 20),
                     hasGpInfo,
@@ -566,8 +566,8 @@ export function parseTechCardsFromExcel(
                     materialName: materialName?.substring(0, 20),
                     normIndex,
                     normRawThisRow: row[normIndex],
-                    currentCardSku: currentTechCard?.gpSku,
-                    currentCardIngs: currentTechCard?.ingredients.length
+                    normParsed: normVal,
+                    matchedMaterials: currentTechCard?.ingredients.length
                 });
             }
             // END DEBUG

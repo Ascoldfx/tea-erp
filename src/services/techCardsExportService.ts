@@ -504,11 +504,36 @@ export function parseTechCardsFromExcel(
 
             // Парсинг Базовой Нормы
             let normVal = 0;
-            if (normIndex >= 0 && row[normIndex] !== undefined) {
-                const valStr = String(row[normIndex]).replace(',', '.').replace(/\s/g, '');
+            // Enhanced Norm Parsing Debug
+            const rawNorm = normIndex >= 0 ? row[normIndex] : undefined;
+
+            if (rawNorm !== undefined) {
+                // Remove spaces and replace comma
+                const valStr = String(rawNorm).replace(',', '.').replace(/\s/g, '');
                 const parsed = parseFloat(valStr);
-                if (!isNaN(parsed)) normVal = Math.max(0, parsed);
+
+                if (!isNaN(parsed)) {
+                    normVal = Math.max(0, parsed);
+                }
+            } else if (normIndex === -1) {
+                // Debug: Norm column miss
+                if (i < 15) console.warn(`[Parser] Row ${i}: Norm column index is -1!`);
             }
+
+            // START DEBUG for SKU 262178 (User Reported Issue)
+            if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {
+                const rawRowStr = JSON.stringify(row);
+                console.log(`[DEBUG 262178] Row ${i} (Length: ${row.length}):`, {
+                    gpSku,
+                    materialSku,
+                    normIndex,
+                    normHeader: headers[normIndex], // Check what header we think is Norm
+                    normRawThisRow: rawNorm,
+                    normParsed: normVal,
+                    rawRow: rawRowStr
+                });
+            }
+            // END DEBUG
 
             // Парсинг Месячных норм
             const monthlyNorms: Array<{ date: string; quantity: number }> = [];
@@ -516,11 +541,22 @@ export function parseTechCardsFromExcel(
                 if (index < row.length && row[index] !== undefined) {
                     const valStr = String(row[index]).replace(',', '.').replace(/\s/g, '');
                     const parsed = parseFloat(valStr);
-                    if (!isNaN(parsed) && parsed > 0) {
+                    if (!isNaN(parsed) && parsed > 0) { // Храним только ненулевые нормы для экономии
                         monthlyNorms.push({ date: dateIso, quantity: Math.max(0, parsed) });
                     }
                 }
             });
+
+            // LOGGING FIRST 5 ROWS DETAILED
+            if (i < headerRowIndex + 5) {
+                console.log(`[parseTechCardsFromExcel] Row ${i} Debug:`, {
+                    material: materialName || materialSku,
+                    normIdx: normIndex,
+                    normRaw: rawNorm,
+                    normParsed: normVal,
+                    monthlyCount: monthlyNorms.length
+                });
+            }
 
             // Добавляем ингредиент
             const newIngredient = {

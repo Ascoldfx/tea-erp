@@ -266,53 +266,71 @@ export function parseTechCardsFromExcel(
     }
 
     // 1. Находим строку заголовков
-    let headerRowIndex = 0;
-    const headerKeywords = ['артикул гп', 'назва гп', 'название гп', 'артикул ксм', 'назва ксм', 'эталон'];
+    let headerRowIndex = -1;
+    // Expanded keywords to be more robust
+    const headerKeywords = ['артикул гп', 'назва гп', 'название гп', 'артикул ксм', 'назва ксм', 'эталон', 'норма', 'ingredients', 'компонент'];
 
-    for (let i = 0; i < Math.min(20, rawData.length); i++) {
+    // Scan deeper - up to 100 rows
+    for (let i = 0; i < Math.min(100, rawData.length); i++) {
         const row = rawData[i];
         if (!row) continue;
         const rowText = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
-        if (headerKeywords.some(keyword => rowText.includes(keyword))) {
+
+        // Count matches to ensure it's a real header row
+        const matchCount = headerKeywords.reduce((acc, keyword) => {
+            return acc + (rowText.includes(keyword) ? 1 : 0);
+        }, 0);
+
+        if (matchCount >= 2) { // Require at least 2 keyword matches
             headerRowIndex = i;
+            console.log(`[parseTechCardsFromExcel] Found header row at index ${i} with ${matchCount} matches.`);
             break;
         }
     }
 
-    const headerRow = rawData[headerRowIndex] || [];
-    const headers = headerRow.map((h: any) => String(h || '').trim());
+    if (headerRowIndex === -1) {
+        // Fallback: try row 0 if nothing found
+        console.warn('[parseTechCardsFromExcel] Header row not found by keywords. Defaulting to row 0.');
+        headerRowIndex = 0;
+    }
+
+    const helperHeaders = rawData[headerRowIndex] || [];
+    // Normalize headers: remove newlines, extra spaces, toLowerCase
+    const headers = helperHeaders.map((h: any) => String(h || '').replace(/\s+/g, ' ').trim());
 
     // DEBUG: Dump raw headers
-    console.log('[parseTechCardsFromExcel] Raw Headers (Row ' + headerRowIndex + '):', JSON.stringify(headerRow));
+    console.log('[parseTechCardsFromExcel] Normalized Headers (Row ' + headerRowIndex + '):', JSON.stringify(headers));
 
     // Helper: Find index prioritizing exact match, then loose match
     const findColumnIndex = (possibleNames: string[]): number => {
+        const normalizedNames = possibleNames.map(n => n.toLowerCase());
+
         // 1. Exact match (case insensitive)
-        for (const name of possibleNames) {
-            const idx = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+        for (const name of normalizedNames) {
+            const idx = headers.findIndex(h => h.toLowerCase() === name);
             if (idx !== -1) return idx;
         }
         // 2. Contains match
-        for (const name of possibleNames) {
-            const idx = headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+        for (const name of normalizedNames) {
+            const idx = headers.findIndex(h => h.toLowerCase().includes(name));
             if (idx !== -1) return idx;
         }
         return -1;
     };
 
     // 2. Определяем индексы основных колонок
-    const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции']);
-    const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции']);
-    const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category']);
-    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM']);
-    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM']);
-    const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм']);
+    const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции', 'Код ГП', 'Item Code', 'Артикул', 'Артикул.']);
+    const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции', 'Назва', 'Наименование', 'Item Name']);
+    const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category', 'Тип']);
+    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM', 'Component Code']);
+    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM', 'Component Name']);
+    const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм', 'UOM']);
 
     // Ищем колонку Нормы
     let normIndex = findColumnIndex([
         'Еталон', 'Эталон', 'Норма', 'Norm', 'Базовая норма', 'Базова норма',
         'Кількість', 'Количество', 'Кол-во', 'Q-ty', 'Sum', 'Сума',
-        'Нормы', 'Норм', 'Norms'
+        'Нормы', 'Норм', 'Norms', 'Quantity'
     ]);
 
     // EMERGENCY FALLBACK: Если колонка нормы не найдена по имени, берем ПОСЛЕДНЮЮ колонку заголовка
@@ -355,7 +373,7 @@ export function parseTechCardsFromExcel(
         if ([gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex, normIndex].includes(idx)) return;
 
         // Попытка распарсить как Excel Serial Date (если заголовок число)
-        const rawHeader = headerRow[idx];
+        const rawHeader = helperHeaders[idx];
         let headerStr = header;
 
         if (typeof rawHeader === 'number' && rawHeader > 35000 && rawHeader < 60000) {
@@ -434,7 +452,10 @@ export function parseTechCardsFromExcel(
         }
 
         // Пропускаем совсем пустые
-        if (!gpSku && !gpName && !materialSku && !materialName) continue;
+        if (!gpSku && !gpName && !materialSku && !materialName) {
+            console.log(`[Parser] Skipping completely empty row ${i}`);
+            continue;
+        }
 
         // DEBUG: Логируем обработку строки для проблемных артикулов (или всех для дебага)
         if (gpSku.includes('282085') || gpSku.includes('282090')) {

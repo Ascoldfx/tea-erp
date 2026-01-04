@@ -558,16 +558,21 @@ export function parseTechCardsFromExcel(
 
             // START DEBUG for SKU 262178 (User Reported Issue)
             if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {
-                console.log(`[DEBUG 262178] Row ${i}:`, {
+                const rawRowStr = JSON.stringify(row);
+                console.log(`[DEBUG 262178] Row ${i} (Length: ${row.length}):`, {
                     gpSku,
-                    gpName: gpName?.substring(0, 20),
-                    hasGpInfo,
+                    gpSkuIndex,
+                    gpName,
                     materialSku,
-                    materialName: materialName?.substring(0, 20),
-                    normIndex,
-                    normRawThisRow: row[normIndex],
-                    normParsed: normVal,
-                    matchedMaterials: currentTechCard?.ingredients.length
+                    materialSkuIndex,
+                    rawRow: rawRowStr, // Force string to avoid console collapsing
+                    lastCardSku: lastTechCard?.gpSku,
+                    check: {
+                        cell0: row[0],
+                        cell1: row[1],
+                        cell3: row[3],
+                        cell4: row[4]
+                    }
                 });
             }
             // END DEBUG

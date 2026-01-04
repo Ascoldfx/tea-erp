@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Search, Plus, FileText, Upload, Hash, Star } from 'lucide-react';
-// MOCK_RECIPES больше не используется - все техкарты загружаются из базы данных или импортируются
+// MOCK_RECIPES больше не используется
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -22,9 +22,6 @@ export default function TechCardsList() {
     const navigate = useNavigate();
     const { items } = useInventory();
 
-    // Инициализируем тех.карты из localStorage
-    // MOCK_RECIPES очищен - все техкарты загружаются из localStorage или импортируются
-    // Функция для загрузки техкарт из базы данных
     // Техкарты хранятся стабильно в базе данных и загружаются только при необходимости
     const loadRecipes = async () => {
         try {
@@ -176,18 +173,7 @@ export default function TechCardsList() {
 
     // Сортировка и фильтрация техкарт
     const filteredAndSortedRecipes = useMemo(() => {
-        useEffect(() => {
-            if (recipes.length > 0) {
-                console.log(`[TechCardsList DEBUG] Loaded ${recipes.length} recipes.`);
-                const problemRecipe = recipes.find(r => r.description?.includes('282085'));
-                if (problemRecipe) {
-                    console.log(`[TechCardsList DEBUG] Found problematic recipe 282085:`, problemRecipe);
-                    console.log(`[TechCardsList DEBUG] Ingredients count: ${problemRecipe.ingredients?.length}`);
-                } else {
-                    console.log(`[TechCardsList DEBUG] Recipe 282085 NOT FOUND in list.`);
-                }
-            }
-        }, [recipes]); const filtered = recipes.filter(r => {
+        const filtered = recipes.filter(r => {
             const term = searchTerm.toLowerCase();
             return (
                 r.name.toLowerCase().includes(term) ||

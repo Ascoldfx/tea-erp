@@ -237,19 +237,17 @@ export const recipesService = {
             }
 
             // Вставляем новые
-            const { error: ingredientsError, data: insertedIngredients } = await supabase
+            const { error: ingredientsError } = await supabase
                 .from('recipe_ingredients')
-                .insert(ingredientsData)
-                .select();
+                .insert(ingredientsData);
 
             if (ingredientsError) {
                 console.error('[RecipesService] Error saving ingredients:', ingredientsError);
                 return false;
             }
 
-            const validCount = ingredientsData.filter(ing => ing.item_id).length;
-            const tempCount = ingredientsData.filter(ing => !ing.item_id).length;
-            console.log(`[RecipesService] ✅ Перезаписано ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
+            // console.log(`[RecipesService] ✅ Перезаписано ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
+
 
             return true;
         } catch (error) {
@@ -275,11 +273,11 @@ export const recipesService = {
         for (let i = 0; i < recipes.length; i++) {
             const recipe = recipes[i];
             try {
-                console.log(`[RecipesService] Сохранение тех.карты ${i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
+                // console.log(`[RecipesService] Сохранение тех.карты ${i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
                 const success = await this.saveRecipe(recipe);
                 if (success) {
                     savedCount++;
-                    console.log(`[RecipesService] ✅ Тех.карта "${recipe.name}" сохранена успешно`);
+                    // console.log(`[RecipesService] ✅ Тех.карта "${recipe.name}" сохранена успешно`);
                 } else {
                     console.error(`[RecipesService] ❌ Не удалось сохранить тех.карту "${recipe.name}"`);
                     errors.push({ recipe, error: 'Save returned false' });

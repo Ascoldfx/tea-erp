@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { clsx } from 'clsx';
-import { MOCK_RECIPES } from '../../data/mockProduction';
+// Mocks removed
 import { useInventory } from '../../hooks/useInventory';
 
 interface DayProduction {
@@ -61,7 +61,7 @@ export default function LogisticsCalendar() {
     // Get all weeks in the month
     const weeks = useMemo(() => {
         const weeksList: Array<{ weekNumber: number; startDate: Date; endDate: Date; days: Date[] }> = [];
-        
+
         // Find first Monday of the month (or start of month if it's Monday)
         const firstDay = new Date(monthStart);
         const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -98,7 +98,7 @@ export default function LogisticsCalendar() {
     }, [monthStart, monthEnd]);
 
     const monthName = monthStart.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
-    const dayNames = language === 'uk' 
+    const dayNames = language === 'uk'
         ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']
         : ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -132,13 +132,13 @@ export default function LogisticsCalendar() {
     const handleAddProduction = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDay || !newProduction.recipeId || newProduction.quantity <= 0) return;
-        
+
         // Validate contractor selection if location is contractor
         if (newProduction.location === 'contractor' && !newProduction.contractorId) {
             alert(t('calendar.selectContractor') || 'Выберите подрядчика');
             return;
         }
-        
+
         const dateStr = selectedDay.toISOString().split('T')[0];
         const production: DayProduction = {
             date: dateStr,
@@ -147,7 +147,7 @@ export default function LogisticsCalendar() {
             location: newProduction.location,
             contractorId: newProduction.location === 'contractor' ? newProduction.contractorId : undefined
         };
-        
+
         setDayProductions([...dayProductions, production]);
         setNewProduction({
             recipeId: '',
@@ -155,10 +155,10 @@ export default function LogisticsCalendar() {
             location: 'internal',
             contractorId: ''
         });
-        
+
         // Don't close modal automatically - let user decide if they want to add more or close
     };
-    
+
     const handleCloseModal = () => {
         setIsDayModalOpen(false);
         setSelectedDay(null);
@@ -174,12 +174,14 @@ export default function LogisticsCalendar() {
     const contractors = warehouses.filter(w => w.id === 'wh-fito' || w.id === 'wh-ts');
 
     // Get materials availability for selected recipe
-    const getMaterialsAvailability = (recipeId: string) => {
-        const recipe = MOCK_RECIPES.find(r => r.id === recipeId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const getMaterialsAvailability = (_recipeId: string) => {
+        // TODO: Use real recipes
+        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === recipeId);
         if (!recipe) return { internal: [], contractor: [] };
 
         const availability = {
-            internal: recipe.ingredients.map(ing => {
+            internal: (recipe?.ingredients || []).map((ing: any) => {
                 const item = items.find(i => i.id === ing.itemId);
                 const itemStock = stock.filter(s => s.itemId === ing.itemId && (s.warehouseId === 'wh-kotsyubinske' || s.warehouseId === 'wh-ceh'));
                 const totalStock = itemStock.reduce((acc, curr) => acc + curr.quantity, 0);
@@ -190,7 +192,7 @@ export default function LogisticsCalendar() {
                     unit: item?.unit || 'шт'
                 };
             }),
-            contractor: recipe.ingredients.map(ing => {
+            contractor: (recipe?.ingredients || []).map((ing: any) => {
                 const item = items.find(i => i.id === ing.itemId);
                 const contractorStock = stock.filter(s => {
                     if (newProduction.location === 'contractor' && newProduction.contractorId) {
@@ -214,7 +216,7 @@ export default function LogisticsCalendar() {
 
     const materialsAvailability = newProduction.recipeId ? getMaterialsAvailability(newProduction.recipeId) : { internal: [], contractor: [] };
 
-    const selectedDayProductions = selectedDay 
+    const selectedDayProductions = selectedDay
         ? dayProductions.filter(p => p.date === selectedDay.toISOString().split('T')[0])
         : [];
 
@@ -269,11 +271,11 @@ export default function LogisticsCalendar() {
                                         {t('calendar.week') || 'Неделя'} {week.weekNumber}
                                     </div>
                                     <span className="text-sm text-slate-400">
-                                        {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                            day: 'numeric', 
-                                            month: 'short' 
-                                        })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                            day: 'numeric', 
+                                        {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                            day: 'numeric',
+                                            month: 'short'
+                                        })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                            day: 'numeric',
                                             month: 'short',
                                             year: week.endDate.getMonth() !== week.startDate.getMonth() ? 'numeric' : undefined
                                         })}
@@ -286,15 +288,15 @@ export default function LogisticsCalendar() {
                                         const isDayCurrentMonth = isCurrentMonth(day);
                                         const dayStr = day.toISOString().split('T')[0];
                                         const dayProds = dayProductions.filter(p => p.date === dayStr);
-                                        
+
                                         return (
                                             <div
                                                 key={dayIndex}
                                                 onClick={() => handleDayClick(day)}
                                                 className={clsx(
                                                     "p-3 rounded-lg border min-h-[80px] cursor-pointer hover:bg-slate-700/50 transition-colors",
-                                                    isDayToday 
-                                                        ? "bg-emerald-500/10 border-emerald-500/50" 
+                                                    isDayToday
+                                                        ? "bg-emerald-500/10 border-emerald-500/50"
                                                         : "bg-slate-800/50 border-slate-700",
                                                     !isDayCurrentMonth && "opacity-40"
                                                 )}
@@ -315,8 +317,9 @@ export default function LogisticsCalendar() {
                                                 </div>
                                                 {dayProds.length > 0 && (
                                                     <div className="space-y-1">
-                                                        {dayProds.slice(0, 2).map((prod, idx) => {
-                                                            const recipe = MOCK_RECIPES.find(r => r.id === prod.recipeId);
+                                                        {dayProds.slice(0, 2).map((_prod, idx) => {
+                                                            // TODO: Real recipes
+                                                            const recipe: any = null; // MOCK_RECIPES.find(r => r.id === _prod.recipeId);
                                                             return (
                                                                 <div key={idx} className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded truncate">
                                                                     {recipe?.name || 'Unknown'}
@@ -345,11 +348,11 @@ export default function LogisticsCalendar() {
                 <Modal
                     isOpen={isDayModalOpen}
                     onClose={handleCloseModal}
-                    title={selectedDay.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
+                    title={selectedDay.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                     })}
                 >
                     <div className="space-y-6">
@@ -361,7 +364,8 @@ export default function LogisticsCalendar() {
                                 </h4>
                                 <div className="space-y-2">
                                     {selectedDayProductions.map((prod, idx) => {
-                                        const recipe = MOCK_RECIPES.find(r => r.id === prod.recipeId);
+                                        // TODO: Real recipes
+                                        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === prod.recipeId);
                                         const contractor = contractors.find(c => c.id === prod.contractorId);
                                         return (
                                             <div key={idx} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
@@ -369,7 +373,7 @@ export default function LogisticsCalendar() {
                                                     <div>
                                                         <p className="text-slate-200 font-medium">{recipe?.name || 'Unknown'}</p>
                                                         <p className="text-xs text-slate-400">
-                                                            {prod.quantity} кг • {prod.location === 'internal' 
+                                                            {prod.quantity} кг • {prod.location === 'internal'
                                                                 ? (t('calendar.internal') || 'У нас')
                                                                 : (contractor?.name || t('calendar.contractor') || 'У подрядчика')}
                                                         </p>
@@ -392,13 +396,13 @@ export default function LogisticsCalendar() {
                                     label={t('calendar.recipe') || 'Рецепт'}
                                     options={[
                                         { value: '', label: t('calendar.selectRecipe') || 'Выберите рецепт...' },
-                                        ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
+                                        // ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
                                     ]}
                                     value={newProduction.recipeId}
                                     onChange={e => setNewProduction({ ...newProduction, recipeId: e.target.value })}
                                     required
                                 />
-                                
+
                                 <Input
                                     label={t('calendar.quantity') || 'Количество (кг)'}
                                     type="number"
@@ -415,8 +419,8 @@ export default function LogisticsCalendar() {
                                         { value: 'contractor', label: t('calendar.contractor') || 'У подрядчика' }
                                     ]}
                                     value={newProduction.location}
-                                    onChange={e => setNewProduction({ 
-                                        ...newProduction, 
+                                    onChange={e => setNewProduction({
+                                        ...newProduction,
                                         location: e.target.value as 'internal' | 'contractor',
                                         contractorId: e.target.value === 'contractor' ? newProduction.contractorId : ''
                                     })}
@@ -443,7 +447,7 @@ export default function LogisticsCalendar() {
                                             {t('calendar.materialsAvailability') || 'Наличие материалов'}
                                         </h5>
                                         <div className="space-y-3">
-                                            {(newProduction.location === 'internal' ? materialsAvailability.internal : materialsAvailability.contractor).map((mat, idx) => (
+                                            {(newProduction.location === 'internal' ? materialsAvailability.internal : materialsAvailability.contractor).map((mat: any, idx: number) => (
                                                 <div key={idx} className="flex items-center justify-between text-sm">
                                                     <span className="text-slate-400">{mat.itemName}</span>
                                                     <div className="flex items-center gap-2">
@@ -465,9 +469,9 @@ export default function LogisticsCalendar() {
                                 )}
 
                                 <div className="flex justify-end gap-3 pt-4">
-                                    <Button 
-                                        type="button" 
-                                        variant="ghost" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
                                         onClick={handleCloseModal}
                                     >
                                         {t('common.close') || 'Закрыть'}

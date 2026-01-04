@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import type { InventoryItem, StockLevel, Warehouse } from '../../types/inventory';
-import { MOCK_WAREHOUSES } from '../../data/mockInventory';
 import { History, Play, CheckCircle, Copy, Check, Package } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../context/LanguageContext';
-import { MOCK_RECIPES } from '../../data/mockProduction';
+// import { MOCK_RECIPES } from '../../data/mockProduction';
+const MOCK_RECIPES: any[] = [];
 import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -81,8 +81,8 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
         if (!item) return [];
 
         // Find recipes that use this material
-        const recipesUsingMaterial = MOCK_RECIPES.filter(recipe =>
-            recipe.ingredients.some(ing => ing.itemId === item.id)
+        const recipesUsingMaterial = MOCK_RECIPES.filter((recipe: any) =>
+            recipe.ingredients.some((ing: any) => ing.itemId === item.id)
         );
 
         // Get unique finished goods from these recipes
@@ -93,8 +93,9 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
             quantity: number; // Normalized quantity per output
         }>();
 
-        recipesUsingMaterial.forEach(recipe => {
-            const ingredient = recipe.ingredients.find(ing => ing.itemId === item.id);
+        recipesUsingMaterial.forEach((recipe: any) => {
+            const ingredient = recipe.ingredients.find((ing: any) => ing.itemId === item.id);
+
             if (!ingredient) return;
 
             const finishedGood = allItems.find(i => i.id === recipe.outputItemId);
@@ -168,7 +169,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                         <div className="grid grid-cols-2 gap-2">
                             {item.stockLevels.length > 0 ? item.stockLevels.map(stock => {
                                 // Get warehouse from the warehouses list passed from parent
-                                const warehouse = (warehouses.length > 0 ? warehouses : MOCK_WAREHOUSES).find((w: Warehouse) => w.id === stock.warehouseId);
+                                const warehouse = warehouses.find((w: Warehouse) => w.id === stock.warehouseId);
                                 return (
                                     <div key={stock.id} className="bg-slate-800/50 p-3 rounded border border-slate-700">
                                         <p className="text-xs text-slate-400">{warehouse?.name || stock.warehouseId}</p>
@@ -283,6 +284,6 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                     </div>
                 </div>
             </div>
-        </Modal>
+        </Modal >
     );
 }

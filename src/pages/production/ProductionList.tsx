@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
+// import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
 import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch } from '../../types/production';
@@ -34,7 +34,7 @@ export default function ProductionList() {
     const [viewDate, setViewDate] = useState(new Date());
     const currentMonth = viewDate.getMonth();
     const currentYear = viewDate.getFullYear();
-    
+
     // Get week number (ISO week)
     function getWeekNumber(date: Date): number {
         const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -48,9 +48,9 @@ export default function ProductionList() {
     const weeks = useMemo(() => {
         const monthStart = new Date(currentYear, currentMonth, 1);
         const monthEnd = new Date(currentYear, currentMonth + 1, 0);
-        
+
         const weeksList: Array<{ weekNumber: number; startDate: Date; endDate: Date }> = [];
-        
+
         // Find first Monday of the month
         const firstDay = new Date(monthStart);
         const firstDayOfWeek = firstDay.getDay();
@@ -87,16 +87,17 @@ export default function ProductionList() {
     // Group batches by week
     const batchesByWeek = useMemo(() => {
         const grouped: Record<number, { planned: ProductionBatch[]; actual: ProductionBatch[] }> = {};
-        
+
         weeks.forEach(week => {
             grouped[week.weekNumber] = { planned: [], actual: [] };
         });
 
-        MOCK_BATCHES.forEach(batch => {
+        const batches: ProductionBatch[] = []; // MOCK_BATCHES
+        batches.forEach(batch => {
             if (!batch.startDate) return;
             const batchDate = new Date(batch.startDate);
             const weekNum = getWeekNumber(batchDate);
-            
+
             if (grouped[weekNum]) {
                 if (batch.status === 'completed' && batch.producedQuantity) {
                     grouped[weekNum].actual.push(batch);
@@ -205,7 +206,7 @@ export default function ProductionList() {
                                 {weeks.map((week, weekIndex) => {
                                     const weekBatches = batchesByWeek[week.weekNumber] || { planned: [], actual: [] };
                                     const plannedBatches = weekBatches.planned;
-                                    
+
                                     return (
                                         <div key={weekIndex} className="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
                                             <div className="flex items-center gap-3 mb-4">
@@ -213,23 +214,23 @@ export default function ProductionList() {
                                                     {t('production.week') || 'Неделя'} {week.weekNumber}
                                                 </div>
                                                 <span className="text-sm text-slate-400">
-                                                    {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                                        day: 'numeric', 
-                                                        month: 'short' 
-                                                    })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                                        day: 'numeric', 
+                                                    {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                                        day: 'numeric',
+                                                        month: 'short'
+                                                    })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                                        day: 'numeric',
                                                         month: 'short',
                                                         year: week.endDate.getMonth() !== week.startDate.getMonth() ? 'numeric' : undefined
                                                     })}
                                                 </span>
                                             </div>
-                                            
+
                                             {plannedBatches.length > 0 ? (
                                                 <div className="space-y-2">
                                                     {plannedBatches.map(batch => {
-                                                        const recipe = MOCK_RECIPES.find(r => r.id === batch.recipeId);
+                                                        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
                                                         const totalOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
-                                                        
+
                                                         return (
                                                             <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                                                                 <div>
@@ -275,9 +276,9 @@ export default function ProductionList() {
                             {weeks.map((week, weekIndex) => {
                                 const weekBatches = batchesByWeek[week.weekNumber] || { planned: [], actual: [] };
                                 const actualBatches = weekBatches.actual;
-                                
+
                                 if (actualBatches.length === 0) return null;
-                                
+
                                 return (
                                     <div key={weekIndex} className="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
                                         <div className="flex items-center gap-3 mb-4">
@@ -285,22 +286,22 @@ export default function ProductionList() {
                                                 {t('production.week') || 'Неделя'} {week.weekNumber}
                                             </div>
                                             <span className="text-sm text-slate-400">
-                                                {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                                    day: 'numeric', 
-                                                    month: 'short' 
-                                                })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { 
-                                                    day: 'numeric', 
+                                                {week.startDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                                    day: 'numeric',
+                                                    month: 'short'
+                                                })} - {week.endDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', {
+                                                    day: 'numeric',
                                                     month: 'short'
                                                 })}
                                             </span>
                                         </div>
-                                        
+
                                         <div className="space-y-2">
                                             {actualBatches.map(batch => {
-                                                const recipe = MOCK_RECIPES.find(r => r.id === batch.recipeId);
+                                                const recipe: any = null; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
                                                 const plannedOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
                                                 const actualOutput = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
-                                                
+
                                                 return (
                                                     <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                                                         <div>
@@ -324,7 +325,7 @@ export default function ProductionList() {
                                     </div>
                                 );
                             })}
-                            
+
                             {Object.values(batchesByWeek).every(w => w.actual.length === 0) && (
                                 <p className="text-slate-500 text-sm italic text-center py-8">
                                     {t('production.noActual') || 'Нет данных о фактическом производстве'}
@@ -345,7 +346,7 @@ export default function ProductionList() {
                         label={t('production.recipe') || 'Технологическая карта (Рецепт)'}
                         options={[
                             { value: '', label: t('production.selectRecipe') || 'Выберите продукт...' },
-                            ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
+                            // ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
                         ]}
                         value={newBatchData.recipeId}
                         onChange={e => setNewBatchData({ ...newBatchData, recipeId: e.target.value })}

@@ -4,7 +4,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { ordersService, type OrderWithItems } from '../../services/ordersService';
-import { MOCK_WAREHOUSES } from '../../data/mockInventory';
+import { useInventory } from '../../hooks/useInventory';
+
 import { Loader2, XCircle, Truck, Package, Clock, CheckCircle, Warehouse } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -22,6 +23,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
     const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number | string>>({});
     const [selectedWarehouse, setSelectedWarehouse] = useState('wh-kotsyubinske');
     const [showWarehouseSelector, setShowWarehouseSelector] = useState(false);
+    const { warehouses } = useInventory();
 
     useEffect(() => {
         if (isOpen && orderId) {
@@ -177,10 +179,10 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     const receivedQty = item.received_quantity || 0;
                                     return receivedQty > 0 && receivedQty !== item.quantity;
                                 }) && (
-                                    <div className="px-2 py-1 bg-amber-900/40 text-amber-400 rounded text-xs font-medium border border-amber-800">
-                                        ⚠️ Расхождение
-                                    </div>
-                                )}
+                                        <div className="px-2 py-1 bg-amber-900/40 text-amber-400 rounded text-xs font-medium border border-amber-800">
+                                            ⚠️ Расхождение
+                                        </div>
+                                    )}
                                 <div className={clsx('px-3 py-2 rounded-lg flex items-center gap-2', getStatusColor(order.status))}>
                                     {getStatusIcon(order.status)}
                                     <span className="font-medium">{getStatusLabel(order.status)}</span>
@@ -327,7 +329,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                         onChange={(e) => setSelectedWarehouse(e.target.value)}
                                         options={[
                                             { value: '', label: 'Выберите склад' },
-                                            ...MOCK_WAREHOUSES.map(w => ({ value: w.id, label: w.name }))
+                                            ...warehouses.map(w => ({ value: w.id, label: w.name }))
                                         ]}
                                     />
                                     <Button

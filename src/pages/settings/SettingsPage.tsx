@@ -3,10 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { FileSpreadsheet, Users, UserPlus, Database, Globe } from 'lucide-react';
+import { FileSpreadsheet, Users, UserPlus, Globe } from 'lucide-react';
 import { useAuth, type UserRole } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { seedService } from '../../services/seedService';
 import ExcelImportModal from '../inventory/ExcelImportModal';
 import { clsx } from 'clsx';
 
@@ -24,16 +23,7 @@ export default function SettingsPage() {
         setInviteEmail('');
     };
 
-    const handleSeedData = async () => {
-        if (!confirm('Это действие заполнит базу данных тестовыми материалами. Продолжить?')) return;
-        try {
-            await seedService.seedDatabase();
-            alert('База данных успешно обновлена тестовыми данными!');
-        } catch (e: any) {
-            console.error(e);
-            alert('Ошибка: ' + e.message);
-        }
-    };
+
 
     // Mock Users List for display
     const MOCK_USERS_LIST = [
@@ -178,7 +168,7 @@ export default function SettingsPage() {
                         <CardContent>
                             <div className="max-w-md space-y-4">
                                 <p className="text-sm text-slate-400">
-                                    {language === 'ru' 
+                                    {language === 'ru'
                                         ? 'Выберите язык интерфейса приложения'
                                         : 'Виберіть мову інтерфейсу додатку'
                                     }
@@ -188,8 +178,8 @@ export default function SettingsPage() {
                                         onClick={() => setLanguage('ru')}
                                         className={clsx(
                                             "flex-1",
-                                            language === 'ru' 
-                                                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                            language === 'ru'
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white"
                                                 : "bg-slate-800 hover:bg-slate-700 text-slate-300"
                                         )}
                                     >
@@ -199,8 +189,8 @@ export default function SettingsPage() {
                                         onClick={() => setLanguage('uk')}
                                         className={clsx(
                                             "flex-1",
-                                            language === 'uk' 
-                                                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                            language === 'uk'
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white"
                                                 : "bg-slate-800 hover:bg-slate-700 text-slate-300"
                                         )}
                                     >
@@ -238,7 +228,7 @@ export default function SettingsPage() {
                                         : 'Підтримуються великі файли, кілька вкладок та формули. Буде використана перша вкладка або можна вибрати потрібну.'
                                     }
                                 </p>
-                                <Button 
+                                <Button
                                     onClick={() => setIsImportModalOpen(true)}
                                     className="bg-emerald-600 hover:bg-emerald-700"
                                 >
@@ -249,27 +239,7 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Database className="text-blue-500" />
-                                {t('settings.dataManagement')}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-slate-200">{t('settings.generateTestData')}</p>
-                                    <p className="text-sm text-slate-400">
-                                        {t('settings.generateTestDataDesc')}
-                                    </p>
-                                </div>
-                                <Button onClick={handleSeedData} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                    {t('settings.generateButton')}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+
                 </div>
             )}
 
@@ -302,9 +272,9 @@ export default function SettingsPage() {
             )}
 
             {/* Excel Import Modal */}
-            <ExcelImportModal 
-                isOpen={isImportModalOpen} 
-                onClose={() => setIsImportModalOpen(false)} 
+            <ExcelImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
             />
         </div>
     );

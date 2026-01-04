@@ -1,5 +1,6 @@
 import type { ProductionBatch } from '../../types/production';
-import { MOCK_RECIPES } from '../../data/mockProduction';
+// import { MOCK_RECIPES } from '../../data/mockProduction';
+const MOCK_RECIPES: any[] = [];
 import { Modal } from '../../components/ui/Modal';
 import { clsx } from 'clsx';
 

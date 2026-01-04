@@ -1,15 +1,14 @@
 import { supabase } from '../lib/supabase';
-import { MOCK_ITEMS, MOCK_STOCK, MOCK_WAREHOUSES } from '../data/mockInventory';
 import type { InventoryItem, StockLevel, Warehouse, PlannedConsumption } from '../types/inventory';
 
 export const inventoryService = {
     async getItems(): Promise<InventoryItem[]> {
-        if (!supabase) return MOCK_ITEMS;
+        if (!supabase) return [];
 
         const { data, error } = await supabase.from('items').select('*');
         if (error) {
             console.error('Error fetching items:', error);
-            return MOCK_ITEMS;
+            return [];
         }
 
         // Map database columns to TypeScript interface
@@ -20,10 +19,10 @@ export const inventoryService = {
     },
 
     async getWarehouses(): Promise<Warehouse[]> {
-        if (!supabase) return MOCK_WAREHOUSES;
+        if (!supabase) return [];
 
         const { data, error } = await supabase.from('warehouses').select('*');
-        if (error) return MOCK_WAREHOUSES;
+        if (error) return [];
 
         // Ensure wh-ts warehouse is always named "ТС" instead of "Май"
         const warehouses = (data as Warehouse[]).map(w => {
@@ -41,10 +40,10 @@ export const inventoryService = {
     },
 
     async getStockLevels(): Promise<StockLevel[]> {
-        if (!supabase) return MOCK_STOCK;
+        if (!supabase) return [];
 
         const { data, error } = await supabase.from('stock_levels').select('*');
-        if (error) return MOCK_STOCK;
+        if (error) return [];
 
         // Map snake_case DB columns to camelCase TS interface
         return data.map((s: any) => ({
@@ -57,10 +56,9 @@ export const inventoryService = {
     },
 
     // Example of a mutation
-    async transferStock(sourceId: string, targetId: string, itemId: string, qty: number) {
+    async transferStock(_sourceId: string, _targetId: string, _itemId: string, _qty: number) {
         if (!supabase) {
-            console.log('Mock Transfer:', { sourceId, targetId, itemId, qty });
-            return true;
+            return false;
         }
 
         // In reality, this would be a Postgres RPC call to ensure transaction safety
@@ -695,7 +693,6 @@ export const inventoryService = {
 
     async deleteItem(itemId: string): Promise<void> {
         if (!supabase) {
-            console.log('Mock Delete:', itemId);
             return;
         }
 

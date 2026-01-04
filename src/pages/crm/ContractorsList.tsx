@@ -5,13 +5,17 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Truck, Plus, AlertTriangle, CheckCircle, Package, Trash } from 'lucide-react';
-import { MOCK_CONTRACTORS, MOCK_JOBS } from '../../data/mockContractors';
-import { MOCK_RECIPES } from '../../data/mockProduction';
-import { MOCK_STOCK, MOCK_ITEMS } from '../../data/mockInventory';
+import { useInventory } from '../../hooks/useInventory';
 import { clsx } from 'clsx';
 import type { JobStatus } from '../../types/contractors';
 
 export function ContractorsList() {
+    const { items: inventoryItems } = useInventory();
+    // TODO: Implement ContractorsService
+    const contractors: any[] = [];
+    const jobs: any[] = [];
+    // TODO: Use real recipes
+    const recipes: any[] = [];
     const [activeTab, setActiveTab] = useState<'contractors' | 'jobs'>('contractors');
     // State for tabs
 
@@ -35,7 +39,8 @@ export function ContractorsList() {
 
         newJob.items.forEach(jobItem => {
             if (!jobItem.recipeId || jobItem.quantityKg <= 0) return;
-            const recipe = MOCK_RECIPES.find(r => r.id === jobItem.recipeId);
+            // TODO: Use real recipes
+            const recipe = recipes.find(r => r.id === jobItem.recipeId);
             if (!recipe) return;
 
             // Mock conversion: 1 Batch = 100kg (example for MVP simplicity)
@@ -46,21 +51,25 @@ export function ContractorsList() {
             // assuming standard batch = 100kg.
             const batches = jobItem.quantityKg / 100;
 
-            recipe.ingredients.forEach(ing => {
+            recipe.ingredients.forEach((ing: any) => {
                 allIngredients[ing.itemId] = (allIngredients[ing.itemId] || 0) + (ing.quantity * batches);
             });
         });
 
         if (Object.keys(allIngredients).length === 0) return null;
 
-        const contractorWhId = 'wh-contractor-main'; // Mock ID
+        //const contractorWhId = 'wh-contractor-main'; // Mock ID
 
         return Object.entries(allIngredients).map(([itemId, requiredAmount]) => {
-            const item = MOCK_ITEMS.find(i => i.id === itemId);
+            const item = inventoryItems.find(i => i.id === itemId);
 
-            const stockAtContractor = MOCK_STOCK
+            // TODO: adapt warehouse logic
+            const stockAtContractor = 0; // Placeholder until real logic
+            /*
+            const stockAtContractor = stockLevels
                 .filter(s => s.itemId === itemId && s.warehouseId === contractorWhId)
                 .reduce((acc, curr) => acc + curr.quantity, 0);
+            */
 
             const missing = Math.max(0, requiredAmount - stockAtContractor);
 
@@ -154,7 +163,8 @@ export function ContractorsList() {
             {/* Content Tabs */}
             {activeTab === 'contractors' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {MOCK_CONTRACTORS.map(contractor => (
+                    {contractors.length === 0 && <div className="col-span-3 text-center text-slate-500 py-8">Нет подрядчиков</div>}
+                    {contractors.map(contractor => (
                         <Card key={contractor.id} className="hover:border-emerald-500/50 transition-colors cursor-pointer">
                             <CardContent className="pt-6">
                                 <div className="flex items-start justify-between mb-4">
@@ -203,11 +213,12 @@ export function ContractorsList() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {MOCK_JOBS.map(job => (
+                                    {jobs.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-slate-500">Нет задач</td></tr>}
+                                    {jobs.map(job => (
                                         <tr key={job.id} className="hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">{job.id}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-slate-400">
-                                                {MOCK_CONTRACTORS.find(c => c.id === job.contractorId)?.name}
+                                                {contractors.find(c => c.id === job.contractorId)?.name}
                                             </td>
                                             <td className="px-6 py-4 text-slate-400">{job.description}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(job.date).toLocaleDateString()}</td>
@@ -240,7 +251,7 @@ export function ContractorsList() {
                             label="Подрядчик"
                             options={[
                                 { value: '', label: 'Выберите подрядчика...' },
-                                ...MOCK_CONTRACTORS.map(c => ({ value: c.id, label: c.name }))
+                                ...contractors.map(c => ({ value: c.id, label: c.name }))
                             ]}
                             value={newJob.contractorId}
                             onChange={e => setNewJob({ ...newJob, contractorId: e.target.value })}
@@ -264,7 +275,7 @@ export function ContractorsList() {
                                             label={index === 0 ? "Продукция (Рецепт)" : undefined}
                                             options={[
                                                 { value: '', label: 'Выберите...' },
-                                                ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
+                                                ...recipes.map(r => ({ value: r.id, label: r.name }))
                                             ]}
                                             value={item.recipeId}
                                             onChange={e => {

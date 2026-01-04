@@ -135,6 +135,20 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             // ВАЖНО: Используем dynamic список items
             let currentItems = [...items];
 
+            // [OPTIMIZATION] Создаем индексы для быстрого поиска (O(1))
+            const skuMap = new Map<string, typeof items[0]>();
+            const nameMap = new Map<string, typeof items[0]>();
+            const normalizedNameMap = new Map<string, typeof items[0]>();
+
+            currentItems.forEach(item => {
+                if (item.sku) skuMap.set(item.sku.trim().toLowerCase(), item);
+                if (item.name) {
+                    nameMap.set(item.name.trim().toLowerCase(), item);
+                    // Нормализованное имя для нечеткого поиска (убираем лишние пробелы)
+                    normalizedNameMap.set(item.name.trim().toLowerCase().replace(/\s+/g, ' '), item);
+                }
+            });
+
             // Map для отслеживания уже обработанных рецептов В РАМКАХ ЭТОГО ИМПОРТА
             // Key: SKU (or Name fallback), Value: Recipe ID that was assigned
             const batchRecipeIds = new Map<string, string>();
@@ -190,55 +204,62 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
                         const searchName = ing.materialName ? ing.materialName.trim() : '';
                         let matchingMaterials: typeof currentItems = [];
 
-                        // Если не найдено по SKU, ищем по названию (точное совпадение, без учета регистра)
-                        if (matchingMaterials.length === 0 && searchName) {
-                            matchingMaterials = currentItems.filter(i => {
-                                const itemName = (i.name || '').trim();
-                                return itemName.toLowerCase() === searchName.toLowerCase();
-                            });
+                        const searchSkuLower = searchSku.toLowerCase();
+                        const searchNameLower = searchName.toLowerCase();
+                        const normalizedSearchName = searchNameLower.replace(/\s+/g, ' ').trim();
+
+                        // 1. Поиск по SKU (O(1))
+                        if (searchSku && skuMap.has(searchSkuLower)) {
+                            matchingMaterials.push(skuMap.get(searchSkuLower)!);
                         }
 
-                        // Если не найдено, ищем по частичному совпадению названия (более гибко)
-                        if (matchingMaterials.length === 0 && searchName) {
+                        // 2. Если не найдено, ищем по точному Названию (O(1))
+                        if (matchingMaterials.length === 0 && searchName && nameMap.has(searchNameLower)) {
+                            matchingMaterials.push(nameMap.get(searchNameLower)!);
+                        }
+
+                        // 3. Если не найдено, ищем по нормализованному названию (O(1))
+                        if (matchingMaterials.length === 0 && searchName && normalizedNameMap.has(normalizedSearchName)) {
+                            matchingMaterials.push(normalizedNameMap.get(normalizedSearchName)!);
+                        }
+
+                        // 4. Fallback: Полный перебор только если быстрый поиск не дал результатов (O(N))
+                        // Это нужно для частичных совпадений, которые нельзя сделать через Map
+                        if (matchingMaterials.length === 0 && (searchName || searchSku)) {
                             matchingMaterials = currentItems.filter(i => {
-                                const itemName = (i.name || '').trim().toLowerCase();
-                                const searchNameLower = searchName.toLowerCase();
+                                // Проверка по имени
+                                if (searchName) {
+                                    const itemName = (i.name || '').trim().toLowerCase();
+                                    const normalizedItemName = itemName.replace(/\s+/g, ' ').trim();
 
-                                // Убираем лишние пробелы и сравниваем
-                                const normalizedItemName = itemName.replace(/\s+/g, ' ').trim();
-                                const normalizedSearchName = searchNameLower.replace(/\s+/g, ' ').trim();
+                                    // Вхождение
+                                    if (normalizedItemName.includes(normalizedSearchName) ||
+                                        normalizedSearchName.includes(normalizedItemName)) {
+                                        return true;
+                                    }
 
-                                // Проверяем, содержит ли одно другое (или наоборот)
-                                if (normalizedItemName.includes(normalizedSearchName) ||
-                                    normalizedSearchName.includes(normalizedItemName)) {
-                                    return true;
+                                    // Совпадение ключевых слов (для длинных названий)
+                                    if (normalizedSearchName.length > 10) {
+                                        const searchWords = normalizedSearchName.split(/\s+/).filter(w => w.length > 3);
+                                        const itemWords = normalizedItemName.split(/\s+/).filter(w => w.length > 3);
+                                        const matchingWords = searchWords.filter(sw =>
+                                            itemWords.some(iw => iw.includes(sw) || sw.includes(iw))
+                                        );
+                                        if (matchingWords.length >= Math.ceil(searchWords.length / 2)) {
+                                            return true;
+                                        }
+                                    }
                                 }
 
-                                // Проверяем совпадение ключевых слов (если название длинное)
-                                if (normalizedSearchName.length > 10) {
-                                    const searchWords = normalizedSearchName.split(/\s+/).filter(w => w.length > 3);
-                                    const itemWords = normalizedItemName.split(/\s+/).filter(w => w.length > 3);
-                                    const matchingWords = searchWords.filter(sw =>
-                                        itemWords.some(iw => iw.includes(sw) || sw.includes(iw))
-                                    );
-                                    // Если больше половины ключевых слов совпадают
-                                    if (matchingWords.length >= Math.ceil(searchWords.length / 2)) {
+                                // Проверка по SKU (частичное)
+                                if (searchSku) {
+                                    const itemSku = (i.sku || '').trim().toLowerCase();
+                                    if (itemSku && (itemSku.includes(searchSkuLower) || searchSkuLower.includes(itemSku))) {
                                         return true;
                                     }
                                 }
 
                                 return false;
-                            });
-                        }
-
-                        // Если не найдено, ищем по частичному совпадению SKU
-                        if (matchingMaterials.length === 0 && searchSku) {
-                            matchingMaterials = currentItems.filter(i => {
-                                const itemSku = (i.sku || '').trim().toLowerCase();
-                                return itemSku && (
-                                    itemSku.includes(searchSku.toLowerCase()) ||
-                                    searchSku.toLowerCase().includes(itemSku)
-                                );
                             });
                         }
 

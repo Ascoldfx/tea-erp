@@ -3,8 +3,9 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { MOCK_ITEMS, MOCK_WAREHOUSES } from '../../data/mockInventory';
-import { MOCK_CONTRACTORS } from '../../data/mockContractors';
+import { useInventory } from '../../hooks/useInventory';
+// import { MOCK_CONTRACTORS } from '../../data/mockContractors';
+const MOCK_CONTRACTORS: any[] = [];
 import { Plus, Trash, CheckCircle } from 'lucide-react';
 
 interface ReceiveGoodsModalProps {
@@ -23,6 +24,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
     const [warehouseId, setWarehouseId] = useState('');
     // Defaulting warehouse to "Main Stock" if possible, otherwise empty
     // costWithVat: cost per unit including VAT
+    const { items: inventoryItems, warehouses } = useInventory();
     const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costWithVat: 0 }]);
 
     // Logistics Only
@@ -51,7 +53,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
             `МАТЕРИАЛЫ ПРИНЯТЫ`,
             `Поставщик: ${contractor}`,
             `Спецификация: ${specificationNumber || 'Не указана'}`,
-            `Склад: ${MOCK_WAREHOUSES.find(w => w.id === warehouseId)?.name}`,
+            `Склад: ${warehouses.find(w => w.id === warehouseId)?.name}`,
             `Позиций: ${items.length}`
         ].join('\n');
 
@@ -82,7 +84,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
                         label="На Склад"
                         options={[
                             { value: '', label: 'Выберите склад...' },
-                            ...MOCK_WAREHOUSES.map(w => ({ value: w.id, label: w.name }))
+                            ...warehouses.map(w => ({ value: w.id, label: w.name }))
                         ]}
                         value={warehouseId}
                         onChange={e => setWarehouseId(e.target.value)}
@@ -114,7 +116,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
                                     label={index === 0 ? "Материал" : undefined}
                                     options={[
                                         { value: '', label: 'Выбрать...' },
-                                        ...MOCK_ITEMS.map(i => ({ value: i.id, label: i.name }))
+                                        ...inventoryItems.map(i => ({ value: i.id, label: i.name }))
                                     ]}
                                     value={item.itemId}
                                     onChange={e => handleItemChange(index, 'itemId', e.target.value)}

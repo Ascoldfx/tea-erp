@@ -470,7 +470,14 @@ export function parseTechCardsFromExcel(
 
         // Пропускаем совсем пустые
         if (!gpSku && !gpName && !materialSku && !materialName) {
-            console.log(`[Parser] Skipping completely empty row ${i}`);
+            // Log raw content if the row actually has some data cells, to debug "ghost" empty rows
+            const hasAnyData = row.some(cell => cell && String(cell).trim().length > 0);
+            if (hasAnyData || i === 15 || i === 29) { // Specifically debug reported row 15
+                console.log(`[Parser] Skipping row ${i} (GP/Mat empty), but row has data:`, JSON.stringify(row));
+                console.log(`[Parser] Indices Check for Row ${i}:`, { gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex });
+            } else {
+                console.log(`[Parser] Skipping completely empty row ${i}`);
+            }
             continue;
         }
 

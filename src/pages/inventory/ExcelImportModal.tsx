@@ -153,7 +153,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
 
-            // Helper function to parse month name to date string (ROBUST V2.15)
+            // Helper function to parse month name to date string (ROBUST V2.16 - STRICT BOUNDARIES)
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const cleanInput = String(monthName || '').trim();
                 let monthLower = cleanInput.toLowerCase();
@@ -166,8 +166,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (fullYearMatch) {
                     explicitYear = parseInt(fullYearMatch[0]);
                 }
-                // Strategy B: Short Year "25", "26" at word boundary or after dot/space
-                // Look for 21-30 (reasonable range for now)
+                // Strategy B: Short Year "25", "26" at strict boundary
                 else {
                     const shortYearMatch = cleanInput.match(/(?:^|[\s\.\-])(2[1-9])(?:\b|$)/);
                     if (shortYearMatch) {
@@ -176,8 +175,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
 
-                // Expanded map with short names (MMM) for Cyrillic
-                // Based on "дек.25" screenshot
+                // Month Map with short names
                 const monthMap: Record<string, number> = {
                     'январь': 1, 'января': 1, 'янв': 1, 'січень': 1, 'січня': 1, 'січ': 1, 'january': 1, 'jan': 1,
                     'февраль': 2, 'февраля': 2, 'фев': 2, 'лютий': 2, 'лютого': 2, 'лют': 2, 'february': 2, 'feb': 2,
@@ -193,41 +191,48 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     'декабрь': 12, 'декабря': 12, 'дек': 12, 'грудень': 12, 'грудня': 12, 'гру': 12, 'december': 12, 'dec': 12
                 };
 
-                // Find which month key exists in the input string
+                // STRICT FIND: Check for month key with word boundaries
+                // Prevents "Група" matching "Гру", "витрат" matching "тра"
                 let foundMonth: number | undefined = undefined;
-                // Sort keys by length desc to match "январь" before "янв" if we had short ones (safety)
-                const sortedKeys = Object.keys(monthMap).sort((a, b) => b.length - a.length);
+                const sortedKeys = Object.keys(monthMap).sort((a, b) => b.length - a.length); // Longest first
 
                 for (const key of sortedKeys) {
-                    if (monthLower.includes(key)) {
+                    // Regex explanation:
+                    // (?:^|[\s\.\-\d]) -> Start of string OR space/dot/dash/digit before match
+                    // ${key} -> The month key
+                    // (?:$|[\s\.\-\d]) -> End of string OR space/dot/dash/digit after match
+                    // Case insensitive ('i')
+                    const regex = new RegExp(`(?:^|[\\s\\.\\-\\d])${key}(?:$|[\\s\\.\\-\\d])`, 'i');
+                    if (regex.test(monthLower)) {
                         foundMonth = monthMap[key];
-                        break; // Found the longest match
+                        // console.log(`[Parse V2.16] Matched "${key}" in "${cleanInput}"`);
+                        break;
                     }
                 }
 
                 if (foundMonth) {
-                    // Start logic for Year Determination
+                    // Year Determination
                     const now = new Date();
                     const currentYear = now.getFullYear();
-                    const currentMonth = now.getMonth() + 1; // 1-indexed
+                    const currentMonth = now.getMonth() + 1;
 
                     let finalYear = year || currentYear;
 
-                    // PRIORITY 1: EXPLICIT YEAR (Full "2025" or Short "25")
                     if (explicitYear) {
                         finalYear = explicitYear;
-                        console.log(`[Parse V2.15] "${cleanInput}" -> Found Explicit Year: ${finalYear}, Month: ${foundMonth}`);
-                    }
-                    // PRIORITY 2: INFERENCE (Only if no explicit year found)
-                    else {
-                        // Smart Inference: If inferred/default year is Current Year
-                        // AND month is significantly in the future (e.g. Dec vs Jan)
-                        // Then assume previous year (Historical Data context)
+                    } else {
+                        // Smart Inference
                         if (finalYear === currentYear && foundMonth > currentMonth + 2) {
                             finalYear = finalYear - 1;
-                            console.log(`[Parse V2.15] "${cleanInput}" -> Inferred Previous Year: ${finalYear} (was ${currentYear})`);
                         }
                     }
+
+                    // Extra sanity check: If "plan" is in the string but NOT matched as part of current month logic
+                    // (Wait, this function parses month names. If column is "Plan Expenses", and we matched "Mai", it returns date.)
+                    // BUT "Plan Expenses" shouldn't match "Mai" with new regex!
+                    // "травень" -> no. "тра" -> "витрат" ?? 
+                    // "витрат" -> regex /tra/ match? No, because "t" is preceded by "i".
+                    // So this should be safe.
 
                     return `${finalYear}-${String(foundMonth).padStart(2, '0')}-01`;
                 }
@@ -964,7 +969,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.15 SHORT FORMAT)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.16 STRICT BOUNDARIES)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

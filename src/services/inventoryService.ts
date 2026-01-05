@@ -511,26 +511,28 @@ export const inventoryService = {
         if (plannedConsumptionInserts.length > 0) {
             console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей (после удаления дубликатов)...`);
 
-            // CLEANUP: Delete existing FUTURE planned consumption for these items
-            // This prevents "Ghost" data (e.g. invalid 2026 entries from previous bad imports) from persisting
+            // CLEANUP: Delete ALL existing planned consumption for these items from current month onwards
+            // This prevents "Ghost" data (e.g. invalid 2026 entries) and duplicates (2025 vs 2026)
             // We delete all plans for these items starting from current month
             try {
                 const itemIds = Array.from(new Set(plannedConsumptionInserts.map(p => p.item_id)));
                 const now = new Date();
+                // Get the first day of the current month
                 const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-                console.log(`[Import Cleanup] Removing existing future plans for ${itemIds.length} items from ${currentMonthStr}...`);
+                console.log(`[Import Cleanup] removing ALL future plans for ${itemIds.length} items from ${currentMonthStr} onwards...`);
+                console.log(`[Import Cleanup] This ensures no 2026 ghost data remains.`);
 
-                const { error: deleteError } = await supabase
+                const { error: deleteError, count } = await supabase
                     .from('planned_consumption')
-                    .delete()
+                    .delete({ count: 'exact' })
                     .in('item_id', itemIds)
                     .gte('planned_date', currentMonthStr);
 
                 if (deleteError) {
                     console.warn('[Import Cleanup] Failed to clear old plans:', deleteError);
                 } else {
-                    console.log('[Import Cleanup] Successfully cleared old future plans');
+                    console.log(`[Import Cleanup] Successfully cleared ${count} old plan entries. Proceeding to insert new data.`);
                 }
             } catch (e) {
                 console.warn('[Import Cleanup] Error during cleanup:', e);

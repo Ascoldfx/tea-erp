@@ -490,7 +490,7 @@ export function parseTechCardsFromExcel(
         const gpName = getCell(currentIndices.gpName);
         const materialCategory = getCell(currentIndices.materialCategory);
         let materialSku = getCell(currentIndices.materialSku);
-        const materialName = getCell(currentIndices.materialName);
+        let materialName = getCell(currentIndices.materialName);
         const unit = getCell(currentIndices.unit);
         let rawNorm = getCell(currentIndices.norm);
 
@@ -520,6 +520,39 @@ export function parseTechCardsFromExcel(
                 rawNorm = right;
             } else if (left && /^\d+([.,]\d+)?$/.test(left)) {
                 rawNorm = left;
+            }
+        }
+
+        // NUCLEAR FALLBACK: If we still have no Material Name/SKU, but row has content
+        if ((!materialName || !materialSku) && row.some((c: any) => c && String(c).trim().length > 0)) {
+            const rowStrings = row.map((c: any) => String(c || '').trim());
+            const textCells = rowStrings.filter(s => s.length > 3 && isNaN(Number(s.replace(',', '.'))));
+            const numCells = rowStrings.filter(s => /^\d+([.,]\d+)?$/.test(s));
+
+            // Heuristic: The longest text cell is likely the Match Name (if not GP Name)
+            // The numeric cells are likely SKU or Norm.
+
+            if (!materialName && textCells.length > 0) {
+                // Exclude GP Name from candidates if known
+                const candidate = textCells.find(t => t !== gpName && t !== gpSku);
+                if (candidate) {
+                    // console.log(`[Parser] ☢️ Nuclear Match for Name: ${candidate}`);
+                    materialName = candidate;
+                }
+            }
+
+            if (!materialSku && numCells.length > 0) {
+                // SKU is usually an integer-like string, Norm is decimal
+                const skuCandidate = numCells.find(n => n.length >= 4 && !n.includes('.'));
+                if (skuCandidate) {
+                    materialSku = skuCandidate;
+                }
+            }
+
+            // If we found a name but no norm, try to grab any number left
+            if (!rawNorm && numCells.length > 0) {
+                const normCandidate = numCells.find(n => n !== materialSku && n.length < 10);
+                if (normCandidate) rawNorm = normCandidate;
             }
         }
 
@@ -576,14 +609,8 @@ export function parseTechCardsFromExcel(
             // START DEBUG for SKU 262178 (User Reported Issue)
             const debugTarget = '262178';
             if ((gpSku && gpSku.includes(debugTarget)) || (gpName && gpName.includes(debugTarget)) || (currentTechCard && currentTechCard.gpSku.includes(debugTarget))) {
-                // const rawRowStr = JSON.stringify(row);
-                console.log(`[DEBUG ${debugTarget}] Row ${i} (Indices used: MatSku=${currentIndices.materialSku}, MatName=${currentIndices.materialName}):`, {
-                    gpSku,
-                    materialSku,
-                    materialName,
-                    normVal,
-                    rawRowLength: row.length
-                });
+                console.log(`[DEBUG ${debugTarget}] RAW ROW DUMP:`, JSON.stringify(row));
+                console.log(`[DEBUG ${debugTarget}] Parsed as:`, { materialSku, materialName, normVal });
             }
             // END DEBUG
 

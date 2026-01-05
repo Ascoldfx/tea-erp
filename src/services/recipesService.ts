@@ -242,7 +242,7 @@ export const recipesService = {
                 .insert(ingredientsData);
 
             if (ingredientsError) {
-                console.error('[RecipesService] Error saving ingredients:', ingredientsError);
+                console.error('[RecipesService] Error saving ingredients:', JSON.stringify(ingredientsError, null, 2));
                 return false;
             }
 

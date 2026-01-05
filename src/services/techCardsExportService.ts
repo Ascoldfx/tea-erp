@@ -303,81 +303,8 @@ export function parseTechCardsFromExcel(
 
     // Helper: Find index prioritizing exact match, then loose match
     // Added allowUsed (default false) to specifically prevent reusing columns
-    const usedIndices = new Set<number>();
 
-    const findColumnIndex = (possibleNames: string[]): number => {
-        const normalizedNames = possibleNames.map(n => n.toLowerCase());
 
-        // 1. Exact match (case insensitive)
-        for (const name of normalizedNames) {
-            const idx = headers.findIndex((h, i) => !usedIndices.has(i) && h.toLowerCase() === name);
-            if (idx !== -1) {
-                usedIndices.add(idx);
-                return idx;
-            }
-        }
-        // 2. Contains match
-        for (const name of normalizedNames) {
-            const idx = headers.findIndex((h, i) => !usedIndices.has(i) && h.toLowerCase().includes(name));
-            if (idx !== -1) {
-                usedIndices.add(idx);
-                return idx;
-            }
-        }
-        return -1;
-    };
-
-    // 2. Определяем индексы основных колонок
-    // ВАЖНО: Порядок поиска имеет значение. Сначала ищем ГП, потом Материалы.
-
-    const gpSkuIndex = findColumnIndex(['Артикул ГП', 'Артикул Г.П.', 'SKU ГП', 'Артикул готовой продукции', 'Код ГП', 'Item Code', 'Артикул', 'Артикул.']); // "Артикул" is risky but common for first col
-    const gpNameIndex = findColumnIndex(['Назва ГП', 'Название ГП', 'Наименование ГП', 'Name ГП', 'Название готовой продукции', 'Назва', 'Наименование', 'Item Name', 'Товар']);
-
-    const materialCategoryIndex = findColumnIndex(['Група КСМ', 'Группа КСМ', 'Категория КСМ', 'Група', 'Группа', 'Category', 'Тип']);
-
-    // Для материалов добавляем "Артикул" и "Код", так как ГП уже найдены и исключены из поиска
-    const materialSkuIndex = findColumnIndex(['Артикул КСМ', 'Артикул К.С.М.', 'SKU КСМ', 'Артикул материала', 'Код', 'Code', 'Артикул KCM', 'SKU KCM', 'Component Code', 'Артикул', 'Item Code']);
-
-    // Аналогично для названия материала
-    const materialNameIndex = findColumnIndex(['Назва КСМ', 'Название КСМ', 'Наименование КСМ', 'Name КСМ', 'Название материала', 'Назва KCM', 'Name KCM', 'Component Name', 'Назва', 'Наименование', 'Название']);
-
-    const unitIndex = findColumnIndex(['Од. вим.', 'Од.вим', 'Од вим', 'Единица измерения', 'Единица', 'Unit', 'ед. изм.', 'ед изм', 'UOM']);
-
-    // Ищем колонку Нормы
-    let normIndex = findColumnIndex([
-        'Еталон', 'Эталон', 'Норма', 'Norm', 'Базовая норма', 'Базова норма',
-        'Кількість', 'Количество', 'Кол-во', 'Q-ty', 'Sum', 'Сума',
-        'Нормы', 'Норм', 'Norms', 'Quantity'
-    ]);
-
-    // EMERGENCY FALLBACK: Если колонка нормы не найдена по имени, берем ПОСЛЕДНЮЮ колонку заголовка
-    if (normIndex === -1 && headers.length > 0) {
-        // Ищем последний индекс, который не пустой
-        // Но обычно headers.length соответствует длине строки заголовка, так что берем последнюю
-        let lastIndex = headers.length - 1;
-        // Если последний заголовок пустой (бывает при экспорте), отступаем назад
-        while (lastIndex >= 0 && (!headers[lastIndex] || headers[lastIndex].startsWith('__EMPTY'))) {
-            lastIndex--;
-        }
-
-        if (lastIndex >= 0) {
-            normIndex = lastIndex;
-            console.warn(`[parseTechCardsFromExcel] ⚠️ Norm column not found by name. Using LAST valid column (index ${lastIndex}): "${headers[lastIndex]}"`);
-        }
-    } else {
-        console.log(`[parseTechCardsFromExcel] ✅ Norm column found at index ${normIndex}`);
-    }
-
-    // DEBUG: Log all detected column indices for user validation
-    console.log('[parseTechCardsFromExcel] Column Indexation Results:', {
-        'GP SKU': gpSkuIndex,
-        'GP Name': gpNameIndex,
-        'Material Category': materialCategoryIndex,
-        'Material SKU': materialSkuIndex,
-        'Material Name': materialNameIndex,
-        'Unit': unitIndex,
-        'Norm': normIndex
-    });
 
     // 3. Предварительно находим колонки с датами (для месячных норм)
     // Это оптимизация: ищем паттерны дат ОДИН раз, а не для каждой строки
@@ -387,7 +314,8 @@ export function parseTechCardsFromExcel(
 
     headers.forEach((header, idx) => {
         // Пропускаем основные колонки, чтобы не путать даты с "Артикул 2023"
-        if ([gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex, normIndex].includes(idx)) return;
+        // Hardcoded indices 0-6
+        if (idx <= 6) return;
 
         // Попытка распарсить как Excel Serial Date (если заголовок число)
         const rawHeader = helperHeaders[idx];
@@ -421,15 +349,7 @@ export function parseTechCardsFromExcel(
 
     console.log(`[parseTechCardsFromExcel] Detected ${dateColumnIndices.length} date columns for monthly norms.`);
 
-    // Валидация обязательных колонок (без фанатизма, главное материалы)
-    const missingColumns: string[] = [];
-    if (materialNameIndex === -1 && materialSkuIndex === -1) missingColumns.push('Название или Артикул Материала');
-
-    if (missingColumns.length > 0) {
-        throw new Error(`Не найдены ключевые столбцы: ${missingColumns.join(', ')}. Проверьте файл.`);
-    }
-
-    console.log('[Parser] Detected Columns:', { gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex, unitIndex });
+    console.log('[Parser] Detected Columns (Static):', { gpSkuIndex, gpNameIndex, materialSkuIndex, materialNameIndex, unitIndex });
 
     // 4. Парсим строки
     // Map<OriginalSKU, Array<{name: string, assignedSku: string}>>

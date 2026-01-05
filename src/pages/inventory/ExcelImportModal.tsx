@@ -531,8 +531,8 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
                     const rawValue = row[header] || row[`__EMPTY_${i}`];
+
                     // Use strict parser utility (v2.8 VERIFIED)
-                    // console.log(`[v2.8 Input] Raw: "${rawValue}", Unit: "${unit}", Cat: "${category}"`);
                     const stockVal = parseStockValueStrict(rawValue, unit, category, name);
 
                     if (headerLower.includes('тс') && rawValue && String(rawValue).includes('2.124')) {
@@ -541,133 +541,88 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                     // Skip if this is a planned consumption column
                     if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
-                        // console.log(`[Import Debug] Skipping planned consumption: "${header}"`);
                         continue;
                     }
 
-                    // Skip if not a stock column
-                    // Relaxed check: allow 'залишки', 'зал', 'остаток', or just 'на [date]' pattern if needed, but let's stick to keywords first
-                    if (!headerLower.includes('залишки') && !headerLower.includes('зал') && !headerLower.includes('остаток')) {
-                        // console.log(`[Import Debug] Not a stock keyword: "${header}"`);
+                    // --- RELAXED HEADER DETECTION LOGIC ---
+
+                    // 1. Try to identify warehouse from header directly
+                    let warehouseId: string | null = null;
+
+                    for (const [name, id] of Object.entries(warehouseNameMap)) {
+                        if (headerLower.includes(name)) {
+                            warehouseId = id;
+                            break;
+                        }
+                    }
+
+                    // Special logic for TS Trade vs TS
+                    if (warehouseId === 'wh-ts' || warehouseId === 'wh-ts-treyd') {
+                        if (headerLower.includes('тс трейд') || headerLower.includes('ts treyd')) {
+                            warehouseId = 'wh-ts-treyd';
+                        } else if (headerLower.includes('тс') || headerLower.includes('ts')) {
+                            warehouseId = 'wh-ts';
+                        }
+                    }
+
+                    // 2. Check if it's explicitly a stock column (has 'залишки', 'остаток')
+                    const isExplicitStock = headerLower.includes('залишки') || headerLower.includes('зал') || headerLower.includes('остаток');
+
+                    // 3. If neither explicit keyword nor warehouse name found, skip
+                    if (!isExplicitStock && !warehouseId) {
                         continue;
                     }
 
-                    // Парсим формат "залишки [на] [дата] [склад]"
-                    // Примеры: "залишки на 30.11 база", "залишки 30.11 ТС", "залишки 31.10 Кава"
-                    // Regex explanation:
-                    // залишки: keyword
-                    // (?:\s+на)?: optional "на" word
-                    // \s*: optional spaces
-                    // (\d{1,2})[\./-](\d{1,2}): date day.month (dot, slash or dash)
-                    // \s*: optional spaces
-                    // (.+): warehouse name
-                    const stockMatch = headerLower.match(/залишки(?:.*на)?\s*(\d{1,2})[\./-](\d{1,2})\s*(.+)/);
+                    // 4. Extract Date if present
+                    let day = 1;
+                    let month = new Date().getMonth() + 1; // Default to current month
+
+                    const stockMatch = headerLower.match(/(?:залишки|остаток)?.*(\d{1,2})[\./-](\d{1,2})/);
 
                     if (stockMatch) {
-                        const day = parseInt(stockMatch[1]);
-                        const month = parseInt(stockMatch[2]);
-                        const warehouseName = stockMatch[3].trim();
-
-                        // Construct a comparable date value (Month * 100 + Day) just for comparison
-                        // Assuming same year mostly, or we don't care about year wrapping for short term
-                        // Better: 2024 (default) ... let's use a simple score: Month * 32 + Day
-                        const dateScore = month * 32 + day;
-
-                        console.log(`[Import Debug] Matched stock column: "${header}" -> D:${day}/M:${month}, Warehouse: "${warehouseName}". RawValue: "${rawValue}"`);
-
-                        // Определяем склад по названию
-                        let warehouseId: string | null = null;
-                        for (const [name, id] of Object.entries(warehouseNameMap)) {
-                            if (warehouseName.includes(name)) {
-                                warehouseId = id;
-                                break;
-                            }
-                        }
-
-                        // Специальная логика для ТС Трейд: был только до 28.05, потом стал просто ТС
-                        if (warehouseName.includes('тс трейд') || warehouseName.includes('ts treyd')) {
-                            if (month === 5 && day <= 28) {
-                                warehouseId = 'wh-ts-treyd';
-                            } else {
-                                warehouseId = 'wh-ts';
-                            }
-                        }
-
-                        if (warehouseId) {
-                            // Only update if:
-                            // 1. We have a valid parsed value (stockVal !== null)
-                            // 2. AND (We haven't recorded this warehouse yet OR This column is for a newer date)
-
-                            const existing = warehouseStockDates[warehouseId];
-
-                            if (stockVal !== null) {
-                                if (!existing || dateScore >= existing.dateScore) {
-                                    // Special case: if dateScore is SAME, we overwrite (later column > earlier column)
-
-                                    // Update the main stock vars
-                                    if (warehouseId === 'wh-kotsyubinske') {
-                                        stockMain = stockVal;
-                                    } else {
-                                        stockWarehouses[warehouseId] = stockVal;
-                                    }
-
-                                    // Update our tracking map
-                                    warehouseStockDates[warehouseId] = { dateScore, val: stockVal };
-                                    console.log(`[Excel Import] STOCK SAVED/UPDATED "${header}" -> ${warehouseId}: ${stockVal} (DateScore: ${dateScore})`);
-                                } else {
-                                    console.log(`[Excel Import] IGNORING OLD DATA "${header}" -> ${warehouseId}. Current DateScore: ${existing.dateScore}, New: ${dateScore}`);
-                                }
-                            } else {
-                                console.log(`[Excel Import] EMPTY/INVALID VALUE "${header}" -> ${warehouseId}. Keeping previous value if any.`);
-                            }
-
-                        } else {
-                            console.warn(`[Excel Import] Unknown warehouse name in column "${header}": "${warehouseName}"`);
-                        }
-                        continue;
+                        day = parseInt(stockMatch[1]);
+                        month = parseInt(stockMatch[2]);
                     } else {
-                        console.log(`[Import Debug] Header "${header}" contained keywords but failed Regex match.`);
+                        // If no date in header, assume it's current stock
+                        // console.log(`[Import Debug] Warehouse col "${header}" has no date, assuming current.`);
                     }
 
-                    // Fallback: старый формат "залишки на 1 число, [склад]"
-                    // Check for 1С/база - это ОБЩИЙ остаток
-                    if ((headerLower.includes('1с') || headerLower.includes('1 с') || headerLower.includes('1c') || headerLower.includes('база')) &&
-                        !headerLower.includes('май') && !headerLower.includes('тс') && !headerLower.includes('ts') &&
-                        !headerLower.includes('фито') && !headerLower.includes('фіто') && !headerLower.includes('фото') &&
-                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское') &&
-                        !headerLower.includes('кава') && !headerLower.includes('бакалея')) {
-                        stockMain = stockVal ?? 0;
-                    }
-                    // Check for Коцюбинське - отдельная колонка
-                    else if ((headerLower.includes('коцюбинське') || headerLower.includes('коцюбинское')) &&
-                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
-                        if (stockMain === 0) {
-                            stockMain = stockVal ?? 0;
+                    const dateScore = month * 32 + day;
+
+                    // 5. If we found a warehouse ID, update the stock mapping
+                    if (warehouseId) {
+                        // Fix for TS Trade date logic if needed
+                        if ((warehouseId === 'wh-ts-treyd' || warehouseId === 'wh-ts') && stockMatch) {
+                            if (month === 5 && day <= 28) {
+                                // Force trade if date matches
+                                if (warehouseId === 'wh-ts') warehouseId = 'wh-ts-treyd';
+                            }
                         }
-                    }
-                    // Check for ТС/Май
-                    else if ((headerLower.includes('май') || (headerLower.includes('тс') && !headerLower.includes('трейд'))) &&
-                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c') &&
-                        !headerLower.includes('коцюбинське') && !headerLower.includes('коцюбинское')) {
-                        stockWarehouses['wh-ts'] = stockVal ?? 0;
-                    }
-                    // Check for Фито/Фото
-                    else if ((headerLower.includes('фито') || headerLower.includes('фіто') || headerLower.includes('fito') ||
-                        headerLower.includes('фото') || headerLower.includes('photo')) &&
-                        !headerLower.includes('1с') && !headerLower.includes('1 с') && !headerLower.includes('1c')) {
-                        stockWarehouses['wh-fito'] = stockVal ?? 0;
-                    }
-                    // Check for Кава
-                    else if (headerLower.includes('кава') || headerLower.includes('kava')) {
-                        stockWarehouses['wh-kava'] = stockVal ?? 0;
-                    }
-                    // Check for Бакалея
-                    else if (headerLower.includes('бакалея') || headerLower.includes('bakaleya')) {
-                        stockWarehouses['wh-bakaleya'] = stockVal ?? 0;
-                    }
-                    // Check for ТС Трейд
-                    else if (headerLower.includes('тс трейд') || headerLower.includes('ts treyd')) {
-                        stockWarehouses['wh-ts-treyd'] = stockVal ?? 0;
+
+                        const existing = warehouseStockDates[warehouseId];
+
+                        if (stockVal !== null) { // Only update if valid number
+                            if (!existing || dateScore >= existing.dateScore) {
+                                // Special case: if dateScore is SAME, we overwrite (later column > earlier column)
+
+                                // Update the main stock vars
+                                if (warehouseId === 'wh-kotsyubinske') {
+                                    stockMain = stockVal;
+                                } else {
+                                    stockWarehouses[warehouseId] = stockVal;
+                                }
+
+                                // Update our tracking map
+                                warehouseStockDates[warehouseId] = { dateScore, val: stockVal };
+                                console.log(`[Excel Import] STOCK SAVED/UPDATED "${header}" -> ${warehouseId}: ${stockVal} (DateScore: ${dateScore})`);
+                            } else {
+                                console.log(`[Excel Import] IGNORING OLD DATA "${header}" -> ${warehouseId}. Current DateScore: ${existing.dateScore}, New: ${dateScore}`);
+                            }
+                        } else {
+                            // console.log(`[Excel Import] EMPTY/INVALID VALUE "${header}" -> ${warehouseId}. Keeping previous value.`);
+                        }
+                    } else {
+                        console.warn(`[Excel Import] Stock column "${header}" matched keywords but no Warehouse ID found.`);
                     }
                 }
 

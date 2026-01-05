@@ -284,26 +284,24 @@ export default function ProductionPlanning() {
                 // Check both 'date' and 'created_at' fields
                 const { data: movements, error: movementsError } = await supabase
                     .from('stock_movements')
-                    .select('item_id, quantity, date, created_at')
+                    .select('item_id, quantity, created_at')
                     .eq('type', 'out');
 
                 if (movementsError) throw movementsError;
 
-                // Filter by month - prefer 'date' field if available, otherwise use 'created_at'
+                // Filter by month - use 'created_at' field
                 // Filter by month using robust string matching
                 const targetPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
                 const filteredMovements = (movements || []).filter(movement => {
-                    // Try 'date' field first (used for imported actual consumption)
-                    // Date is stored as YYYY-MM-DD
-                    if (movement.date && typeof movement.date === 'string') {
-                        if (movement.date.startsWith(targetPrefix)) {
+                    // Use 'created_at' field (which stores the date for imported actual consumption)
+                    if (movement.created_at) {
+                        // Check strictly by string prefix to avoid timezone issues
+                        if (movement.created_at.startsWith(targetPrefix)) {
                             return true;
                         }
-                    }
 
-                    // Fallback to 'created_at' if date is missing
-                    if (movement.created_at) {
+                        // Fallback check using Date object just in case format differs
                         try {
                             const d = new Date(movement.created_at);
                             const y = d.getFullYear();

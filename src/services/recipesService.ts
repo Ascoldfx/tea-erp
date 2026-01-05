@@ -176,7 +176,6 @@ export const recipesService = {
                 const newItems = tempIngredients.map(ing => ({
                     sku: ing.tempMaterial?.sku || ing.itemId.replace('temp-', ''),
                     name: ing.tempMaterial?.name || `Material ${ing.itemId}`,
-                    type: 'material',
                     category: 'Сырье', // Default category
                     unit: 'kg', // Default unit, user can change later
                     min_stock_level: 0

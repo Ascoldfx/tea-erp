@@ -306,6 +306,27 @@ export function parseTechCardsFromExcel(
 
 
 
+
+    // HARDCODED INDICES based on static 7-column structure
+    // A=0, B=1, C=2, D=3, E=4, F=5, G=6
+    const gpSkuIndex = 0;
+    const gpNameIndex = 1;
+    const materialCategoryIndex = 2;
+    const materialSkuIndex = 3;
+    const materialNameIndex = 4;
+    const unitIndex = 5;
+    const normIndex = 6;
+
+    console.log('[parseTechCardsFromExcel] Using HARDCODED column indices (Static Structure):', {
+        'GP SKU': gpSkuIndex,
+        'GP Name': gpNameIndex,
+        'Material Category': materialCategoryIndex,
+        'Material SKU': materialSkuIndex,
+        'Material Name': materialNameIndex,
+        'Unit': unitIndex,
+        'Norm': normIndex
+    });
+
     // 3. Предварительно находим колонки с датами (для месячных норм)
     // Это оптимизация: ищем паттерны дат ОДИН раз, а не для каждой строки
     const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY
@@ -435,10 +456,8 @@ export function parseTechCardsFromExcel(
                 if (!isNaN(parsed)) {
                     normVal = Math.max(0, parsed);
                 }
-            } else if (normIndex === -1) {
-                // Debug: Norm column miss
-                if (i < 15) console.warn(`[Parser] Row ${i}: Norm column index is -1!`);
             }
+            // Removed unreachable check for normIndex === -1 (hardcoded to 6)
 
             // START DEBUG for SKU 262178 (User Reported Issue)
             if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {

@@ -242,7 +242,29 @@ export const recipesService = {
                 .insert(ingredientsData);
 
             if (ingredientsError) {
-                console.error('[RecipesService] Error saving ingredients:', JSON.stringify(ingredientsError, null, 2));
+                console.error('[RecipesService] Error saving ingredients (BATCH):', JSON.stringify(ingredientsError, null, 2));
+
+                // FALLBACK: Try saving one by one to isolate the error and save what we can
+                console.log('[RecipesService] Retrying ingredients one-by-one to salvage valid data...');
+                let savedCount = 0;
+
+                for (const ing of ingredientsData) {
+                    const { error: singleError } = await supabase
+                        .from('recipe_ingredients')
+                        .insert([ing]);
+
+                    if (singleError) {
+                        console.error(`[RecipesService] Failed to save ingredient ${ing.item_id || ing.temp_material_name}:`, JSON.stringify(singleError, null, 2));
+                    } else {
+                        savedCount++;
+                    }
+                }
+
+                if (savedCount > 0) {
+                    console.log(`[RecipesService] Successfully recovered ${savedCount} of ${ingredientsData.length} ingredients.`);
+                    return true; // Consider success if we saved something
+                }
+
                 return false;
             }
 

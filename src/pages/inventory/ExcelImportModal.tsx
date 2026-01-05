@@ -155,7 +155,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             // Helper function to parse month name to date string
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
-                const monthLower = String(monthName || '').toLowerCase().trim();
+                const cleanInput = String(monthName || '').trim();
+                let monthLower = cleanInput.toLowerCase();
+                let explicitYear: number | undefined = undefined;
+
+                // Check for "Month Year" pattern (e.g. "Декабрь 2025", "December 2025")
+                // Capture group 1: Month name, Capture group 2: Year
+                const monthYearRegex = /^([a-zA-Zа-яА-ЯёЁїЇіІєЄ]+)\s+(\d{4})$/;
+                const match = cleanInput.match(monthYearRegex);
+
+                if (match) {
+                    monthLower = match[1].toLowerCase();
+                    explicitYear = parseInt(match[2]);
+                    console.log(`[Strict Parse] Found explicit Month-Year: "${match[1]}" + "${match[2]}"`);
+                }
+
                 const monthMap: Record<string, number> = {
                     'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
                     'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
@@ -173,6 +187,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 if (monthMap[monthLower]) {
                     const month = monthMap[monthLower];
+
+                    // If we found an explicit year in the string, USE IT and skip inference
+                    if (explicitYear) {
+                        return `${explicitYear}-${String(month).padStart(2, '0')}-01`;
+                    }
 
                     const now = new Date();
                     const currentYear = now.getFullYear();
@@ -979,7 +998,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.12 CLEANUP)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.13 STRICT FIX)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

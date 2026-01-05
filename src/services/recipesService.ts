@@ -272,6 +272,10 @@ export const recipesService = {
 
                     if (singleError) {
                         console.error(`[RecipesService] Failed to save ingredient ${ing.item_id || ing.temp_material_name}:`, JSON.stringify(singleError, null, 2));
+                        if (savedCount === 0) {
+                            // ALERT USER ON FIRST FAILURE
+                            window.alert(`DB ERROR: Failed to save ingredient!\n\nReason: ${singleError.message}\nDetails: ${singleError.details}\n\nThis confirms the database is rejecting the data.`);
+                        }
                     } else {
                         savedCount++;
                     }
@@ -285,7 +289,7 @@ export const recipesService = {
                 return false;
             }
 
-            // console.log(`[RecipesService] ✅ Перезаписано ${insertedIngredients?.length || 0} ингредиентов для тех.карты "${recipe.name}" (${validCount} valid, ${tempCount} temp)`);
+            // console.log(`[RecipesService] ✅ Перезаписано ${ insertedIngredients?.length || 0 } ингредиентов для тех.карты "${recipe.name}"(${ validCount } valid, ${ tempCount } temp)`);
 
 
             return true;
@@ -312,7 +316,7 @@ export const recipesService = {
         for (let i = 0; i < recipes.length; i++) {
             const recipe = recipes[i];
             try {
-                // console.log(`[RecipesService] Сохранение тех.карты ${i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
+                // console.log(`[RecipesService] Сохранение тех.карты ${ i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
                 const success = await this.saveRecipe(recipe);
                 if (success) {
                     savedCount++;

@@ -305,24 +305,29 @@ export function parseTechCardsFromExcel(
     console.log('[parseTechCardsFromExcel] FIRST 3 RAW ROWS:', rawData.slice(headerRowIndex + 1, headerRowIndex + 4));
 
 
-    // HARDCODED INDICES based on static 7-column structure
-    // A=0, B=1, C=2, D=3, E=4, F=5, G=6
-    const gpSkuIndex = 0;
-    const gpNameIndex = 1;
-    const materialCategoryIndex = 2;
-    const materialSkuIndex = 3;
-    const materialNameIndex = 4;
-    const unitIndex = 5;
-    const normIndex = 6;
+    // DYNAMIC COLUMN DETECTION
+    // We search for known keywords in the normalized 'headers' array.
+    const findCol = (keywords: string[], defaultIdx: number): number => {
+        const idx = headers.findIndex(h => keywords.some(k => h.includes(k)));
+        return idx !== -1 ? idx : defaultIdx;
+    };
 
-    console.log('[parseTechCardsFromExcel] Using HARDCODED column indices (Static Structure):', {
-        'GP SKU': gpSkuIndex,
-        'GP Name': gpNameIndex,
-        'Material Category': materialCategoryIndex,
-        'Material SKU': materialSkuIndex,
-        'Material Name': materialNameIndex,
-        'Unit': unitIndex,
-        'Norm': normIndex
+    const gpSkuIndex = findCol(['артикул гп', 'код гп', 'gp sku'], 0);
+    const gpNameIndex = findCol(['назва гп', 'название гп', 'gp name', 'продукция'], 1);
+    const materialCategoryIndex = findCol(['група ксм', 'категория', 'category'], 2);
+    const materialSkuIndex = findCol(['артикул ксм', 'код ксм', 'код компонента', 'sku', 'art'], 3);
+    const materialNameIndex = findCol(['назва ксм', 'название ксм', 'компонент', 'материал', 'name'], 4);
+    const unitIndex = findCol(['од. вим.', 'ед. изм.', 'unit'], 5);
+    const normIndex = findCol(['еталон', 'норма', 'norm', 'quantity'], 6);
+
+    console.log('[parseTechCardsFromExcel] DYNAMIC COLUMN DETECTION:', {
+        gpSkuIndex,
+        gpNameIndex,
+        materialCategoryIndex,
+        materialSkuIndex,
+        materialNameIndex,
+        unitIndex,
+        normIndex
     });
 
     // 3. Предварительно находим колонки с датами (для месячных норм)

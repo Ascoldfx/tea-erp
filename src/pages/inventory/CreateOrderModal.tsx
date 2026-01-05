@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -108,7 +108,14 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     // 1. Group items by Normalized SKU (remove special chars, lowercase)
     // 2. For each SKU group, pick the "best" item (e.g. one with ID, or just first one)
     // 3. Normalized list used for Select options
-    const normalizedMaterials = items.length === 0 && materials.length > 0 ? (() => {
+    // Deduplicate materials by SKU for display
+    // Implementation Plan:
+    // 1. Group items by Normalized SKU (remove special chars, lowercase)
+    // 2. For each SKU group, pick the "best" item (e.g. one with ID, or just first one)
+    // 3. Normalized list used for Select options
+    const normalizedMaterials = useMemo(() => {
+        if (materials.length === 0) return [];
+
         const skuMap = new Map<string, InventoryItem>();
         // Helper to normalize sku
         const norm = (s?: string) => s ? s.trim().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
@@ -132,7 +139,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             }
         });
         return Array.from(skuMap.values()).sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
-    })() : materials;
+    }, [materials]);
 
     // Delivery cost state
     const [deliveryCost, setDeliveryCost] = useState<number | string>(0);

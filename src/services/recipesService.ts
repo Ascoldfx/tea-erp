@@ -62,6 +62,8 @@ export const recipesService = {
 
             if (ingredientsError) {
                 console.error('[RecipesService] Error fetching ingredients:', ingredientsError);
+            } else {
+                console.log(`[RecipesService] Fetched total ${ingredientsData?.length || 0} ingredient rows for ${recipesData.length} recipes.`);
             }
 
             // Группируем ингредиенты по recipe_id
@@ -222,6 +224,21 @@ export const recipesService = {
             if (ingredientsData.length === 0) {
                 console.warn(`[RecipesService] ⚠️ Recipe "${recipe.name}" (${recipe.id}) has NO valid ingredients to save. Skipping DB update to prevent data loss.`);
                 // Возвращаем true, чтобы не прерывать общий процесс (это "мягкая" ошибка)
+
+                // VERIFICATION: Check if they actually exist
+                const { count, error: verifyError } = await supabase
+                    .from('recipe_ingredients')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('recipe_id', recipe.id);
+
+                if (verifyError) {
+                    console.error(`[RecipesService] ❌ Verification failed for ${recipe.name}:`, verifyError);
+                } else if (count !== ingredientsData.length) {
+                    console.error(`[RecipesService] ❌ GHOST WRITE DETECTED for ${recipe.name}! Tried to save ${ingredientsData.length}, found ${count} in DB.`);
+                } else {
+                    // console.log(`[RecipesService] ✅ Verified: ${count} ingredients in DB for ${recipe.name}`);
+                }
+
                 return true;
             }
 

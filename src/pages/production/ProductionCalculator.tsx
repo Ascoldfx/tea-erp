@@ -147,15 +147,26 @@ export default function ProductionCalculator() {
                 const validIds = matchingItems.map(i => i.id);
 
                 // Sum stock for ALL these IDs
-                const totalVal = stock
-                    .filter(s => validIds.includes(s.itemId))
-                    .reduce((acc, curr) => acc + curr.quantity, 0);
+                // DEDUPLICATION: Use MAX per Warehouse to avoid double-counting import errors
+                const stockMap = new Map<string, number>();
+
+                const relevantStock = stock.filter(s => validIds.includes(s.itemId));
+
+                relevantStock.forEach(s => {
+                    const currentMax = stockMap.get(s.warehouseId) || 0;
+                    if (s.quantity > currentMax) {
+                        stockMap.set(s.warehouseId, s.quantity);
+                    }
+                });
+
+                // Total is Sum of Maxes across different warehouses
+                const totalVal = Array.from(stockMap.values()).reduce((acc, curr) => acc + curr, 0);
 
                 // DEBUG: Trace specific SKUs for user debugging
                 if (searchSku.includes('8141') || searchSku.includes('/')) {
                     if (totalVal === 0) {
                         const stockLevels = stock.filter(s => validIds.includes(s.itemId));
-                        console.warn(`[Calc] Debug ${skuToSearch} (Norm: ${searchSku}): Found ${validIds.length} items. IDs: ${validIds.join(', ')}. Aggregated Stock: ${totalVal}. Levels:`, stockLevels);
+                        console.warn(`[Calc] Debug ${skuToSearch} (Norm: ${searchSku}): Found ${validIds.length} items. IDs: ${validIds.join(', ')}. Aggregated Stock (MAX per WH): ${totalVal}. Levels:`, stockLevels);
                     } else {
                         // console.log(`[Calc] Debug ${skuToSearch}: Resolved ${validIds.length} items with Total Stock ${totalVal}`);
                     }

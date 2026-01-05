@@ -238,7 +238,26 @@ export default function InventoryList() {
             // item.mergedIds contains [id1, id2, id3...] from the deduplication step
             const allIds = item.mergedIds || [item.id];
 
-            const allStockLevels = stock.filter(s => allIds.includes(s.itemId));
+            const rawStockLevels = stock.filter(s => allIds.includes(s.itemId));
+
+            // Deduplicate Stock: Group by Warehouse and take MAX
+            // This prevents "Double Import" errors where multiple duplicate items exist with the same stock
+            const stockMap = new Map<string, StockLevel>();
+
+            rawStockLevels.forEach(s => {
+                if (stockMap.has(s.warehouseId)) {
+                    const existing = stockMap.get(s.warehouseId)!;
+                    // If duplicate found, take the larger value (assume it's the valid one)
+                    // Do NOT sum, as that causes doubling of identical import rows
+                    if (s.quantity > existing.quantity) {
+                        stockMap.set(s.warehouseId, s);
+                    }
+                } else {
+                    stockMap.set(s.warehouseId, s);
+                }
+            });
+
+            const allStockLevels = Array.from(stockMap.values());
 
             // Calculate stock for the CURRENT view (filtered by warehouse)
             const relevantStockLevels = selectedWarehouseId

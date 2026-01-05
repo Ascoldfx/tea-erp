@@ -97,6 +97,16 @@ export default function ProductionCalculator() {
         return options;
     }, [recipes, items]);
 
+    // Helper for fuzzy SKU matching
+    const normalizeSku = (sku: string) => {
+        if (!sku) return '';
+        return sku.toString()
+            .toLowerCase()
+            .trim()
+            .replace(/\\/g, '/')   // Normalize backslashes
+            .replace(/\s+/g, '');  // Remove ALL whitespace (e.g. "8141 / 1 " -> "8141/1")
+    };
+
     // --- Helper: Smart Stock Lookup ---
     const getSmartTotalStock = (itemId: string, ingredient?: RecipeIngredient) => {
         // 1. Direct ID Match
@@ -123,28 +133,44 @@ export default function ProductionCalculator() {
         // If we have a SKU, find the real item
         if (skuToSearch) {
             // Normalize for search
-            const normalizedSku = skuToSearch.trim();
-            // Try Exact Match
-            let realItem = items.find(i => i.sku === normalizedSku);
+            const searchSku = normalizeSku(skuToSearch);
 
-            // If not found, try loose match (case insensitive)
+            // Try Exact Match first (fastest)
+            let realItem = items.find(i => i.sku === skuToSearch);
+
+            // If not found, try Robust Normalization Match
             if (!realItem) {
-                realItem = items.find(i => i.sku?.toLowerCase() === normalizedSku.toLowerCase());
+                realItem = items.find(i => normalizeSku(i.sku) === searchSku);
             }
 
             if (realItem) {
                 // Sum stock for the REAL item ID
                 const val = stock.filter(s => s.itemId === realItem.id).reduce((acc, curr) => acc + curr.quantity, 0);
-                if (val > 0) return val;
 
-                // Debug log if we found the item but stock is 0 (might be legitimate 0, but worth checking)
-                // console.log(`[Calc] Found item "${realItem.name}" via SKU "${skuToSearch}" but stock is 0.`);
-                return 0;
+                // DEBUG: Trace specific SKUs for user debugging
+                if (searchSku.includes('8141') || searchSku.includes('/')) {
+                    if (val === 0) {
+                        const stockLevels = stock.filter(s => s.itemId === realItem.id);
+                        console.warn(`[Calc] Debug ${skuToSearch} (Norm: ${searchSku}): Found item "${realItem.name}" (ID: ${realItem.id}). Stock is 0. Levels:`, stockLevels);
+                    } else {
+                        // console.log(`[Calc] Debug ${skuToSearch}: Resolved to "${realItem.name}" with stock ${val}`);
+                    }
+                }
+
+                if (val > 0) return val;
+                return 0; // Found item but stock is 0
             } else {
-                // DEBUG: Only log for likely false negatives (has SKU but no item found)
-                // Filter out obviously fake SKUs if needed
-                if (!skuToSearch.includes('unknown')) {
-                    console.warn(`[Calc] Failed to resolve SKU "${skuToSearch}" to any Item in Inventory. (Original Item ID: ${itemId})`);
+                // DEBUG: Log breakdown of why it failed
+                if (searchSku.includes('8141') || searchSku.includes('/')) {
+                    console.warn(`[Calc] FAILED to resolve: "${skuToSearch}"`);
+                    console.log(`[Calc]   - Search Normalized: "${searchSku}"`);
+                    console.log(`[Calc]   - Chars: ${skuToSearch.split('').map(c => c.charCodeAt(0)).join(',')}`);
+
+                    // Try to find ANY match using includes
+                    const looseMatch = items.find(i => normalizeSku(i.sku).includes(searchSku) || searchSku.includes(normalizeSku(i.sku)));
+                    if (looseMatch) {
+                        console.log(`[Calc]   - Did you mean: "${looseMatch.sku}" (Norm: ${normalizeSku(looseMatch.sku)})?`);
+                    }
                 }
             }
         }

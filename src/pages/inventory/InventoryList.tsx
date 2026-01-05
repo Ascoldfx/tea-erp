@@ -46,13 +46,21 @@ export default function InventoryList() {
     });
 
     // Get all unique categories from items (including dynamic ones)
-    const allCategories = useMemo(() => {
-        const categories = [...new Set(items.map(item => item.category))];
-        return categories.sort();
+    // Generate normalized items FIRST, before any other logic
+    const normalizedItems = useMemo(() => {
+        return items.map(item => ({
+            ...item,
+            category: normalizeCategory(item.category)
+        }));
     }, [items]);
 
-    // All categories are now dynamic (from database)
-    // No standard categories - everything comes from imported data
+    // All categories are now dynamic (from normalized data)
+    const allCategories = useMemo(() => {
+        const categories = [...new Set(normalizedItems.map(item => item.category))];
+        return categories.sort();
+    }, [normalizedItems]);
+
+    // No standard categories - everything comes from data
     const dynamicCategories = useMemo(() => {
         return allCategories;
     }, [allCategories]);
@@ -94,7 +102,7 @@ export default function InventoryList() {
     };
 
     const inventoryCombined = useMemo(() => {
-        const mapped = items.map(item => {
+        const mapped = normalizedItems.map(item => {
             // Get ALL stock levels for this item (for the Details Modal)
             const allStockLevels = stock.filter(s => s.itemId === item.id);
 
@@ -164,7 +172,7 @@ export default function InventoryList() {
 
             return true;
         });
-    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroBalance, searchQuery]);
+    }, [selectedWarehouseId, selectedCategory, normalizedItems, stock, plannedConsumption, showZeroBalance, searchQuery]);
 
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
@@ -233,6 +241,43 @@ export default function InventoryList() {
         }
 
         return shortened.trim();
+    };
+
+    // Helper to normalize rogue categories
+    const normalizeCategory = (cat: string): string => {
+        if (!cat) return 'other';
+        const lower = cat.toLowerCase().trim();
+        // Maps 'арри' -> 'flavor'
+        if (lower === 'арри' || lower === 'arri' || lower === 'ароматизатори' || lower === 'ароматизаторы') return 'flavor';
+
+        return cat;
+    };
+
+    // Helper to determine display unit
+    const getDisplayUnit = (item: InventoryItem) => {
+        const cat = normalizeCategory(item.category).toLowerCase();
+
+        // Categories that should ALWAYS be in KG
+        // "сырье, ароматизаторы, н/ф, купажи, пленки, чайное сырье"
+        const kgCategories = [
+            'tea_bulk', // Чайное сырье
+            'flavor',   // Ароматизаторы (includes 'арри')
+            'packaging_consumable', // Пленки (usually mapped here)
+            'raw_material', // Сырье (if exists)
+            'semi_finished', // Н/Ф (if exists)
+            'blend' // Купажи (if exists)
+        ];
+
+        // Also check by string match if category keys are raw
+        if (kgCategories.includes(cat) ||
+            cat.includes('сырье') || cat.includes('сировин') ||
+            cat.includes('н/ф') || cat.includes('нф') ||
+            cat.includes('купаж') || cat.includes('blend') ||
+            cat.includes('пленк') || cat.includes('плівк')) {
+            return 'kg';
+        }
+
+        return item.unit === 'pcs' ? 'шт' : item.unit;
     };
 
     const handleItemClick = (item: typeof inventoryCombined[0]) => {
@@ -483,7 +528,7 @@ export default function InventoryList() {
                                                             className="px-6 py-4 whitespace-nowrap text-slate-200 cursor-pointer"
                                                             onDoubleClick={() => handleItemClick(item)}
                                                         >
-                                                            {item.totalStock} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                            {item.totalStock} {getDisplayUnit(item)}
                                                         </td>
                                                         {(user?.role === 'admin' || user?.role === 'procurement') && (
                                                             <td

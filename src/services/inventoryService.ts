@@ -64,11 +64,35 @@ export const inventoryService = {
     async getStockLevels(): Promise<StockLevel[]> {
         if (!supabase) return [];
 
-        const { data, error } = await supabase.from('stock_levels').select('*');
-        if (error) return [];
+        let allStock: any[] = [];
+        const BATCH_SIZE = 1000;
+        let from = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('stock_levels')
+                .select('*')
+                .range(from, from + BATCH_SIZE - 1);
+
+            if (error) {
+                console.error('Error fetching stock levels batch:', error);
+                break;
+            }
+
+            if (data && data.length > 0) {
+                allStock = [...allStock, ...data];
+                from += BATCH_SIZE;
+                if (data.length < BATCH_SIZE) {
+                    hasMore = false;
+                }
+            } else {
+                hasMore = false;
+            }
+        }
 
         // Map snake_case DB columns to camelCase TS interface
-        return data.map((s: any) => ({
+        return allStock.map((s: any) => ({
             id: s.id,
             warehouseId: s.warehouse_id,
             itemId: s.item_id,

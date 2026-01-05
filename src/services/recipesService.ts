@@ -220,7 +220,7 @@ export const recipesService = {
                     : `Материал ${sku}`; // Clean fallback
 
                 return {
-                    id: self.crypto.randomUUID(), // CRITICAL FIX: Generate client-side UUID as DB does not auto-generate it
+                    id: sku, // FUNDAMENTAL FIX: Architecture uses ID=SKU for imported items. Aligning with inventoryService.
                     sku: sku,
                     name: finalName,
                     category: 'Сырье',

@@ -153,62 +153,74 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
 
-            // Helper function to parse month name to date string
+            // Helper function to parse month name to date string (ROBUST V2.14)
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const cleanInput = String(monthName || '').trim();
                 let monthLower = cleanInput.toLowerCase();
+
+                // 1. SEEK EXPLICIT YEAR: Search for 2000-2099 anywhere in the string
+                // converting "Декабрь 2025" -> explicitYear = 2025
                 let explicitYear: number | undefined = undefined;
-
-                // Check for "Month Year" pattern (e.g. "Декабрь 2025", "December 2025")
-                // Capture group 1: Month name, Capture group 2: Year
-                const monthYearRegex = /^([a-zA-Zа-яА-ЯёЁїЇіІєЄ]+)\s+(\d{4})$/;
-                const match = cleanInput.match(monthYearRegex);
-
-                if (match) {
-                    monthLower = match[1].toLowerCase();
-                    explicitYear = parseInt(match[2]);
-                    console.log(`[Strict Parse] Found explicit Month-Year: "${match[1]}" + "${match[2]}"`);
+                const yearMatch = cleanInput.match(/20\d{2}/);
+                if (yearMatch) {
+                    explicitYear = parseInt(yearMatch[0]);
+                    // Remove year from string to avoid interference with month matching (optional, but cleaner)
                 }
 
                 const monthMap: Record<string, number> = {
-                    'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
-                    'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
-                    'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
-                    'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
-                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
-                    'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
-                    'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
-                    'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
-                    'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
-                    'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
-                    'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
-                    'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
+                    'январь': 1, 'января': 1, 'січень': 1, 'січня': 1, 'january': 1, 'jan': 1,
+                    'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2, 'february': 2, 'feb': 2,
+                    'март': 3, 'марта': 3, 'березень': 3, 'березня': 3, 'march': 3, 'mar': 3,
+                    'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4, 'april': 4, 'apr': 4,
+                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5, 'may': 5,
+                    'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6, 'june': 6, 'jun': 6,
+                    'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7, 'july': 7, 'jul': 7,
+                    'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8, 'august': 8, 'aug': 8,
+                    'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9, 'september': 9, 'sep': 9,
+                    'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10, 'october': 10, 'oct': 10,
+                    'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11, 'november': 11, 'nov': 11,
+                    'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12, 'december': 12, 'dec': 12
                 };
 
-                if (monthMap[monthLower]) {
-                    const month = monthMap[monthLower];
+                // Find which month key exists in the input string
+                let foundMonth: number | undefined = undefined;
+                // Sort keys by length desc to match "январь" before "янв" if we had short ones (safety)
+                const sortedKeys = Object.keys(monthMap).sort((a, b) => b.length - a.length);
 
-                    // If we found an explicit year in the string, USE IT and skip inference
-                    if (explicitYear) {
-                        return `${explicitYear}-${String(month).padStart(2, '0')}-01`;
+                for (const key of sortedKeys) {
+                    if (monthLower.includes(key)) {
+                        foundMonth = monthMap[key];
+                        break; // Found the longest match
                     }
+                }
 
+                if (foundMonth) {
+                    // Start logic for Year Determination
                     const now = new Date();
                     const currentYear = now.getFullYear();
                     const currentMonth = now.getMonth() + 1; // 1-indexed
 
                     let finalYear = year || currentYear;
 
-                    // Smart Inference: If year is current year (defaulted or explicit)
-                    // AND month is significantly in the future (e.g. Dec vs Jan)
-                    // Then assume previous year.
-                    if (finalYear === currentYear && month > currentMonth + 2) {
-                        finalYear = finalYear - 1;
-                        console.log(`[Strict Parse Inference] "${monthName}" mapped to ${finalYear} (was ${currentYear})`);
+                    // PRIORITY 1: EXPLICIT YEAR
+                    if (explicitYear) {
+                        finalYear = explicitYear;
+                        console.log(`[Parse V2.14] "${cleanInput}" -> Found Explicit Year: ${finalYear}, Month: ${foundMonth}`);
+                    }
+                    // PRIORITY 2: INFERENCE (Only if no explicit year found)
+                    else {
+                        // Smart Inference: If inferred/default year is Current Year
+                        // AND month is significantly in the future (e.g. Dec vs Jan)
+                        // Then assume previous year (Historical Data context)
+                        if (finalYear === currentYear && foundMonth > currentMonth + 2) {
+                            finalYear = finalYear - 1;
+                            console.log(`[Parse V2.14] "${cleanInput}" -> Inferred Previous Year: ${finalYear} (was ${currentYear})`);
+                        }
                     }
 
-                    return `${finalYear}-${String(month).padStart(2, '0')}-01`;
+                    return `${finalYear}-${String(foundMonth).padStart(2, '0')}-01`;
                 }
+
                 return null;
             };
 
@@ -718,98 +730,41 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         continue; // Skip to next column
                     }
 
-                    // Parse month name columns (октябрь 2024, ноябрь 2024 и т.д.)
-                    // Skip if it's explicitly "план витрат" or "залишки"
-                    if (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) {
-                        continue;
-                    }
+                    // (v2.14) Parse month name from header using robust helper
+                    // This handles "December 2025", "Декабрь", and applies improved inference logic
+                    // We check this BEFORE skipping "plan" columns, because "Plan Dec 2025" might be valid?
+                    // But legacy logic skipped explicit "plan expenses". Let's respect existing skip if strict.
+                    // Actually, let's just parse it. If it's a date, it's a consumption column.
 
-                    // Try to parse month name from header
-                    const monthMatch = headerLower.match(/(январь|февраль|март|апрель|май|июнь|июль|август|сентябрь|октябрь|ноябрь|декабрь|січень|лютий|березень|квітень|травень|червень|липень|серпень|вересень|жовтень|листопад|грудень)\s*(\d{4})?/);
-                    if (monthMatch) {
-                        const monthName = monthMatch[1];
-                        // Smart Year Inference:
-                        // If year is NOT provided in header, we try to guess it.
-                        // Rule: If imported month is > current month + 2, it's likely previous year.
-                        // Example: It's Jan 2026. Import has "December". Dec (11) > Jan (0) + 2. -> Year 2025.
-                        // Example: It's Jan 2026. Import has "February". Feb (1) < Jan (0) + 2. -> Year 2026.
+                    const robustDate = parseMonthToDate(header);
+                    if (robustDate) {
+                        const monthDateObj = new Date(robustDate);
+                        const isActual = monthDateObj < currentMonth;
 
-                        let year = now.getFullYear();
+                        // Check if we already have this month (e.g. from strict parsing above or previous loop)
+                        // If strict parsing (columnToMonthMap) already handled this idx, we might be duplicating?
+                        // Strict Parsing sets `columnToMonthMap` but doesn't process rows itself (wait, does it?).
+                        // Ah, strict parsing was mapping `idx` to Date.
+                        // Lines 830+ handle `columnToMonthMap`.
+                        // So if we parse it here directly, we might double count if `columnToMonthMap` also has it?
+                        // Strict parsing usually fires on "Row Above". This loop is on "Header Row".
+                        // If Header Row contains date, strict parsing (Row Above) probably didn't find date there?
+                        // Or if it did, user might have put date in BOTH places.
+                        // Let's check strict map first.
 
-                        // Parse year from header if present (e.g. "December 2026")
-                        if (monthMatch[2]) {
-                            year = parseInt(monthMatch[2]);
-                        }
-
-                        // Map month name to index 0-11
-                        const monthMapLower: Record<string, number> = {
-                            'январь': 0, 'января': 0, 'січень': 0, 'січня': 0,
-                            'февраль': 1, 'февраля': 1, 'лютий': 1, 'лютого': 1,
-                            'март': 2, 'марта': 2, 'березень': 2, 'березня': 2,
-                            'апрель': 3, 'апреля': 3, 'квітень': 3, 'квітня': 3,
-                            'май': 4, 'мая': 4, 'травень': 4, 'травня': 4,
-                            'июнь': 5, 'июня': 5, 'червень': 5, 'червня': 5,
-                            'июль': 6, 'июля': 6, 'липень': 6, 'липня': 6,
-                            'август': 7, 'августа': 7, 'серпень': 7, 'серпня': 7,
-                            'сентябрь': 8, 'сентября': 8, 'вересень': 8, 'вересня': 8,
-                            'октябрь': 9, 'октября': 9, 'жовтень': 9, 'жовтня': 9,
-                            'ноябрь': 10, 'ноября': 10, 'листопад': 10, 'листопада': 10,
-                            'декабрь': 11, 'декабря': 11, 'грудень': 11, 'грудня': 11
-                        };
-
-                        const monthIdx = monthMapLower[monthName.toLowerCase()];
-                        const currentMonthIdx = now.getMonth();
-                        const currentYear = now.getFullYear();
-
-                        // INFERENCE LOGIC: 
-                        // If we are in the Current Year (e.g. 2026), and the imported month is significantly in the future (e.g. Dec vs Jan),
-                        // AND the user likely intended "Last December" (common in monthly closing).
-                        // We override even explicit years if they match Current Year, because Excel/SheetJS often defaults ambiguous dates to Current Year.
-
-                        // Condition: Year is Current Year AND Month is > Current Month + 2
-                        if (year === currentYear && monthIdx > currentMonthIdx + 2) {
-                            year = year - 1;
-                            console.log(`[Import Date Inference] "${monthName} ${currentYear}" adjusted to Prev Year: ${year} (Reason: ${monthName} is > 2 months ahead of now)`);
-                        }
-                        // Condition 2: Explicit inference for missing year (handled by initialization to currentYear and logic above)
-
-                        // Additional check: If inferred year is < 2020 (bad parse), reset to current
-                        if (year < 2020) year = currentYear;
-
-                        const monthMap: Record<string, number> = {
-                            'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,
-                            'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2,
-                            'март': 3, 'марта': 3, 'березень': 3, 'березня': 3,
-                            'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4,
-                            'май': 5, 'мая': 5, 'травень': 5, 'травня': 5,
-                            'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6,
-                            'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7,
-                            'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8,
-                            'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9,
-                            'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10,
-                            'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11,
-                            'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12
-                        };
-
-                        const month = monthMap[monthName.toLowerCase()];
-                        if (month) {
-                            const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
-                            const monthDateObj = new Date(year, month - 1, 1);
-
-                            // Determine if this is actual (past month) or planned (current/future month)
-                            const isActual = monthDateObj < currentMonth;
-
+                        if (!columnToMonthMap.has(i)) {
                             const value = row[headers[i]] || row[`__EMPTY_${i}`];
                             const quantity = Number(value) || 0;
 
                             if (quantity > 0) {
                                 plannedConsumption.push({
-                                    date: monthDate,
+                                    date: robustDate,
                                     quantity,
                                     isActual
                                 });
-                                console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
+                                console.log(`[Excel Import V2.14] Item "${name}" (code: ${code}): Main Header "${header}" -> ${robustDate}, quantity: ${quantity}, isActual: ${isActual}`);
                             }
+                            continue; // Logic matched, move to next column
                         }
                     }
                 }
@@ -998,7 +953,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.13 STRICT FIX)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.14 LOGIC REWORK)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

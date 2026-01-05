@@ -130,37 +130,40 @@ export default function ProductionCalculator() {
             if (item?.sku) skuToSearch = item.sku;
         }
 
-        // If we have a SKU, find the real item
+        // If we have a SKU, find ALL real items (aggregating duplicates)
         if (skuToSearch) {
             // Normalize for search
             const searchSku = normalizeSku(skuToSearch);
 
-            // Try Exact Match first (fastest)
-            let realItem = items.find(i => i.sku === skuToSearch);
+            // Find ALL matching items (duplicates included)
+            const matchingItems = items.filter(i => {
+                if (i.sku === skuToSearch) return true; // Exact match
+                if (normalizeSku(i.sku) === searchSku) return true; // Normalized match
+                return false;
+            });
 
-            // If not found, try Robust Normalization Match
-            if (!realItem) {
-                realItem = items.find(i => normalizeSku(i.sku) === searchSku);
-            }
+            if (matchingItems.length > 0) {
+                // Get IDs of all matching items
+                const validIds = matchingItems.map(i => i.id);
 
-            if (realItem) {
-                // Sum stock for the REAL item ID
-                const val = stock.filter(s => s.itemId === realItem.id).reduce((acc, curr) => acc + curr.quantity, 0);
+                // Sum stock for ALL these IDs
+                const totalVal = stock
+                    .filter(s => validIds.includes(s.itemId))
+                    .reduce((acc, curr) => acc + curr.quantity, 0);
 
                 // DEBUG: Trace specific SKUs for user debugging
                 if (searchSku.includes('8141') || searchSku.includes('/')) {
-                    if (val === 0) {
-                        const stockLevels = stock.filter(s => s.itemId === realItem.id);
-                        console.warn(`[Calc] Debug ${skuToSearch} (Norm: ${searchSku}): Found item "${realItem.name}" (ID: ${realItem.id}). Stock is 0. Levels:`, stockLevels);
+                    if (totalVal === 0) {
+                        const stockLevels = stock.filter(s => validIds.includes(s.itemId));
+                        console.warn(`[Calc] Debug ${skuToSearch} (Norm: ${searchSku}): Found ${validIds.length} items. IDs: ${validIds.join(', ')}. Aggregated Stock: ${totalVal}. Levels:`, stockLevels);
                     } else {
-                        // console.log(`[Calc] Debug ${skuToSearch}: Resolved to "${realItem.name}" with stock ${val}`);
+                        // console.log(`[Calc] Debug ${skuToSearch}: Resolved ${validIds.length} items with Total Stock ${totalVal}`);
                     }
                 }
 
-                if (val > 0) return val;
-                return 0; // Found item but stock is 0
+                if (totalVal > 0) return totalVal;
             } else {
-                // DEBUG: Log breakdown of why it failed
+                // DEBUG: Log breakdown of why it failed (No matching items found)
                 if (searchSku.includes('8141') || searchSku.includes('/')) {
                     console.warn(`[Calc] FAILED to resolve: "${skuToSearch}"`);
                     console.log(`[Calc]   - Search Normalized: "${searchSku}"`);

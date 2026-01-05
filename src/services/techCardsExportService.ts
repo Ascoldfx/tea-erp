@@ -383,6 +383,80 @@ export function parseTechCardsFromExcel(
     // Map<OriginalSKU, Array<{name: string, assignedSku: string}>>
     // const skuVariationsMap = new Map<string, Array<{ name: string, assignedSku: string }>>();
 
+    // State for dynamic columns (initially set to detected values)
+    let currentIndices = {
+        gpSku: gpSkuIndex,
+        gpName: gpNameIndex,
+        materialCategory: materialCategoryIndex,
+        materialSku: materialSkuIndex,
+        materialName: materialNameIndex,
+        unit: unitIndex,
+        norm: normIndex,
+        monthIndices: dateColumnIndices
+    };
+
+    // Helper to update indices based on a new header row
+    const updateIndices = (row: any[]) => {
+        const rowHeaders = row.map(h => String(h || '').replace(/\s+/g, ' ').trim());
+
+        // Local find helper
+        const find = (keywords: string[]) => {
+            return rowHeaders.findIndex(h => keywords.some(k => h.includes(k)));
+        };
+
+        const newIndices = {
+            gpSku: find(['артикул гп', 'код гп', 'gp sku', 'артикул', 'sku']),
+            gpName: find(['назва гп', 'название гп', 'gp name', 'продукция', 'назва', 'name']),
+            materialCategory: find(['група ксм', 'категория', 'category', 'група', 'group']),
+            materialSku: find(['артикул ксм', 'код ксм', 'код компонента', 'sku', 'art', 'артикул сировини', 'код сировини', 'артикул матеріалу', 'код матеріалу']),
+            materialName: find(['назва ксм', 'название ксм', 'компонент', 'материал', 'name', 'назва сировини', 'назва матеріалу', 'сировина', 'матеріал']),
+            unit: find(['од. вим.', 'ед. изм.', 'unit', 'од.', 'ед.']),
+            norm: find(['еталон', 'норма', 'norm', 'quantity', 'кількість']),
+            monthIndices: [] as { index: number; dateIso: string }[]
+        };
+
+        // Re-detect month columns for this section pattern
+        // (Similar logic to initial detection but for current row)
+        // For simplicity, reusing strict keywords based detection might be complex inline.
+        // Assuming month columns are > normIndex?
+        // Let's implement a quick date scan for the new row indices
+        const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY
+        const datePatternShort = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{2})/; // DD.MM.YY
+
+        rowHeaders.forEach((header, idx) => {
+            // Skip core columns to define date range safely
+            if (idx <= 6) return; // Approximate check
+
+            let headerStr = header;
+            // Date parsing simplified here (just string match)
+            let day, month, year;
+            const matchFull = headerStr.match(datePattern);
+            const matchShort = headerStr.match(datePatternShort);
+
+            if (matchFull) {
+                [, day, month, year] = matchFull.map(Number);
+            } else if (matchShort) {
+                [, day, month, year] = matchShort.map(Number);
+                year += 2000;
+            }
+
+            if (day && month && year && day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                const dateIso = `${year}-${String(month).padStart(2, '0')}-01`;
+                newIndices.monthIndices.push({ index: idx, dateIso });
+            }
+        });
+
+
+        // Only update if we found critical columns causing a valid shift
+        if (newIndices.materialSku !== -1 || newIndices.materialName !== -1) {
+            console.log('[parseTechCardsFromExcel] 🔄 DETECTED NEW HEADER ROW. UPDATING INDICES:', newIndices);
+            currentIndices = newIndices;
+            return true;
+        }
+        return false;
+    };
+
+
     let lastTechCard: ImportedTechCard | null = null;
     const result: ImportedTechCard[] = [];
 
@@ -391,48 +465,58 @@ export function parseTechCardsFromExcel(
         const row = rawData[i];
         if (!row || row.length === 0) continue;
 
-        // Declare current pointer for this row
-        let currentTechCard: ImportedTechCard | null = null;
+        // CHECK FOR NEW HEADER: 
+        const rowText = row.map((c: any) => String(c || '').toLowerCase()).join(' ');
+        const keywordMatches = headerKeywords.reduce((acc, k) => acc + (rowText.includes(k) ? 1 : 0), 0);
 
-        // Безопасное чтение ячеек: поддерживает примитивы и объекты (если sheet_to_json вернул raw объекты)
+        if (keywordMatches >= 3) { // High confidence it's a header
+            const updated = updateIndices(row);
+            if (updated) {
+                continue; // Skip the header row itself
+            }
+        }
+
         const getCell = (idx: number): string => {
             if (idx < 0 || row[idx] === undefined || row[idx] === null) return '';
             const cell = row[idx];
             if (typeof cell === 'object' && cell !== null) {
-                // Если это объект ячейки с полями v (value), w (formatted text)
                 return String((cell as any).w || (cell as any).v || '').trim();
             }
             return String(cell).trim();
         };
 
-        // 3. Извлекаем данные c безопасным TRIM
-        const gpSku = getCell(gpSkuIndex) || undefined;
-        const gpName = getCell(gpNameIndex) || undefined;
+        // Use currentIndices
+        const gpSku = getCell(currentIndices.gpSku);
+        const gpName = getCell(currentIndices.gpName);
+        const materialCategory = getCell(currentIndices.materialCategory);
+        const materialSku = getCell(currentIndices.materialSku);
+        const materialName = getCell(currentIndices.materialName);
+        const unit = getCell(currentIndices.unit);
+        const rawNorm = getCell(currentIndices.norm);
 
-        const materialSku = getCell(materialSkuIndex) || undefined;
-        const materialName = getCell(materialNameIndex) || undefined;
-
-        // DEBUG: Verbose logging for problematic rows
-        if (gpSku?.includes('282085') || materialSku?.includes('2010331') || i < 15) {
-            // ... existing logs ...
-        }
+        // Extract Monthly Norms using currentIndices.monthIndices
+        const monthlyNorms: Array<{ date: string; quantity: number }> = [];
+        currentIndices.monthIndices.forEach(({ index, dateIso }) => {
+            if (index < row.length && row[index] !== undefined) {
+                const valStr = String(row[index]).replace(',', '.').replace(/\s/g, '');
+                const parsed = parseFloat(valStr);
+                if (!isNaN(parsed) && parsed > 0) { // Store only non-zero norms
+                    monthlyNorms.push({ date: dateIso, quantity: Math.max(0, parsed) });
+                }
+            }
+        });
 
         // Пропускаем совсем пустые
         if (!gpSku && !gpName && !materialSku && !materialName) {
-            // ... existing skipped logic ...
             continue;
         }
 
-        // Определяем ТехКарту (Parent)
-        const hasGpInfo = !!gpSku;
+        let currentTechCard: ImportedTechCard | null = null;
 
-        if (hasGpInfo) {
-            let finalSku = gpSku || '';
-
-            // Create a new fragment for every row that has GP info.
-            // We rely on Post-Processing Merge to consolidate duplicates.
+        if (gpSku) {
+            // New Tech Card Found
             currentTechCard = {
-                gpSku: finalSku,
+                gpSku: gpSku,
                 gpName: gpName || 'Без названия',
                 ingredients: []
             };
@@ -446,107 +530,43 @@ export function parseTechCardsFromExcel(
             continue;
         }
 
-        // Если это строка с материалом
+        // Add ingredient to current tech card
         if (materialSku || materialName) {
-            const unit = getCell(unitIndex) || 'kg';
+            // Ignore if it looks like a header repetition (failsafe)
+            if (materialSku.includes('Артикул') || materialName.includes('Назва')) continue;
 
-            // Парсинг Базовой Нормы
+            // Parse Base Norm
             let normVal = 0;
-            // Enhanced Norm Parsing Debug
-            const rawNorm = normIndex >= 0 ? row[normIndex] : undefined;
+            const valStr = String(rawNorm).replace(',', '.').replace(/\s/g, '');
+            const parsed = parseFloat(valStr);
 
-            if (rawNorm !== undefined) {
-                // Remove spaces and replace comma
-                const valStr = String(rawNorm).replace(',', '.').replace(/\s/g, '');
-                const parsed = parseFloat(valStr);
-
-                if (!isNaN(parsed)) {
-                    normVal = Math.max(0, parsed);
-                }
+            if (!isNaN(parsed)) {
+                normVal = Math.max(0, parsed);
             }
-            // Removed unreachable check for normIndex === -1 (hardcoded to 6)
 
             // START DEBUG for SKU 262178 (User Reported Issue)
-            if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {
-                const rawRowStr = JSON.stringify(row);
-                console.log(`[DEBUG 262178] Row ${i} (Length: ${row.length}):`, {
+            const debugTarget = '262178';
+            if ((gpSku && gpSku.includes(debugTarget)) || (gpName && gpName.includes(debugTarget)) || (currentTechCard && currentTechCard.gpSku.includes(debugTarget))) {
+                // const rawRowStr = JSON.stringify(row);
+                console.log(`[DEBUG ${debugTarget}] Row ${i} (Indices used: MatSku=${currentIndices.materialSku}, MatName=${currentIndices.materialName}):`, {
                     gpSku,
                     materialSku,
-                    normIndex,
-                    normHeader: headers[normIndex], // Check what header we think is Norm
-                    normRawThisRow: rawNorm,
-                    normParsed: normVal,
-                    rawRow: rawRowStr
+                    materialName,
+                    normVal,
+                    rawRowLength: row.length
                 });
             }
             // END DEBUG
 
-            // Парсинг Месячных норм
-            const monthlyNorms: Array<{ date: string; quantity: number }> = [];
-            dateColumnIndices.forEach(({ index, dateIso }) => {
-                if (index < row.length && row[index] !== undefined) {
-                    const valStr = String(row[index]).replace(',', '.').replace(/\s/g, '');
-                    const parsed = parseFloat(valStr);
-                    if (!isNaN(parsed) && parsed > 0) { // Храним только ненулевые нормы для экономии
-                        monthlyNorms.push({ date: dateIso, quantity: Math.max(0, parsed) });
-                    }
-                }
-            });
-
-            // LOGGING FIRST 5 ROWS DETAILED
-            if (i < headerRowIndex + 5) {
-                console.log(`[parseTechCardsFromExcel] Row ${i} Debug:`, {
-                    material: materialName || materialSku,
-                    normIdx: normIndex,
-                    normRaw: rawNorm,
-                    normParsed: normVal,
-                    monthlyCount: monthlyNorms.length
-                });
-            }
-
-            // Добавляем ингредиент
-            const newIngredient = {
-                materialSku: materialSku || '',
-                materialName: materialName || materialSku || 'Ингредиент',
-                materialCategory: getCell(materialCategoryIndex),
+            currentTechCard.ingredients.push({
+                materialCategory,
+                materialSku,
+                materialName,
                 unit: parseUnit(unit),
                 norm: normVal,
-                monthlyNorms: monthlyNorms.length > 0 ? monthlyNorms : undefined
-            };
-
-            // Dedupe check INSIDE current card only
-            const existingIng = currentTechCard.ingredients.find(ing =>
-                (ing.materialSku && ing.materialSku === newIngredient.materialSku) ||
-                (ing.materialName === newIngredient.materialName)
-            );
-
-            if (existingIng) {
-                // If duplicates within same block (e.g. split norms), sum them?
-                // Or overwrite? Usually split norms -> sum.
-                // But let's just push ensuring unique identifiers later?
-                // For now, let's SUM norms if match found.
-                existingIng.norm += newIngredient.norm;
-                // Add monthly norms? Too complex to merge arrays, just keep first.
-            } else {
-                currentTechCard.ingredients.push(newIngredient);
-            }
+                monthlyNorms // Attach monthly norms
+            });
         }
-
-        // START DEBUG for SKU 262178
-        if ((gpSku && gpSku.includes('262178')) || (gpName && gpName.includes('262178')) || (lastTechCard && lastTechCard.gpSku.includes('262178'))) {
-            // ... debug log ...
-        }
-    }
-
-    // Push last
-    if (result.length === 0 && lastTechCard) {
-        // logic fix: lastTechCard references currentTechCard? 
-        // result is array. lastTechCard IS currentTechCard usually.
-        // Wait, currentTechCard was pushed when swiching.
-        // The VERY LAST one wasn't pushed.
-        result.push(lastTechCard);
-    } else if (lastTechCard && result[result.length - 1] !== lastTechCard) {
-        result.push(lastTechCard);
     }
 
     // 6. POST-PROCESSING: MERGE BY SKU

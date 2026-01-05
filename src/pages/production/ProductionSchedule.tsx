@@ -8,11 +8,11 @@ import { Modal } from '../../components/ui/Modal';
 import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch } from '../../types/production';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
-export default function ProductionList() {
+export default function ProductionSchedule() {
     const navigate = useNavigate();
     const { hasPermission } = useAuth();
     const { t, language } = useLanguage();
@@ -123,13 +123,18 @@ export default function ProductionList() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-100">
-                        {t('production.title') || 'Производство'}
-                    </h1>
-                    <p className="text-slate-400 mt-1">
-                        {t('production.subtitle') || 'Планирование и учет производства'}
-                    </p>
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => navigate('/production')}>
+                        <ChevronLeft className="w-6 h-6 text-slate-400" />
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-100">
+                            {t('production.schedule') || 'График партий'}
+                        </h1>
+                        <p className="text-slate-400 mt-1">
+                            {t('production.scheduleDesc') || 'Недельный план производства и фактический выпуск'}
+                        </p>
+                    </div>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={() => navigate('/calculator')}>
@@ -147,16 +152,18 @@ export default function ProductionList() {
 
             {/* Tabs */}
             <div className="flex items-center gap-4 border-b border-slate-700 pb-1">
-                <Link
-                    to="/production/planning"
+                <button
                     className={clsx(
                         "px-6 py-3 text-base font-semibold transition-colors border-b-3 flex items-center gap-2",
-                        "border-blue-500 text-blue-400 bg-blue-500/10 rounded-t-lg"
+                        activeTab === 'planning'
+                            ? "border-blue-500 text-blue-400 bg-blue-500/10 rounded-t-lg"
+                            : "border-transparent text-slate-400 hover:text-slate-200"
                     )}
+                    onClick={() => setActiveTab('planning')}
                 >
                     <Clock size={18} />
                     {t('production.planning') || 'Планирование'}
-                </Link>
+                </button>
                 <button
                     className={clsx(
                         "px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2",

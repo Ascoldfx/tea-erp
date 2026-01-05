@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
@@ -27,21 +28,22 @@ interface PlanningDataItem {
 
 export default function ProductionPlanning() {
     const { t, language } = useLanguage();
+    const navigate = useNavigate();
     const { items, warehouses, stock, plannedConsumption, loading, refresh } = useInventory();
-    
+
     // State for material details modal
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-    
+
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    
+
     // State for actual consumption (stock_movements type='out' for selected month)
     const [actualConsumptions, setActualConsumptions] = useState<Array<{
         item_id: string;
         quantity: number;
     }>>([]);
-    
+
     // Добавляем логирование для отладки
     useEffect(() => {
         console.log('[ProductionPlanning] === ОТЛАДКА ПЛАНИРОВАНИЯ ===');
@@ -49,7 +51,7 @@ export default function ProductionPlanning() {
         console.log('[ProductionPlanning] Planned consumption entries:', plannedConsumption.length);
         console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, selectedYear);
         console.log('[ProductionPlanning] Actual consumptions:', actualConsumptions.length);
-        
+
         if (plannedConsumption.length > 0) {
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
             const matching = plannedConsumption.filter(pc => {
@@ -73,7 +75,7 @@ export default function ProductionPlanning() {
                 console.log('[ProductionPlanning] Available months in planned consumption:', allMonths);
             }
         }
-        
+
         if (actualConsumptions.length > 0) {
             console.log('[ProductionPlanning] Sample actual consumptions:', actualConsumptions.slice(0, 5).map(ac => ({
                 item_id: ac.item_id,
@@ -82,7 +84,7 @@ export default function ProductionPlanning() {
             })));
         }
     }, [items.length, plannedConsumption.length, actualConsumptions.length, selectedMonth, selectedYear]);
-    
+
     // Debug: log planned consumption data
     useEffect(() => {
         console.log('[ProductionPlanning] Planned consumption data updated:', {
@@ -91,7 +93,7 @@ export default function ProductionPlanning() {
             selectedYear: selectedYear,
             sampleEntries: plannedConsumption.slice(0, 5)
         });
-        
+
         if (plannedConsumption.length > 0) {
             // Log entries for selected month
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -121,7 +123,7 @@ export default function ProductionPlanning() {
     }, [plannedConsumption, selectedMonth, selectedYear]);
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
     const [refreshKey, setRefreshKey] = useState(0);
-    
+
     // State for open orders (for planned arrival calculation)
     const [openOrders, setOpenOrders] = useState<Array<{
         id: string;
@@ -129,7 +131,7 @@ export default function ProductionPlanning() {
         quantity: number;
         received_quantity: number;
     }>>([]);
-    
+
     // State for actual arrival (delivered orders for selected month)
     const [actualArrivals, setActualArrivals] = useState<Array<{
         item_id: string;
@@ -140,7 +142,7 @@ export default function ProductionPlanning() {
     useEffect(() => {
         refresh();
     }, [refreshKey]);
-    
+
     // Listen for storage events to refresh when data is imported from another tab
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
@@ -152,12 +154,12 @@ export default function ProductionPlanning() {
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
     }, [refresh]);
-    
+
     // Fetch open orders (not delivered, not cancelled)
     useEffect(() => {
         const fetchOpenOrders = async () => {
             if (!supabase) return;
-            
+
             try {
                 // Get all open orders (draft, ordered, shipped)
                 const { data: ordersData, error: ordersError } = await supabase
@@ -165,23 +167,23 @@ export default function ProductionPlanning() {
                     .select('id, status')
                     .in('status', ['draft', 'ordered', 'shipped'])
                     .order('order_date', { ascending: false });
-                
+
                 if (ordersError) throw ordersError;
-                
+
                 if (!ordersData || ordersData.length === 0) {
                     setOpenOrders([]);
                     return;
                 }
-                
+
                 // Get all order items for open orders
                 const orderIds = ordersData.map(o => o.id);
                 const { data: orderItems, error: itemsError } = await supabase
                     .from('order_items')
                     .select('id, order_id, item_id, quantity, received_quantity')
                     .in('order_id', orderIds);
-                
+
                 if (itemsError) throw itemsError;
-                
+
                 // Calculate pending quantity (quantity - received_quantity) for each item
                 const itemsMap = new Map<string, number>();
                 (orderItems || []).forEach(item => {
@@ -191,7 +193,7 @@ export default function ProductionPlanning() {
                         itemsMap.set(item.item_id, current + pending);
                     }
                 });
-                
+
                 // Convert to array format
                 const ordersArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
                     id: '', // Not needed for our use case
@@ -199,7 +201,7 @@ export default function ProductionPlanning() {
                     quantity,
                     received_quantity: 0
                 }));
-                
+
                 setOpenOrders(ordersArray);
                 console.log('[ProductionPlanning] Open orders items:', ordersArray.length);
             } catch (error) {
@@ -207,20 +209,20 @@ export default function ProductionPlanning() {
                 setOpenOrders([]);
             }
         };
-        
+
         fetchOpenOrders();
     }, [refreshKey]);
-    
+
     // Fetch actual arrivals (delivered orders for selected month)
     useEffect(() => {
         const fetchActualArrivals = async () => {
             if (!supabase) return;
-            
+
             try {
                 const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
                 const monthStart = `${targetYearMonth}-01`;
                 const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${new Date(selectedYear, selectedMonth + 1, 0).getDate()}`;
-                
+
                 // Get delivered orders for selected month
                 const { data: ordersData, error: ordersError } = await supabase
                     .from('orders')
@@ -228,14 +230,14 @@ export default function ProductionPlanning() {
                     .eq('status', 'delivered')
                     .gte('order_date', monthStart)
                     .lte('order_date', monthEnd);
-                
+
                 if (ordersError) throw ordersError;
-                
+
                 if (!ordersData || ordersData.length === 0) {
                     setActualArrivals([]);
                     return;
                 }
-                
+
                 // Get order items with received_quantity
                 const orderIds = ordersData.map(o => o.id);
                 const { data: orderItems, error: itemsError } = await supabase
@@ -243,9 +245,9 @@ export default function ProductionPlanning() {
                     .select('item_id, received_quantity')
                     .in('order_id', orderIds)
                     .gt('received_quantity', 0);
-                
+
                 if (itemsError) throw itemsError;
-                
+
                 // Sum received_quantity by item_id
                 const itemsMap = new Map<string, number>();
                 (orderItems || []).forEach(item => {
@@ -255,12 +257,12 @@ export default function ProductionPlanning() {
                         itemsMap.set(item.item_id, current + received);
                     }
                 });
-                
+
                 const arrivalsArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
                     item_id,
                     quantity
                 }));
-                
+
                 setActualArrivals(arrivalsArray);
                 console.log('[ProductionPlanning] Actual arrivals:', arrivalsArray.length);
             } catch (error) {
@@ -268,15 +270,15 @@ export default function ProductionPlanning() {
                 setActualArrivals([]);
             }
         };
-        
+
         fetchActualArrivals();
     }, [selectedYear, selectedMonth, refreshKey]);
-    
+
     // Fetch actual consumption (stock_movements type='out' for selected month)
     useEffect(() => {
         const fetchActualConsumption = async () => {
             if (!supabase) return;
-            
+
             try {
                 // Get stock movements with type='out' for selected month
                 // Check both 'date' and 'created_at' fields
@@ -284,9 +286,9 @@ export default function ProductionPlanning() {
                     .from('stock_movements')
                     .select('item_id, quantity, date, created_at')
                     .eq('type', 'out');
-                
+
                 if (movementsError) throw movementsError;
-                
+
                 // Filter by month - prefer 'date' field if available, otherwise use 'created_at'
                 const filteredMovements = (movements || []).filter(movement => {
                     // Try 'date' field first (used for imported actual consumption)
@@ -303,7 +305,7 @@ export default function ProductionPlanning() {
                             return matches;
                         }
                     }
-                    
+
                     // Fallback to 'created_at' (for manually created movements)
                     if (movement.created_at) {
                         const movementDate = new Date(movement.created_at);
@@ -311,14 +313,14 @@ export default function ProductionPlanning() {
                             return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
                         }
                     }
-                    
+
                     return false;
                 });
-                
+
                 console.log(`[ProductionPlanning] Filtered ${filteredMovements.length} actual consumption movements for ${selectedYear}-${selectedMonth + 1} from ${movements?.length || 0} total`);
-                
+
                 if (movementsError) throw movementsError;
-                
+
                 // Sum quantity by item_id
                 const itemsMap = new Map<string, number>();
                 filteredMovements.forEach(movement => {
@@ -328,12 +330,12 @@ export default function ProductionPlanning() {
                         itemsMap.set(movement.item_id, current + qty);
                     }
                 });
-                
+
                 const consumptionsArray = Array.from(itemsMap.entries()).map(([item_id, quantity]) => ({
                     item_id,
                     quantity
                 }));
-                
+
                 setActualConsumptions(consumptionsArray);
                 console.log('[ProductionPlanning] Actual consumptions:', consumptionsArray.length);
             } catch (error) {
@@ -341,7 +343,7 @@ export default function ProductionPlanning() {
                 setActualConsumptions([]);
             }
         };
-        
+
         fetchActualConsumption();
     }, [selectedYear, selectedMonth, refreshKey]);
 
@@ -408,7 +410,7 @@ export default function ProductionPlanning() {
             'Упаковка для чаю',
             'Упаковка на чай'
         ];
-        
+
         for (const prefix of prefixesToRemove) {
             // Check if name starts with prefix (case-insensitive)
             if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
@@ -418,7 +420,7 @@ export default function ProductionPlanning() {
                 break;
             }
         }
-        
+
         return shortened.trim();
     };
 
@@ -460,13 +462,13 @@ export default function ProductionPlanning() {
             const current = plannedArrivalMap.get(order.item_id) || 0;
             plannedArrivalMap.set(order.item_id, current + order.quantity);
         });
-        
+
         // Create a map of actual arrival from delivered orders
         const actualArrivalMap = new Map<string, number>();
         actualArrivals.forEach(arrival => {
             actualArrivalMap.set(arrival.item_id, arrival.quantity);
         });
-        
+
         // Create a map of actual consumption from stock_movements
         const actualConsumptionMap = new Map<string, number>();
         actualConsumptions.forEach(consumption => {
@@ -481,26 +483,26 @@ export default function ProductionPlanning() {
             // Get planned consumption for this month
             // Build target month string for comparison (YYYY-MM format)
             const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-            
+
             // Find planned consumption entries that match this item by UUID ONLY
             const matchingPlanned = safePlannedConsumption.filter(pc => {
                 // Match by UUID only (item.id)
                 const pcItemId = String(pc.itemId || '').trim();
                 const itemIdStr = String(item.id || '').trim();
-                
+
                 if (pcItemId !== itemIdStr || !itemIdStr) {
                     return false;
                 }
-                
+
                 // Filter by date - only entries for the selected month
                 try {
                     const pcDateStr = String(pc.plannedDate || '').trim();
-                    
+
                     // Check if date matches target month (YYYY-MM-01 or YYYY-MM-DD)
                     if (pcDateStr.startsWith(targetYearMonth)) {
                         return true;
                     }
-                    
+
                     // Also try parsing as Date object
                     const pcDate = new Date(pcDateStr);
                     if (!isNaN(pcDate.getTime())) {
@@ -508,7 +510,7 @@ export default function ProductionPlanning() {
                         const pcMonth = pcDate.getMonth();
                         return pcYear === selectedYear && pcMonth === selectedMonth;
                     }
-                    
+
                     return false;
                 } catch (e) {
                     return false;
@@ -547,13 +549,13 @@ export default function ProductionPlanning() {
 
             // Get planned arrival from open orders
             const plannedArrival = plannedArrivalMap.get(item.id) || 0;
-            
+
             // Get actual arrival from delivered orders (priority over planned)
             const actualArrival = actualArrivalMap.get(item.id) || 0;
-            
+
             // Get actual consumption from stock_movements (priority over planned)
             const actualConsumption = actualConsumptionMap.get(item.id) || 0;
-            
+
             if (actualConsumption > 0) {
                 console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): actual consumption = ${actualConsumption} for ${targetYearMonth}`);
             }
@@ -594,16 +596,16 @@ export default function ProductionPlanning() {
             const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             const selectedMonthDate = new Date(selectedYear, selectedMonth, 1);
             const isPastMonth = selectedMonthDate < currentMonth;
-            
+
             // Для прошедших месяцев: скрывать материалы с 0 фактическим расходом, 0 остатком и 0 фактическим приходом
             if (isPastMonth) {
                 return data.actualConsumption > 0 || data.totalStock > 0 || data.actualArrival > 0;
             }
-            
+
             // Для текущего и будущих месяцев: скрывать материалы с 0 планируемым расходом, 0 остатком, 0 плановым приходом и 0 фактическим приходом
             return data.totalPlannedConsumption > 0 || data.totalStock > 0 || data.plannedArrival > 0 || data.actualArrival > 0;
         });
-        
+
         // Sort by original order from database (preserve Excel import order)
         // Items are typically returned in creation order, which matches Excel import order
         // Create a map of item ID to index in original array to preserve order
@@ -611,7 +613,7 @@ export default function ProductionPlanning() {
         safeItems.forEach((item, index) => {
             itemOrderMap.set(item.id, index);
         });
-        
+
         // Sort by original order (lower index = earlier in Excel)
         return planningData.sort((a: PlanningDataItem, b: PlanningDataItem) => {
             const orderA = itemOrderMap.get(a.item.id) ?? Infinity;
@@ -629,18 +631,28 @@ export default function ProductionPlanning() {
                     <h1 className="text-2xl font-bold text-white">{t('production.planning') || 'Планирование'}</h1>
                     <p className="text-slate-400 mt-1">{t('production.planningDesc') || 'План расхода материалов, фактическое наличие и необходимый заказ'}</p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={() => {
-                        refresh();
-                        setRefreshKey(prev => prev + 1);
-                    }}
-                    className="border-slate-600 hover:bg-slate-800"
-                    disabled={loading}
-                >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {loading ? (t('common.loading') || 'Загрузка...') : (t('common.refresh') || 'Обновить')}
-                </Button>
+                <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate('/production/schedule')}
+                        className="border-slate-600 hover:bg-slate-800"
+                    >
+                        {/* TODO: Add proper icon import */}
+                        {t('production.weeklySchedule') || 'Недельный план / Факт'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            refresh();
+                            setRefreshKey(prev => prev + 1);
+                        }}
+                        className="border-slate-600 hover:bg-slate-800"
+                        disabled={loading}
+                    >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {loading ? (t('common.loading') || 'Загрузка...') : (t('common.refresh') || 'Обновить')}
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -753,13 +765,13 @@ export default function ProductionPlanning() {
                                     {planningData.map((data: PlanningDataItem) => {
                                         return (
                                             <tr key={data.item.id} className="hover:bg-slate-800/50 group">
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 font-mono text-xs text-slate-400 cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.item.sku || '-'}
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-slate-200 whitespace-nowrap cursor-pointer group-hover:text-emerald-400 transition-colors"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
@@ -767,53 +779,53 @@ export default function ProductionPlanning() {
                                                         {shortenMaterialName(data.item.name)}
                                                     </div>
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-right text-slate-300 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.totalStock.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-right text-amber-400 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.plannedArrival > 0 
+                                                    {data.plannedArrival > 0
                                                         ? `${data.plannedArrival.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-right text-emerald-400 whitespace-nowrap font-medium cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.actualArrival > 0 
+                                                    {data.actualArrival > 0
                                                         ? `${data.actualArrival.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-right text-blue-400 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}
                                                 </td>
-                                                <td 
+                                                <td
                                                     className="px-4 py-3 text-right text-orange-400 whitespace-nowrap font-medium cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.actualConsumption > 0 
+                                                    {data.actualConsumption > 0
                                                         ? `${data.actualConsumption.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '-'
                                                     }
                                                 </td>
-                                                <td 
+                                                <td
                                                     className={clsx(
                                                         "px-4 py-3 text-right font-medium whitespace-nowrap cursor-pointer",
                                                         data.difference < 0 ? "text-red-400" : data.difference > 0 ? "text-green-400" : "text-slate-400"
                                                     )}
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.difference !== 0 
+                                                    {data.difference !== 0
                                                         ? `${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString()} ${data.item.unit || 'шт'}`
                                                         : '0'
                                                     }

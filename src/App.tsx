@@ -3,7 +3,7 @@ import Layout from './components/layout/Layout';
 import OrdersList from './pages/orders/OrdersList';
 
 import InventoryList from './pages/inventory/InventoryList';
-import ProductionList from './pages/production/ProductionList';
+import ProductionSchedule from './pages/production/ProductionSchedule';
 import ProductionPlanning from './pages/production/ProductionPlanning';
 import TechCardsList from './pages/production/TechCardsList';
 import RecipeEditor from './pages/production/RecipeEditor';
@@ -33,8 +33,8 @@ function App() {
                 <Route path="/suppliers" element={<SuppliersPage />} />
 
                 <Route path="/inventory" element={<InventoryList />} />
-                <Route path="/production" element={<ProductionList />} />
-                <Route path="/production/planning" element={<ProductionPlanning />} />
+                <Route path="/production" element={<ProductionPlanning />} />
+                <Route path="/production/schedule" element={<ProductionSchedule />} />
                 <Route path="/logistics" element={<LogisticsCalendar />} />
                 <Route path="/calculator" element={<ProductionCalculator />} />
                 <Route path="/production/recipes" element={<TechCardsList />} />

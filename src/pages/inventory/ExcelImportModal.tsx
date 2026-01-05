@@ -153,7 +153,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
 
-            // Helper function to parse month name to date string (ROBUST V2.16 - STRICT BOUNDARIES)
+            // Helper function to parse month name to date string (ROBUST V2.17 - FORCE HISTORICAL)
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const cleanInput = String(monthName || '').trim();
                 let monthLower = cleanInput.toLowerCase();
@@ -198,14 +198,15 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 for (const key of sortedKeys) {
                     // Regex explanation:
-                    // (?:^|[\s\.\-\d]) -> Start of string OR space/dot/dash/digit before match
+                    // (?:^|[^a-zа-я0-9]) -> Start or non-alphanumeric char (delimiter)
                     // ${key} -> The month key
-                    // (?:$|[\s\.\-\d]) -> End of string OR space/dot/dash/digit after match
+                    // (?:$|[^a-zа-я0-9]) -> End or non-alphanumeric char
                     // Case insensitive ('i')
-                    const regex = new RegExp(`(?:^|[\\s\\.\\-\\d])${key}(?:$|[\\s\\.\\-\\d])`, 'i');
+                    // This is more robust than \b for Cyrillic support in some environments
+                    const regex = new RegExp(`(?:^|[^a-zа-яёіїє0-9])${key}(?:$|[^a-zа-яёіїє0-9])`, 'i');
                     if (regex.test(monthLower)) {
                         foundMonth = monthMap[key];
-                        // console.log(`[Parse V2.16] Matched "${key}" in "${cleanInput}"`);
+                        // console.log(`[Parse V2.17] Matched "${key}" in "${cleanInput}"`);
                         break;
                     }
                 }
@@ -220,19 +221,15 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                     if (explicitYear) {
                         finalYear = explicitYear;
-                    } else {
-                        // Smart Inference
-                        if (finalYear === currentYear && foundMonth > currentMonth + 2) {
-                            finalYear = finalYear - 1;
-                        }
                     }
 
-                    // Extra sanity check: If "plan" is in the string but NOT matched as part of current month logic
-                    // (Wait, this function parses month names. If column is "Plan Expenses", and we matched "Mai", it returns date.)
-                    // BUT "Plan Expenses" shouldn't match "Mai" with new regex!
-                    // "травень" -> no. "тра" -> "витрат" ?? 
-                    // "витрат" -> regex /tra/ match? No, because "t" is preceded by "i".
-                    // So this should be safe.
+                    // FORCE ROLLBACK: If we detected a future month (e.g. Dec in Jan), 
+                    // and the year is current (OR EXPLICITLY SET to current), assume mistake/legacy and rollback.
+                    // This fixes "Dec 2026" being imported as 2026 when it should be 2025.
+                    if (finalYear === currentYear && foundMonth > currentMonth + 2) {
+                        console.log(`[Parse V2.17] "${cleanInput}" -> Rolling back year: ${finalYear} -> ${finalYear - 1} (Month ${foundMonth} vs Current ${currentMonth})`);
+                        finalYear = finalYear - 1;
+                    }
 
                     return `${finalYear}-${String(foundMonth).padStart(2, '0')}-01`;
                 }
@@ -969,7 +966,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.16 STRICT BOUNDARIES)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.17 FORCE HISTORICAL)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

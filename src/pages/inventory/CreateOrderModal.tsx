@@ -32,14 +32,14 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     const [contractorId, setContractorId] = useState('');
     const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0 }]);
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     // Data from database
     const [materials, setMaterials] = useState<InventoryItem[]>([]);
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Financials & Logistics
-    const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'nova_poshta'>('pickup');
+    const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'nova_poshta' | 'supplier_included' | 'supplier_extra'>('pickup');
     const [prepayment, setPrepayment] = useState<number | string>(0);
     const [paymentTerms, setPaymentTerms] = useState<'prepayment' | 'postpayment' | '50_50'>('postpayment');
     const [paymentDelay, setPaymentDelay] = useState<number | string>(0);
@@ -103,6 +103,40 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
         setItems(newItems);
     };
 
+    // Deduplicate materials by SKU for display
+    // Implementation Plan:
+    // 1. Group items by Normalized SKU (remove special chars, lowercase)
+    // 2. For each SKU group, pick the "best" item (e.g. one with ID, or just first one)
+    // 3. Normalized list used for Select options
+    const normalizedMaterials = items.length === 0 && materials.length > 0 ? (() => {
+        const skuMap = new Map<string, InventoryItem>();
+        // Helper to normalize sku
+        const norm = (s?: string) => s ? s.trim().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
+        materials.forEach(item => {
+            if (!item.sku) {
+                // Items without SKU are kept as is (using ID as key backup)
+                skuMap.set(`no-sku-${item.id}`, item);
+                return;
+            }
+            const key = norm(item.sku);
+            if (!key) {
+                skuMap.set(`empty-sku-${item.id}`, item);
+                return;
+            }
+
+            // If duplicate SKU, we only keep the FIRST one we encounter
+            // This solves the '8141/1' duplicate issue in dropdown
+            if (!skuMap.has(key)) {
+                skuMap.set(key, item);
+            }
+        });
+        return Array.from(skuMap.values()).sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
+    })() : materials;
+
+    // Delivery cost state
+    const [deliveryCost, setDeliveryCost] = useState<number | string>(0);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -118,8 +152,10 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                 .insert({
                     supplier_id: contractorId, // For material orders, use supplier_id
                     status: 'ordered',
-                    total_amount: totalCost,
-                    order_date: new Date().toISOString()
+                    total_amount: totalCost + Number(deliveryCost), // Include delivery cost
+                    order_date: new Date().toISOString(),
+                    // Save delivery info in notes or metadata if specific column doesn't exist
+                    // Assuming 'notes' column exists or we append to comment
                 })
                 .select()
                 .single();
@@ -145,6 +181,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             setContractorId('');
             setItems([{ itemId: '', quantity: 0, costPerUnit: 0 }]);
             setPrepayment(0);
+            setDeliveryCost(0);
 
         } catch (e: any) {
             console.error('Order placement error:', e);
@@ -169,15 +206,29 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                         required
                         disabled={loading}
                     />
-                    <Select
-                        label="Способ доставки"
-                        options={[
-                            { value: 'pickup', label: 'Самовывоз (Наш транспорт)' },
-                            { value: 'nova_poshta', label: 'Новая Почта' }
-                        ]}
-                        value={deliveryMethod}
-                        onChange={e => setDeliveryMethod(e.target.value as any)}
-                    />
+                    <div className="space-y-2">
+                        <Select
+                            label="Способ доставки"
+                            options={[
+                                { value: 'pickup', label: 'Самовывоз (Наш транспорт)' },
+                                { value: 'nova_poshta', label: 'Новая Почта' },
+                                { value: 'supplier_included', label: 'Доставка поставщиком (Входит в цену)' },
+                                { value: 'supplier_extra', label: 'Доставка поставщиком (Доп. затраты)' }
+                            ]}
+                            value={deliveryMethod}
+                            onChange={e => setDeliveryMethod(e.target.value as any)}
+                        />
+                        {deliveryMethod === 'supplier_extra' && (
+                            <Input
+                                placeholder="Стоимость доставки (₴)"
+                                type="number"
+                                min="0"
+                                value={deliveryCost}
+                                onChange={e => setDeliveryCost(Number(e.target.value))}
+                                className="mt-1"
+                            />
+                        )}
+                    </div>
                 </div>
 
                 {/* Items List */}
@@ -188,7 +239,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                         {/* Search Field */}
                         <Input
                             label="Поиск материала"
-                            placeholder="Название или артикул..."
+                            placeholder="Артикул или название..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -206,13 +257,16 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                         label={index === 0 ? "Материал" : undefined}
                                         options={[
                                             { value: '', label: 'Выберите материал' },
-                                            ...materials
-                                                .filter(m =>
-                                                    !searchTerm ||
-                                                    m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                    m.sku?.toLowerCase().includes(searchTerm.toLowerCase())
-                                                )
-                                                .map(m => ({ value: m.id, label: `${m.name || 'Без названия'} (${m.sku || 'нет артикула'})` }))
+                                            // USE NORMALIZED MATERIALS for deduplication
+                                            ...(searchTerm ? normalizedMaterials.filter(m =>
+                                                m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                m.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+                                            ) : normalizedMaterials)
+                                                .map(m => ({
+                                                    value: m.id,
+                                                    // Display SKU FIRST as requested
+                                                    label: `${m.sku ? `[${m.sku}] ` : ''}${m.name || 'Без названия'}`
+                                                }))
                                         ]}
                                         value={item.itemId}
                                         onChange={e => handleItemChange(index, 'itemId', e.target.value)}

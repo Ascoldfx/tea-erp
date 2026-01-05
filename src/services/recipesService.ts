@@ -220,7 +220,7 @@ export const recipesService = {
                     : `Материал ${sku}`; // Clean fallback
 
                 return {
-                    id: sku, // FUNDAMENTAL FIX: Architecture uses ID=SKU for imported items. Aligning with inventoryService.
+                    id: self.crypto.randomUUID(), // REVERT: DB Schema strictly requires UUID. ID=SKU is impossible without schema change.
                     sku: sku,
                     name: finalName,
                     category: 'Сырье',

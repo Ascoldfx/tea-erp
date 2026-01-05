@@ -147,18 +147,109 @@ export const recipesService = {
     },
 
     /**
-     * Сохранить техкарту в базу данных
+     * Предварительно создает все недостающие материалы для списка техкарт.
+     * Возвращает Map<SKU, UUID> для всех материалов.
      */
-    async saveRecipe(recipe: Recipe): Promise<boolean> {
-        if (!supabase) {
-            console.warn('[RecipesService] Supabase not available');
-            return false;
+    async ensureAllItemsExist(recipes: Recipe[]): Promise<Map<string, string>> {
+        if (!supabase) return new Map();
+
+        // 1. Сбор всех уникальных SKU, которые требуют проверки (temp-*)
+        const skuSet = new Set<string>();
+        const newItemsMap = new Map<string, { name: string, sku: string }>();
+
+        recipes.forEach(recipe => {
+            recipe.ingredients.forEach(ing => {
+                if (ing.itemId.startsWith('temp-')) {
+                    const sku = ing.tempMaterial?.sku || ing.itemId.replace('temp-', '');
+                    const name = ing.tempMaterial?.name || `Material ${ing.itemId}`;
+                    skuSet.add(sku);
+                    newItemsMap.set(sku, { sku, name });
+                }
+            });
+        });
+
+        if (skuSet.size === 0) {
+            return new Map();
         }
 
+        console.log(`[RecipesService] Bulk Resolve: Checking ${skuSet.size} potential new items...`);
+        const skusToCheck = Array.from(skuSet);
+        const skuToIdMap = new Map<string, string>();
+
+        // 2. Проверяем, какие уже есть в базе
+        // Разбиваем на чанки по 100, чтобы не превысить лимиты URL
+        const CHUNK_SIZE = 100;
+        const existingSkus = new Set<string>();
+
+        for (let i = 0; i < skusToCheck.length; i += CHUNK_SIZE) {
+            const chunk = skusToCheck.slice(i, i + CHUNK_SIZE);
+            const { data: existingItems, error } = await supabase
+                .from('items')
+                .select('id, sku')
+                .in('sku', chunk);
+
+            if (error) {
+                console.error('[RecipesService] Error checking existing items:', error);
+                continue;
+            }
+
+            if (existingItems) {
+                existingItems.forEach(item => {
+                    existingSkus.add(item.sku);
+                    skuToIdMap.set(item.sku, item.id);
+                });
+            }
+        }
+
+        // 3. Определяем, что реально нужно создать
+        const itemsToCreate = skusToCheck
+            .filter(sku => !existingSkus.has(sku))
+            .map(sku => ({
+                sku: sku,
+                name: newItemsMap.get(sku)?.name || `Material ${sku}`,
+                category: 'Сырье',
+                unit: 'kg',
+                min_stock_level: 0
+            }));
+
+        if (itemsToCreate.length === 0) {
+            console.log('[RecipesService] All items already exist.');
+            return skuToIdMap;
+        }
+
+        // 4. Создаем недостающие (Batch Insert)
+        console.log(`[RecipesService] Creating ${itemsToCreate.length} missing items...`);
+
+        // Вставляем чанками
+        for (let i = 0; i < itemsToCreate.length; i += CHUNK_SIZE) {
+            const chunk = itemsToCreate.slice(i, i + CHUNK_SIZE);
+            const { data: createdItems, error: createError } = await supabase
+                .from('items')
+                .insert(chunk)
+                .select('id, sku');
+
+            if (createError) {
+                console.error('[RecipesService] Error creating items batch:', createError);
+                // Продолжаем, возможно часть удастся спасти или они уже были созданы
+            } else if (createdItems) {
+                createdItems.forEach(item => {
+                    skuToIdMap.set(item.sku, item.id);
+                });
+            }
+        }
+
+        console.log(`[RecipesService] Item resolution complete. Resolved ${skuToIdMap.size} SKUs.`);
+        return skuToIdMap;
+    },
+
+    /**
+     * Сохранить одну техкарту (Внутренний метод, использует уже готовые ID)
+     */
+    async saveRecipeInternal(recipe: Recipe, resolvedSkus: Map<string, string>): Promise<boolean> {
+        if (!supabase) return false;
+
         try {
-            // Сохраняем техкарту
-            // ВАЖНО: Если outputItemId начинается с "temp-", используем NULL
-            // так как внешний ключ не позволит сохранить несуществующий ID
+            // 1. Подготовка данных рецепта
             const outputItemId = recipe.outputItemId && !recipe.outputItemId.startsWith('temp-')
                 ? recipe.outputItemId
                 : null;
@@ -174,242 +265,122 @@ export const recipesService = {
                 materials_accepted_date: recipe.materialsAcceptedDate || undefined
             };
 
-            // PRE-FLIGHT: Auto-create any missing "temp" materials to ensure they have real IDs
-            // This fixes the "Empty Tech Card" issue where DB rejects ingredients with NULL item_id
-            const tempIngredients = recipe.ingredients?.filter(ing => ing.itemId.startsWith('temp-')) || [];
-
-            if (tempIngredients.length > 0) {
-                console.log(`[RecipesService] Found ${tempIngredients.length} temp ingredients. Auto-creating them as real items...`);
-
-                const newItems = tempIngredients.map(ing => ({
-                    sku: ing.tempMaterial?.sku || ing.itemId.replace('temp-', ''),
-                    name: ing.tempMaterial?.name || `Material ${ing.itemId}`,
-                    category: 'Сырье', // Default category
-                    unit: 'kg', // Default unit, user can change later
-                    min_stock_level: 0
-                }));
-
-                // MANUAL UPSERT ALTERNATIVE (Since 'sku' might not have UNIQUE constraint)
-                const skus = newItems.map(i => i.sku);
-
-                // 1. Find existing items
-                const { data: existingItemsData, error: fetchError } = await supabase
-                    .from('items')
-                    .select('id, sku')
-                    .in('sku', skus);
-
-                if (fetchError) {
-                    console.error('[RecipesService] Error fetching existing items for auto-create:', fetchError);
-                }
-
-                const existingSkus = new Set((existingItemsData || []).map(i => i.sku));
-                const itemsToCreate = newItems.filter(i => !existingSkus.has(i.sku));
-
-                let createdItemsData: { id: string; sku: string }[] = [];
-
-                // 2. Insert ONLY new items
-                if (itemsToCreate.length > 0) {
-                    const { data: insertedItems, error: insertError } = await supabase
-                        .from('items')
-                        .insert(itemsToCreate)
-                        .select('id, sku');
-
-                    if (insertError) {
-                        console.error('[RecipesService] Failed to insert new items:', insertError);
-                    } else {
-                        createdItemsData = insertedItems || [];
-                    }
-                }
-
-                // 3. Combine existing and created items
-                const allResolvedItems = [...(existingItemsData || []), ...createdItemsData];
-                const skuToIdMap = new Map(allResolvedItems.map(item => [item.sku, item.id]));
-
-                recipe.ingredients = recipe.ingredients.map(ing => {
-                    if (ing.itemId.startsWith('temp-')) {
-                        const sku = ing.tempMaterial?.sku || ing.itemId.replace('temp-', '');
-                        const realId = skuToIdMap.get(sku);
-                        if (realId) {
-                            return { ...ing, itemId: realId, tempMaterial: undefined };
-                        }
-                    }
-                    return ing;
-                });
-                console.log(`[RecipesService] Successfully resolved ${allResolvedItems.length} temp ingredients to real IDs`);
-            }
-
+            // 2. Сохранение самого рецепта
             const { error: recipeError } = await supabase
                 .from('recipes')
                 .upsert(recipeData, { onConflict: 'id' });
 
             if (recipeError) {
-                console.error('[RecipesService] Error saving recipe:', recipeError);
+                console.error(`[RecipesService] Error saving recipe header ${recipe.name}:`, recipeError);
                 return false;
             }
 
-            // Подготавливаем новые ингредиенты ПЕРЕД удалением старых
-            // Это позволяет проверить, есть ли что сохранять, и избежать удаления данных если импорт пустой
-            let ingredientsData: RecipeIngredientDB[] = [];
+            // 3. Подготовка ингредиентов с использованием resolvedSkus
+            const ingredientsData: RecipeIngredientDB[] = [];
 
-            if (recipe.ingredients && recipe.ingredients.length > 0) {
-                // ВАЖНО: Фильтруем ингредиенты с временными ID (temp-...)
-                const validIngredients = recipe.ingredients.filter(ing => {
-                    // Пропускаем ингредиенты с временным ID, если нет tempMaterial
-                    if (ing.itemId.startsWith('temp-') && !ing.tempMaterial) {
-                        console.warn(`[RecipesService] [SAFEGUARD] Пропущен ингредиент с временным ID без tempMaterial: ${ing.itemId}`);
-                        return false;
+            if (recipe.ingredients) {
+                recipe.ingredients.forEach(ing => {
+                    let realItemId = ing.itemId;
+                    let tempSku = ing.tempMaterial?.sku;
+
+                    // Если это temp-ID, пробуем найти реальный UUID
+                    if (ing.itemId.startsWith('temp-')) {
+                        const skuToCheck = tempSku || ing.itemId.replace('temp-', '');
+                        const resolveId = resolvedSkus.get(skuToCheck);
+                        if (resolveId) {
+                            realItemId = resolveId;
+                        } else {
+                            console.warn(`[RecipesService] ⚠️ Could not resolve SKU ${skuToCheck} for ingredient in ${recipe.name}. Skipping.`);
+                            return; // SKIP this ingredient
+                        }
                     }
-                    return true;
-                });
 
-                if (validIngredients.length > 0) {
-                    // Группируем и подготавливаем данные
-                    const ingredientsMap = new Map<string, RecipeIngredientDB>();
+                    // Если все равно остался temp-, значит не нашли
+                    if (realItemId.startsWith('temp-')) {
+                        console.warn(`[RecipesService] ⚠️ Skipping unresolved ingredient ${realItemId}`);
+                        return;
+                    }
 
-                    validIngredients.forEach(ing => {
-                        const itemId = ing.itemId.startsWith('temp-') ? null : ing.itemId;
-                        const uniqueKey = itemId ? `${recipe.id}_${itemId}` : `${recipe.id}_temp_${ing.itemId}`;
-                        const tempSku = ing.tempMaterial?.sku || (ing.itemId.startsWith('temp-') ? ing.itemId.replace('temp-', '') : undefined);
-                        const tempName = ing.tempMaterial?.name || undefined;
-
-                        ingredientsMap.set(uniqueKey, {
-                            recipe_id: recipe.id,
-                            item_id: itemId,
-                            quantity: ing.quantity,
-                            tolerance: ing.tolerance || undefined,
-                            is_duplicate_sku: ing.isDuplicateSku || false,
-                            is_auto_created: ing.isAutoCreated || false,
-                            temp_material_sku: tempSku,
-                            temp_material_name: tempName,
-                            monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
-                                ? (ing.monthlyNorms as any)
-                                : null
-                        });
+                    ingredientsData.push({
+                        recipe_id: recipe.id,
+                        item_id: realItemId,
+                        quantity: ing.quantity,
+                        tolerance: ing.tolerance || undefined,
+                        is_duplicate_sku: ing.isDuplicateSku || false,
+                        is_auto_created: ing.isAutoCreated || false,
+                        temp_material_sku: tempSku,
+                        temp_material_name: ing.tempMaterial?.name,
+                        monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
+                            ? (ing.monthlyNorms as any)
+                            : null
                     });
-
-                    ingredientsData = Array.from(ingredientsMap.values());
-                }
+                });
             }
 
-            // БЛОКИРОВКА УДАЛЕНИЯ: Если нет валидных ингредиентов для сохранения, НЕ удаляем старые
-            // Это защита от случайного стирания рецептов при ошибках парсинга
+            // 4. Перезапись ингредиентов (Delete + Insert)
             if (ingredientsData.length === 0) {
-                console.warn(`[RecipesService] ⚠️ Recipe "${recipe.name}" (${recipe.id}) has NO valid ingredients to save. Skipping DB update to prevent data loss.`);
-                // Возвращаем true, чтобы не прерывать общий процесс (это "мягкая" ошибка)
-
-                // VERIFICATION: Check if they actually exist
-                const { count, error: verifyError } = await supabase
-                    .from('recipe_ingredients')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('recipe_id', recipe.id);
-
-                if (verifyError) {
-                    console.error(`[RecipesService] ❌ Verification failed for ${recipe.name}:`, verifyError);
-                } else if (count !== ingredientsData.length) {
-                    console.error(`[RecipesService] ❌ GHOST WRITE DETECTED for ${recipe.name}! Tried to save ${ingredientsData.length}, found ${count} in DB.`);
-                } else {
-                    // console.log(`[RecipesService] ✅ Verified: ${count} ingredients in DB for ${recipe.name}`);
-                }
-
-                return true;
+                console.warn(`[RecipesService] Recipe ${recipe.name} has no valid ingredients to save.`);
+                return true; // Technically success (header saved)
             }
 
-            // Если данные есть - удаляем старые и вставляем новые
             const { error: deleteError } = await supabase
                 .from('recipe_ingredients')
                 .delete()
                 .eq('recipe_id', recipe.id);
 
             if (deleteError) {
-                console.error('[RecipesService] Error deleting old ingredients:', deleteError);
+                console.error('[RecipesService] Error clearing old ingredients:', deleteError);
                 return false;
             }
 
-            // Вставляем новые
-            const { error: ingredientsError } = await supabase
+            const { error: insertError } = await supabase
                 .from('recipe_ingredients')
                 .insert(ingredientsData);
 
-            if (ingredientsError) {
-                console.error('[RecipesService] Error saving ingredients (BATCH):', JSON.stringify(ingredientsError, null, 2));
-
-                // FALLBACK: Try saving one by one to isolate the error and save what we can
-                console.log('[RecipesService] Retrying ingredients one-by-one to salvage valid data...');
-                let savedCount = 0;
-
-                for (const ing of ingredientsData) {
-                    const { error: singleError } = await supabase
-                        .from('recipe_ingredients')
-                        .insert([ing]);
-
-                    if (singleError) {
-                        console.error(`[RecipesService] Failed to save ingredient ${ing.item_id || ing.temp_material_name}:`, JSON.stringify(singleError, null, 2));
-                        if (savedCount === 0) {
-                            // ALERT USER ON FIRST FAILURE
-                            window.alert(`DB ERROR: Failed to save ingredient!\n\nReason: ${singleError.message}\nDetails: ${singleError.details}\n\nThis confirms the database is rejecting the data.`);
-                        }
-                    } else {
-                        savedCount++;
-                    }
-                }
-
-                if (savedCount > 0) {
-                    console.log(`[RecipesService] Successfully recovered ${savedCount} of ${ingredientsData.length} ingredients.`);
-                    return true; // Consider success if we saved something
-                }
-
+            if (insertError) {
+                console.error('[RecipesService] Error saving ingredients:', insertError);
                 return false;
             }
 
-            // console.log(`[RecipesService] ✅ Перезаписано ${ insertedIngredients?.length || 0 } ингредиентов для тех.карты "${recipe.name}"(${ validCount } valid, ${ tempCount } temp)`);
-
-
             return true;
-        } catch (error) {
-            console.error('[RecipesService] Exception saving recipe:', error);
+        } catch (e) {
+            console.error('[RecipesService] Exception in saveRecipeInternal:', e);
             return false;
         }
     },
 
     /**
-     * Сохранить несколько техкарт в базу данных
-     * ВАЖНО: Сохраняет все техкарты, даже если некоторые не удалось сохранить
+     * Основной метод сохранения: сначала создает все материалы, потом сохраняет рецепты
      */
     async saveRecipes(recipes: Recipe[]): Promise<number> {
-        if (!supabase || recipes.length === 0) {
-            console.warn('[RecipesService] No recipes to save or supabase not available');
+        if (!supabase || recipes.length === 0) return 0;
+
+        try {
+            console.log(`[RecipesService] Starting transactional save for ${recipes.length} recipes...`);
+
+            // PHASE 1: Bulk Ensure Items
+            const resolvedMap = await this.ensureAllItemsExist(recipes);
+
+            // PHASE 2: Save Recipes using the map
+            let savedCount = 0;
+            for (const recipe of recipes) {
+                const success = await this.saveRecipeInternal(recipe, resolvedMap);
+                if (success) savedCount++;
+            }
+
+            console.log(`[RecipesService] Import completed. Saved ${savedCount}/${recipes.length} recipes.`);
+            return savedCount;
+
+        } catch (e) {
+            console.error('[RecipesService] Critical error in saveRecipes:', e);
             return 0;
         }
+    },
 
-        console.log(`[RecipesService] Начинаем сохранение ${recipes.length} тех.карт в базу данных...`);
-        let savedCount = 0;
-        const errors: Array<{ recipe: Recipe; error: any }> = [];
-
-        for (let i = 0; i < recipes.length; i++) {
-            const recipe = recipes[i];
-            try {
-                // console.log(`[RecipesService] Сохранение тех.карты ${ i + 1}/${recipes.length}: "${recipe.name}" (ID: ${recipe.id})`);
-                const success = await this.saveRecipe(recipe);
-                if (success) {
-                    savedCount++;
-                    // console.log(`[RecipesService] ✅ Тех.карта "${recipe.name}" сохранена успешно`);
-                } else {
-                    console.error(`[RecipesService] ❌ Не удалось сохранить тех.карту "${recipe.name}"`);
-                    errors.push({ recipe, error: 'Save returned false' });
-                }
-            } catch (error) {
-                console.error(`[RecipesService] ❌ Ошибка при сохранении тех.карты "${recipe.name}":`, error);
-                errors.push({ recipe, error });
-            }
-        }
-
-        console.log(`[RecipesService] === ИТОГИ СОХРАНЕНИЯ ===`);
-        console.log(`[RecipesService] Сохранено: ${savedCount} из ${recipes.length} тех.карт`);
-        if (errors.length > 0) {
-            console.error(`[RecipesService] Ошибки при сохранении ${errors.length} тех.карт:`, errors);
-        }
-
-        return savedCount;
+    // Legacy method wrapper for backward compatibility if needed, 
+    // though ideally UI should call saveRecipes([recipe])
+    async saveRecipe(recipe: Recipe): Promise<boolean> {
+        return (await this.saveRecipes([recipe])) === 1;
     },
 
     /**

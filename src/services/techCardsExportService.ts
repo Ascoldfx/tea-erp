@@ -469,7 +469,7 @@ export function parseTechCardsFromExcel(
         const rowText = row.map((c: any) => String(c || '').toLowerCase()).join(' ');
         const keywordMatches = headerKeywords.reduce((acc, k) => acc + (rowText.includes(k) ? 1 : 0), 0);
 
-        if (keywordMatches >= 3) { // High confidence it's a header
+        if (keywordMatches >= 2) { // Relaxed confidence to catch smaller tables
             const updated = updateIndices(row);
             if (updated) {
                 continue; // Skip the header row itself

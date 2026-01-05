@@ -55,18 +55,46 @@ export const recipesService = {
                 return [];
             }
 
-            // Загружаем ингредиенты для всех техкарт
+            // Загружаем ингредиенты для всех техкарт (с пагинацией)
             const recipeIds = recipesData.map(r => r.id);
-            const { data: ingredientsData, error: ingredientsError } = await supabase
-                .from('recipe_ingredients')
-                .select('*')
-                .in('recipe_id', recipeIds);
+            let allIngredients: RecipeIngredientDB[] = [];
+            const BATCH_SIZE = 1000;
+            let from = 0;
+            let totalFetched = 0;
+            let hasMore = true;
 
-            if (ingredientsError) {
-                console.error('[RecipesService] Error fetching ingredients:', ingredientsError);
-            } else {
-                console.log(`[RecipesService] Fetched total ${ingredientsData?.length || 0} ingredient rows for ${recipesData.length} recipes.`);
+            // Fetch ingredients in batches to bypass Supabase 1000 row limit
+            // Note: .in('recipe_id', recipeIds) limits us, but if total result > 1000, we need range
+            // BUT: range() works on the Result Set.
+            console.log(`[RecipesService] Fetching ingredients for ${recipeIds.length} recipes...`);
+
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('recipe_ingredients')
+                    .select('*')
+                    .in('recipe_id', recipeIds)
+                    .range(from, from + BATCH_SIZE - 1);
+
+                if (error) {
+                    console.error('[RecipesService] Error fetching ingredients batch:', error);
+                    break;
+                }
+
+                if (data && data.length > 0) {
+                    allIngredients = [...allIngredients, ...data];
+                    totalFetched += data.length;
+                    from += BATCH_SIZE;
+                    // If we got less than requested, we are done
+                    if (data.length < BATCH_SIZE) {
+                        hasMore = false;
+                    }
+                } else {
+                    hasMore = false;
+                }
             }
+
+            const ingredientsData = allIngredients;
+            console.log(`[RecipesService] Fetched total ${ingredientsData.length} ingredient rows (Batched).`);
 
             // Группируем ингредиенты по recipe_id
             const ingredientsMap = new Map<string, RecipeIngredient[]>();
@@ -179,9 +207,30 @@ export const recipesService = {
                     nameSet.add(name);
                 }
 
-                // Логика создания новых: только если есть валидный SKU
-                if (ing.itemId.startsWith('temp-') && sku && sku.trim().length > 0) {
-                    newItemsMap.set(sku, { sku, name: name || `Material ${sku}` });
+                // Логика создания новых:
+                // 1. Если есть SKU -> используем его.
+                // 2. Если SKU нет, но есть Имя -> генерируем auto-SKU (чтобы создать связь).
+                if (ing.itemId.startsWith('temp-')) {
+                    let validSku = sku;
+
+                    if (!validSku || validSku.length === 0) {
+                        if (name && name.length > 0) {
+                            // Generate stable SKU from name hash or simple slug
+                            const slug = name.replace(/[^a-zA-Z0-9а-яА-Я]/g, '').slice(0, 10);
+                            validSku = `auto-${slug}-${Math.floor(Math.random() * 1000)}`;
+                            console.log(`[RecipesService] Generating Auto-SKU for "${name}": ${validSku}`);
+                        }
+                    }
+
+                    if (validSku && validSku.trim().length > 0 && !validSku.includes('unknown')) {
+                        if (!newItemsMap.has(validSku)) {
+                            newItemsMap.set(validSku, { sku: validSku, name: name || `Material ${validSku}` });
+                            // Don't add to skuSet if it's auto-generated (unlikely to exist in DB by SKU)
+                            if (!validSku.startsWith('auto-')) {
+                                skuSet.add(validSku);
+                            }
+                        }
+                    }
                 }
             });
         });
@@ -261,9 +310,14 @@ export const recipesService = {
             const skusToRefetch = itemsToCreate.map(i => i.sku);
             for (let i = 0; i < skusToRefetch.length; i += CHUNK_SIZE) {
                 const chunk = skusToRefetch.slice(i, i + CHUNK_SIZE);
-                const { data } = await supabase.from('items').select('id, sku').in('sku', chunk);
+                const { data } = await supabase.from('items').select('id, sku, name').in('sku', chunk);
                 if (data) {
-                    data.forEach(item => skuToIdMap.set(item.sku, item.id));
+                    data.forEach(item => {
+                        skuToIdMap.set(item.sku, item.id);
+                        if (item.name) {
+                            nameToIdMap.set(item.name, item.id);
+                        }
+                    });
                 }
             }
         }

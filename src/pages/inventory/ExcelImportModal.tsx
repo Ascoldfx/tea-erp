@@ -782,7 +782,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
                 }
 
-                // Also check for explicit "план витрат" columns (for backward compatibility)
+                // Also check for explicit "план витрат" columns (for backward compatibility and specific plan columns)
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     const headerLower = header.toLowerCase();
@@ -792,11 +792,23 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         headerLower.includes('план витрат') || headerLower.includes('план расход');
 
                     if (isPlannedConsumption) {
-                        // ONLY use if we have month mapped from row above
+                        // Determine date
+                        let monthDate: string | undefined;
+
+                        // Case A: Month mapped from row above
                         if (columnToMonthMap.has(i)) {
-                            const monthDate = columnToMonthMap.get(i)!;
-                            const monthDateObj = new Date(monthDate);
-                            const isActual = monthDateObj < currentMonth;
+                            monthDate = columnToMonthMap.get(i)!;
+                        }
+                        // Case B: Date in header itself (e.g. "План 01.12.2025") usually handled by datePattern loop, but check logic
+                        // If datePattern loop handled it, it pushed to plannedConsumption with isActual based on date.
+                        // We need to ensure we don't double add, OR if datePattern added it as Actual, we might want to correct it to Plan?
+                        // But datePattern loop usually skips text headers.
+
+                        if (monthDate) {
+                            // CRITICAL FIX V2.18: If explicit "Plan" column, ALWAYS treat as Plan (isActual = false)
+                            // Even if date is in the past (e.g. importing Plan for Dec 2025 in Jan 2026).
+                            // User wants to see this in "Planned Consumption" table.
+                            const isActual = false;
 
                             const value = row[headers[i]] || row[`__EMPTY_${i}`];
                             const quantity = Number(value) || 0;
@@ -804,10 +816,19 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                             // Only add non-zero quantities
                             if (quantity > 0) {
                                 // Check if we already have this month from month name columns
-                                const existing = plannedConsumption.find(pc => pc.date === monthDate);
-                                if (!existing) {
+                                const existingIndex = plannedConsumption.findIndex(pc => pc.date === monthDate);
+                                if (existingIndex === -1) {
                                     plannedConsumption.push({ date: monthDate, quantity, isActual });
-                                    console.log(`[Excel Import] Item "${name}" (code: ${code}): Column ${i} "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
+                                    console.log(`[Excel Import V2.18] Item "${name}" (code: ${code}): Explicit Plan Column "${header}" -> ${monthDate}, quantity: ${quantity}, FORCED PLAN (isActual: false)`);
+                                } else {
+                                    // If exists, maybe update? Or checking if previous was Actual and this is Plan?
+                                    // If previous was from "Month Name" loop, it handles "Plan" logic poorly.
+                                    // Let's override if this is explicit plan.
+                                    if (plannedConsumption[existingIndex].isActual === true) {
+                                        console.log(`[Excel Import V2.18] Overriding previous Actual with Explicit Plan for ${monthDate}`);
+                                        plannedConsumption[existingIndex].isActual = false;
+                                        plannedConsumption[existingIndex].quantity = quantity; // Trust the explicit column?
+                                    }
                                 }
                             }
                         }
@@ -966,7 +987,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.17 FORCE HISTORICAL)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.18 HISTORICAL PLAN FIX)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

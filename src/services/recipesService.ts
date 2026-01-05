@@ -203,36 +203,89 @@ export const recipesService = {
 
         // 3. Определяем, что реально нужно создать
         const itemsToCreate = skusToCheck
-            .filter(sku => !existingSkus.has(sku))
-            .map(sku => ({
-                sku: sku,
-                name: newItemsMap.get(sku)?.name || `Material ${sku}`,
-                category: 'Сырье',
-                unit: 'kg',
-                min_stock_level: 0
-            }));
+            .filter(sku => {
+                // STRICT VALIDATION: Ignore empty or "unknown" SKUs to comply with user request
+                if (!sku || sku.trim() === '' || sku.toLowerCase().includes('unknown')) {
+                    console.warn(`[RecipesService] Skipping invalid SKU during auto-create: "${sku}"`);
+                    return false;
+                }
+                return !existingSkus.has(sku);
+            })
+            .map(sku => {
+                // Use Name from Excel if available, otherwise fallback to SKU
+                // User Request: "Don't assign own indexes". We avoid "Material temp-..." names.
+                const originalName = newItemsMap.get(sku)?.name;
+                const finalName = originalName && originalName.trim() !== ''
+                    ? originalName
+                    : `Материал ${sku}`; // Clean fallback
+
+                return {
+                    sku: sku,
+                    name: finalName,
+                    category: 'Сырье',
+                    unit: 'kg',
+                    min_stock_level: 0
+                };
+            });
 
         if (itemsToCreate.length === 0) {
             console.log('[RecipesService] All items already exist.');
             return skuToIdMap;
         }
 
-        // 4. Создаем недостающие (Batch Insert)
+        // 4. Создаем недостающие (Batch Insert with Fallback)
         console.log(`[RecipesService] Creating ${itemsToCreate.length} missing items...`);
 
-        // Вставляем чанками
-        for (let i = 0; i < itemsToCreate.length; i += CHUNK_SIZE) {
-            const chunk = itemsToCreate.slice(i, i + CHUNK_SIZE);
-            const { data: createdItems, error: createError } = await supabase
-                .from('items')
-                .insert(chunk)
-                .select('id, sku');
+        const NEW_CHUNK_SIZE = 50; // Smaller chunk size for safety
 
-            if (createError) {
-                console.error('[RecipesService] Error creating items batch:', createError);
-                // Продолжаем, возможно часть удастся спасти или они уже были созданы
-            } else if (createdItems) {
-                createdItems.forEach(item => {
+        for (let i = 0; i < itemsToCreate.length; i += NEW_CHUNK_SIZE) {
+            const chunk = itemsToCreate.slice(i, i + NEW_CHUNK_SIZE);
+
+            try {
+                // Пытаемся вставить пачкой (без select, чтобы избежать проблем с RLS/Permissions)
+                const { error: batchError } = await supabase
+                    .from('items')
+                    .insert(chunk);
+
+                if (batchError) {
+                    throw batchError; // Переходим к поштучной вставке
+                }
+            } catch (batchErr) {
+                console.warn('[RecipesService] Batch insert failed, switching to single-item mode:', batchErr);
+
+                // Fallback: поштучная вставка
+                for (const item of chunk) {
+                    try {
+                        const { error: singleError } = await supabase
+                            .from('items')
+                            .insert([item]);
+
+                        if (singleError) {
+                            console.error(`[RecipesService] Failed to create item ${item.sku}:`, singleError.message);
+                        }
+                    } catch (e) {
+                        console.error(`[RecipesService] Exception creating item ${item.sku}:`, e);
+                    }
+                }
+            }
+        }
+
+        // 5. FINAL RE-FETCH (The Source of Truth)
+        // Независимо от того, как прошла вставка, запрашиваем IDs для ВСЕХ SKU
+        // Это гарантирует, что у нас будут валидные ID для всего, что есть в базе
+        console.log('[RecipesService] Re-fetching all IDs after creation...');
+
+        for (let i = 0; i < skusToCheck.length; i += NEW_CHUNK_SIZE) { // Use NEW_CHUNK_SIZE for consistency
+            const chunk = skusToCheck.slice(i, i + NEW_CHUNK_SIZE);
+            const { data: finalItems, error: finalError } = await supabase
+                .from('items')
+                .select('id, sku')
+                .in('sku', chunk);
+
+            if (finalError) {
+                console.error('[RecipesService] CRITICAL: Failed to re-fetch items:', finalError);
+            } else if (finalItems) {
+                finalItems.forEach(item => {
                     skuToIdMap.set(item.sku, item.id);
                 });
             }

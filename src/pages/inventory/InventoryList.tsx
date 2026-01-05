@@ -17,6 +17,79 @@ import ExcelImportModal from './ExcelImportModal';
 import { inventoryService } from '../../services/inventoryService';
 import type { InventoryCategory } from '../../types/inventory';
 
+// --- Helper Functions (Hoisted) ---
+
+// Function to shorten material names in the list
+const shortenMaterialName = (name: string): string => {
+    let shortened = name;
+    // Remove common packaging prefixes (order matters - check longer prefixes first)
+    const prefixesToRemove = [
+        'Картонна упаковка на чай ',
+        'Картонная упаковка на чай ',
+        'Коробка для чаю ',
+        'Коробка для чая ',
+        'Упаковка для чая ',
+        'Упаковка для чаю ',
+        'Упаковка на чай ',
+        'Картонна упаковка на чай',
+        'Картонная упаковка на чай',
+        'Коробка для чаю',
+        'Коробка для чая',
+        'Упаковка для чая',
+        'Упаковка для чаю',
+        'Упаковка на чай'
+    ];
+
+    for (const prefix of prefixesToRemove) {
+        // Check if name starts with prefix (case-insensitive)
+        if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
+            // Remove the prefix - use the length of the matched prefix from original string
+            const matchedLength = prefix.length;
+            shortened = shortened.substring(matchedLength);
+            break;
+        }
+    }
+
+    return shortened.trim();
+};
+
+// Helper to normalize rogue categories
+const normalizeCategory = (cat: string): string => {
+    if (!cat) return 'other';
+    const lower = cat.toLowerCase().trim();
+    // Maps 'арри' -> 'flavor'
+    if (lower === 'арри' || lower === 'arri' || lower === 'ароматизатори' || lower === 'ароматизаторы') return 'flavor';
+
+    return cat;
+};
+
+// Helper to determine display unit
+const getDisplayUnit = (item: InventoryItem) => {
+    const cat = normalizeCategory(item.category).toLowerCase();
+
+    // Categories that should ALWAYS be in KG
+    // "сырье, ароматизаторы, н/ф, купажи, пленки, чайное сырье"
+    const kgCategories = [
+        'tea_bulk', // Чайное сырье
+        'flavor',   // Ароматизаторы (includes 'арри')
+        'packaging_consumable', // Пленки (usually mapped here)
+        'raw_material', // Сырье (if exists)
+        'semi_finished', // Н/Ф (if exists)
+        'blend' // Купажи (if exists)
+    ];
+
+    // Also check by string match if category keys are raw
+    if (kgCategories.includes(cat) ||
+        cat.includes('сырье') || cat.includes('сировин') ||
+        cat.includes('н/ф') || cat.includes('нф') ||
+        cat.includes('купаж') || cat.includes('blend') ||
+        cat.includes('пленк') || cat.includes('плівк')) {
+        return 'kg';
+    }
+
+    return item.unit === 'pcs' ? 'шт' : item.unit;
+};
+
 export default function InventoryList() {
     const { user } = useAuth();
     const { t, language } = useLanguage();
@@ -268,76 +341,7 @@ export default function InventoryList() {
         setTransferData({ sourceWarehouseId: '', targetWarehouseId: '', itemId: '', quantity: 0 });
     };
 
-    // Function to shorten material names in the list
-    const shortenMaterialName = (name: string): string => {
-        let shortened = name;
-        // Remove common packaging prefixes (order matters - check longer prefixes first)
-        const prefixesToRemove = [
-            'Картонна упаковка на чай ',
-            'Картонная упаковка на чай ',
-            'Коробка для чаю ',
-            'Коробка для чая ',
-            'Упаковка для чая ',
-            'Упаковка для чаю ',
-            'Упаковка на чай ',
-            'Картонна упаковка на чай',
-            'Картонная упаковка на чай',
-            'Коробка для чаю',
-            'Коробка для чая',
-            'Упаковка для чая',
-            'Упаковка для чаю',
-            'Упаковка на чай'
-        ];
-
-        for (const prefix of prefixesToRemove) {
-            // Check if name starts with prefix (case-insensitive)
-            if (shortened.toLowerCase().startsWith(prefix.toLowerCase())) {
-                // Remove the prefix - use the length of the matched prefix from original string
-                const matchedLength = prefix.length;
-                shortened = shortened.substring(matchedLength);
-                break;
-            }
-        }
-
-        return shortened.trim();
-    };
-
-    // Helper to normalize rogue categories
-    const normalizeCategory = (cat: string): string => {
-        if (!cat) return 'other';
-        const lower = cat.toLowerCase().trim();
-        // Maps 'арри' -> 'flavor'
-        if (lower === 'арри' || lower === 'arri' || lower === 'ароматизатори' || lower === 'ароматизаторы') return 'flavor';
-
-        return cat;
-    };
-
-    // Helper to determine display unit
-    const getDisplayUnit = (item: InventoryItem) => {
-        const cat = normalizeCategory(item.category).toLowerCase();
-
-        // Categories that should ALWAYS be in KG
-        // "сырье, ароматизаторы, н/ф, купажи, пленки, чайное сырье"
-        const kgCategories = [
-            'tea_bulk', // Чайное сырье
-            'flavor',   // Ароматизаторы (includes 'арри')
-            'packaging_consumable', // Пленки (usually mapped here)
-            'raw_material', // Сырье (if exists)
-            'semi_finished', // Н/Ф (if exists)
-            'blend' // Купажи (if exists)
-        ];
-
-        // Also check by string match if category keys are raw
-        if (kgCategories.includes(cat) ||
-            cat.includes('сырье') || cat.includes('сировин') ||
-            cat.includes('н/ф') || cat.includes('нф') ||
-            cat.includes('купаж') || cat.includes('blend') ||
-            cat.includes('пленк') || cat.includes('плівк')) {
-            return 'kg';
-        }
-
-        return item.unit === 'pcs' ? 'шт' : item.unit;
-    };
+    // Old function definitions removed (hoisted to top)
 
     const handleItemClick = (item: typeof inventoryCombined[0]) => {
         setSelectedItem(item);

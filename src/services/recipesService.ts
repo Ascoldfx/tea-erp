@@ -166,6 +166,49 @@ export const recipesService = {
                 materials_accepted_date: recipe.materialsAcceptedDate || undefined
             };
 
+            // PRE-FLIGHT: Auto-create any missing "temp" materials to ensure they have real IDs
+            // This fixes the "Empty Tech Card" issue where DB rejects ingredients with NULL item_id
+            const tempIngredients = recipe.ingredients?.filter(ing => ing.itemId.startsWith('temp-')) || [];
+
+            if (tempIngredients.length > 0) {
+                console.log(`[RecipesService] Found ${tempIngredients.length} temp ingredients. Auto-creating them as real items...`);
+
+                const newItems = tempIngredients.map(ing => ({
+                    sku: ing.tempMaterial?.sku || ing.itemId.replace('temp-', ''),
+                    name: ing.tempMaterial?.name || `Material ${ing.itemId}`,
+                    type: 'material',
+                    category: 'Сырье', // Default category
+                    unit: 'kg', // Default unit, user can change later
+                    min_stock_level: 0
+                }));
+
+                // Upsert items based on SKU to get their IDs (or create if missing)
+                const { data: createdItems, error: createError } = await supabase
+                    .from('items')
+                    .upsert(newItems, { onConflict: 'sku' })
+                    .select('id, sku');
+
+                if (createError) {
+                    console.error('[RecipesService] Failed to auto-create items:', createError);
+                    // We continue, but these might fail to save as ingredients
+                } else if (createdItems) {
+                    // Map the new real IDs back to the ingredients
+                    const skuToIdMap = new Map(createdItems.map(item => [item.sku, item.id]));
+
+                    recipe.ingredients = recipe.ingredients.map(ing => {
+                        if (ing.itemId.startsWith('temp-')) {
+                            const sku = ing.tempMaterial?.sku || ing.itemId.replace('temp-', '');
+                            const realId = skuToIdMap.get(sku);
+                            if (realId) {
+                                return { ...ing, itemId: realId, tempMaterial: undefined };
+                            }
+                        }
+                        return ing;
+                    });
+                    console.log(`[RecipesService] Successfully resolved ${createdItems.length} temp ingredients to real IDs`);
+                }
+            }
+
             const { error: recipeError } = await supabase
                 .from('recipes')
                 .upsert(recipeData, { onConflict: 'id' });

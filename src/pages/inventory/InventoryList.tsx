@@ -21,6 +21,7 @@ import type { InventoryCategory } from '../../types/inventory';
 
 // Function to shorten material names in the list
 const shortenMaterialName = (name: string): string => {
+    if (!name) return '';
     let shortened = name;
     // Remove common packaging prefixes (order matters - check longer prefixes first)
     const prefixesToRemove = [
@@ -143,37 +144,38 @@ export default function InventoryList() {
         };
 
         items.forEach(item => {
+            // Safety checks
+            if (!item) return;
+
             const normCat = normalizeCategory(item.category);
             const normSku = normalizeSku(item.sku);
+            const itemName = item.name || ''; // Ensure name is string
 
             // If this SKU already exists, merge it
             if (skuMap.has(normSku)) {
                 const existing = skuMap.get(normSku);
-
-                // 1. Merge Stock (will be recalculated in inventoryCombined, but good to have base merged)
-                // Actually relying on inventoryCombined to sum stock is safer, but we need to MERGE the item definitions
-                // primarily to pick the BEST CATEGORY and BEST NAME.
+                const existingName = existing.name || '';
 
                 // Pick best category
                 if (getCategoryPriority(normCat) > getCategoryPriority(existing.category)) {
                     existing.category = normCat;
+                    // IMPORTANT: If we upgrade category (e.g. from Raw Material to Cardboard),
+                    // we MUST also take the unit from this better item (items in Raw Material often erroneously have 'kg')
+                    existing.unit = item.unit;
                 }
 
                 // Pick longest name (usually most descriptive)
-                if (item.name.length > existing.name.length) {
-                    existing.name = item.name;
+                if (itemName.length > existingName.length) {
+                    existing.name = itemName;
                 }
 
-                // Keep track of merged IDs if we needed to sum stock manually later, 
-                // but for now inventoryCombined filters by item.id. 
-                // WAIT: inventoryCombined iterates `normalizedItems`. If we reduce 5 items to 1,
-                // we only get 1 row. But `stock` array still has entries for 5 different Item IDs.
-                // So we need to map the "Merged Item" to possess ALL IDs of its children.
+                // Keep track of merged IDs
                 existing.mergedIds = [...(existing.mergedIds || []), item.id];
 
             } else {
                 skuMap.set(normSku, {
                     ...item,
+                    name: itemName, // Ensure name is not null
                     category: normCat,
                     mergedIds: [item.id] // Track own ID
                 });

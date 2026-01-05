@@ -31,6 +31,8 @@ export const recipesService = {
     /**
      * Получить все техкарты из базы данных
      */
+    _debugLoggedOnce: false,
+
     async getRecipes(): Promise<Recipe[]> {
         if (!supabase) {
             console.warn('[RecipesService] Supabase not available');
@@ -335,16 +337,32 @@ export const recipesService = {
             if (recipe.ingredients) {
                 recipe.ingredients.forEach(ing => {
                     let realItemId = ing.itemId;
-                    let tempSku = ing.tempMaterial?.sku;
+                    const tempSku = ing.tempMaterial?.sku;
 
                     // Если это temp-ID, пробуем найти реальный UUID
                     if (ing.itemId.startsWith('temp-')) {
-                        const skuToCheck = tempSku || ing.itemId.replace('temp-', '');
+                        // Normalized lookup key: prioritize tempMaterial.sku, fallback to parsing ID
+                        // Normalized lookup key: prioritize tempMaterial.sku, fallback to parsing ID
+                        const rawSkuToCheck = tempSku || ing.itemId.replace('temp-', '');
+                        const skuToCheck = rawSkuToCheck ? String(rawSkuToCheck).trim() : '';
+
                         const resolveId = resolvedSkus.get(skuToCheck);
+
                         if (resolveId) {
                             realItemId = resolveId;
                         } else {
-                            console.warn(`[RecipesService] ⚠️ Could not resolve SKU ${skuToCheck} for ingredient in ${recipe.name}. Skipping.`);
+                            // VERBOSE DEBUG: Why is it missing?
+                            if (!(this as any)._debugLoggedOnce) {
+                                console.log('[RecipesService] DEBUG SKU LOOKUP FAIL:', {
+                                    lookingFor: skuToCheck,
+                                    mapHasSku: resolvedSkus.has(skuToCheck),
+                                    mapSize: resolvedSkus.size,
+                                    sampleKeys: Array.from(resolvedSkus.keys()).slice(0, 5)
+                                });
+                                (this as any)._debugLoggedOnce = true;
+                            }
+
+                            console.warn(`[RecipesService] ⚠️ Could not resolve SKU "${skuToCheck}" for ingredient in "${recipe.name}". Skipping.`);
                             return; // SKIP this ingredient
                         }
                     }

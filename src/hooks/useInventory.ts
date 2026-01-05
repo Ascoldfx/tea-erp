@@ -20,35 +20,53 @@ export function useInventory() {
             setItems(fetchedItems);
             setWarehouses(fetchedWarehouses);
             setStock(fetchedStock);
-            
+
             // Fetch all planned consumption for filtering
             if (fetchedItems.length > 0) {
                 const { supabase } = await import('../lib/supabase');
                 if (supabase) {
-                    const { data, error } = await supabase
-                        .from('planned_consumption')
-                        .select('*');
-                    if (error) {
-                        console.error('Error fetching planned consumption:', error);
-                    } else {
-                        console.log(`[useInventory] Loaded ${data?.length || 0} planned consumption entries`);
-                        if (data && data.length > 0) {
-                            console.log('[useInventory] Sample planned consumption (raw):', data.slice(0, 3));
-                            // Transform snake_case DB columns to camelCase TS interface
-                            const transformed = data.map((pc: any) => ({
-                                id: pc.id,
-                                itemId: pc.item_id,
-                                plannedDate: pc.planned_date,
-                                quantity: pc.quantity || 0,
-                                notes: pc.notes || null,
-                                createdAt: pc.created_at,
-                                updatedAt: pc.updated_at
-                            }));
-                            console.log('[useInventory] Sample planned consumption (transformed):', transformed.slice(0, 3));
-                            setPlannedConsumption(transformed);
-                        } else {
-                            setPlannedConsumption([]);
+                    let allPlannedConsumption: any[] = [];
+                    let from = 0;
+                    let hasMore = true;
+                    const BATCH_SIZE = 1000;
+
+                    while (hasMore) {
+                        const { data, error } = await supabase
+                            .from('planned_consumption')
+                            .select('*')
+                            .range(from, from + BATCH_SIZE - 1);
+
+                        if (error) {
+                            console.error('Error fetching planned consumption batch:', error);
+                            break;
                         }
+
+                        if (data && data.length > 0) {
+                            allPlannedConsumption = [...allPlannedConsumption, ...data];
+                            from += BATCH_SIZE;
+                            if (data.length < BATCH_SIZE) hasMore = false;
+                        } else {
+                            hasMore = false;
+                        }
+                    }
+
+                    const data = allPlannedConsumption;
+                    console.log(`[useInventory] Loaded ${data.length} planned consumption entries`);
+
+                    if (data.length > 0) {
+                        // Transform snake_case DB columns to camelCase TS interface
+                        const transformed = data.map((pc: any) => ({
+                            id: pc.id,
+                            itemId: pc.item_id,
+                            plannedDate: pc.planned_date,
+                            quantity: pc.quantity || 0,
+                            notes: pc.notes || null,
+                            createdAt: pc.created_at,
+                            updatedAt: pc.updated_at
+                        }));
+                        setPlannedConsumption(transformed);
+                    } else {
+                        setPlannedConsumption([]);
                     }
                 }
             }

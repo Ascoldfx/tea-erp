@@ -122,10 +122,30 @@ export default function ProductionCalculator() {
 
         // If we have a SKU, find the real item
         if (skuToSearch) {
-            const realItem = items.find(i => i.sku === skuToSearch);
+            // Normalize for search
+            const normalizedSku = skuToSearch.trim();
+            // Try Exact Match
+            let realItem = items.find(i => i.sku === normalizedSku);
+
+            // If not found, try loose match (case insensitive)
+            if (!realItem) {
+                realItem = items.find(i => i.sku?.toLowerCase() === normalizedSku.toLowerCase());
+            }
+
             if (realItem) {
                 // Sum stock for the REAL item ID
-                return stock.filter(s => s.itemId === realItem.id).reduce((acc, curr) => acc + curr.quantity, 0);
+                const val = stock.filter(s => s.itemId === realItem.id).reduce((acc, curr) => acc + curr.quantity, 0);
+                if (val > 0) return val;
+
+                // Debug log if we found the item but stock is 0 (might be legitimate 0, but worth checking)
+                // console.log(`[Calc] Found item "${realItem.name}" via SKU "${skuToSearch}" but stock is 0.`);
+                return 0;
+            } else {
+                // DEBUG: Only log for likely false negatives (has SKU but no item found)
+                // Filter out obviously fake SKUs if needed
+                if (!skuToSearch.includes('unknown')) {
+                    console.warn(`[Calc] Failed to resolve SKU "${skuToSearch}" to any Item in Inventory. (Original Item ID: ${itemId})`);
+                }
             }
         }
 

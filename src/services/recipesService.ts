@@ -115,6 +115,14 @@ export const recipesService = {
 
                     ingredientsMap.get(ing.recipe_id)!.push(ingredient);
                 });
+
+                // DEBUG: Log distribution
+                const zeroIngs = recipesData.filter(r => !ingredientsMap.has(r.id) || ingredientsMap.get(r.id)!.length === 0);
+                const someIngs = recipesData.filter(r => ingredientsMap.has(r.id) && ingredientsMap.get(r.id)!.length > 0);
+                console.log(`[RecipesService] DEBUG: ${someIngs.length} recipes have ingredients, ${zeroIngs.length} recipes have ZERO ingredients.`);
+                if (zeroIngs.length > 0) {
+                    console.log('[RecipesService] Sample EMPTY recipes:', zeroIngs.slice(0, 3).map(r => `${r.name} (${r.id})`));
+                }
             }
 
             // Преобразуем в формат Recipe
@@ -181,31 +189,53 @@ export const recipesService = {
                     min_stock_level: 0
                 }));
 
-                // Upsert items based on SKU to get their IDs (or create if missing)
-                const { data: createdItems, error: createError } = await supabase
+                // MANUAL UPSERT ALTERNATIVE (Since 'sku' might not have UNIQUE constraint)
+                const skus = newItems.map(i => i.sku);
+
+                // 1. Find existing items
+                const { data: existingItemsData, error: fetchError } = await supabase
                     .from('items')
-                    .upsert(newItems, { onConflict: 'sku' })
-                    .select('id, sku');
+                    .select('id, sku')
+                    .in('sku', skus);
 
-                if (createError) {
-                    console.error('[RecipesService] Failed to auto-create items:', createError);
-                    // We continue, but these might fail to save as ingredients
-                } else if (createdItems) {
-                    // Map the new real IDs back to the ingredients
-                    const skuToIdMap = new Map(createdItems.map(item => [item.sku, item.id]));
-
-                    recipe.ingredients = recipe.ingredients.map(ing => {
-                        if (ing.itemId.startsWith('temp-')) {
-                            const sku = ing.tempMaterial?.sku || ing.itemId.replace('temp-', '');
-                            const realId = skuToIdMap.get(sku);
-                            if (realId) {
-                                return { ...ing, itemId: realId, tempMaterial: undefined };
-                            }
-                        }
-                        return ing;
-                    });
-                    console.log(`[RecipesService] Successfully resolved ${createdItems.length} temp ingredients to real IDs`);
+                if (fetchError) {
+                    console.error('[RecipesService] Error fetching existing items for auto-create:', fetchError);
                 }
+
+                const existingSkus = new Set((existingItemsData || []).map(i => i.sku));
+                const itemsToCreate = newItems.filter(i => !existingSkus.has(i.sku));
+
+                let createdItemsData: { id: string; sku: string }[] = [];
+
+                // 2. Insert ONLY new items
+                if (itemsToCreate.length > 0) {
+                    const { data: insertedItems, error: insertError } = await supabase
+                        .from('items')
+                        .insert(itemsToCreate)
+                        .select('id, sku');
+
+                    if (insertError) {
+                        console.error('[RecipesService] Failed to insert new items:', insertError);
+                    } else {
+                        createdItemsData = insertedItems || [];
+                    }
+                }
+
+                // 3. Combine existing and created items
+                const allResolvedItems = [...(existingItemsData || []), ...createdItemsData];
+                const skuToIdMap = new Map(allResolvedItems.map(item => [item.sku, item.id]));
+
+                recipe.ingredients = recipe.ingredients.map(ing => {
+                    if (ing.itemId.startsWith('temp-')) {
+                        const sku = ing.tempMaterial?.sku || ing.itemId.replace('temp-', '');
+                        const realId = skuToIdMap.get(sku);
+                        if (realId) {
+                            return { ...ing, itemId: realId, tempMaterial: undefined };
+                        }
+                    }
+                    return ing;
+                });
+                console.log(`[RecipesService] Successfully resolved ${allResolvedItems.length} temp ingredients to real IDs`);
             }
 
             const { error: recipeError } = await supabase

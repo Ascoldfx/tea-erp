@@ -382,8 +382,8 @@ export default function ProductionCalculator() {
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-slate-400 border-b border-slate-800">
                                                 <tr>
-                                                    <th className="py-3 px-4">Компонент</th>
                                                     <th className="py-3 px-4">Артикул</th>
+                                                    <th className="py-3 px-4">Компонент</th>
                                                     <th className="py-3 px-4 text-right">На 1 ящ</th>
                                                     <th className="py-3 px-4 text-right">На остатке</th>
                                                     <th className="py-3 px-4 text-right">Хватит на</th>
@@ -395,6 +395,7 @@ export default function ProductionCalculator() {
                                                         "transition-colors hover:bg-slate-800/50",
                                                         ing.isLimiting && "bg-red-900/10"
                                                     )}>
+                                                        <td className="py-3 px-4 text-slate-400 font-mono">{ing.sku}</td>
                                                         <td className="py-3 px-4 font-medium text-slate-200">
                                                             {ing.ingredientName}
                                                             {ing.effectiveSource !== 'base' && (
@@ -408,7 +409,6 @@ export default function ProductionCalculator() {
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="py-3 px-4 text-slate-400">{ing.sku}</td>
                                                         <td className="py-3 px-4 text-right text-slate-300">{ing.requiredPerUnit}</td>
                                                         <td className="py-3 px-4 text-right text-slate-300">{ing.inStock}</td>
                                                         <td className={clsx(
@@ -449,8 +449,8 @@ export default function ProductionCalculator() {
                                             <table className="w-full text-sm text-left">
                                                 <thead className="text-slate-400 border-b border-slate-800">
                                                     <tr>
-                                                        <th className="py-3 px-4">Компонент</th>
                                                         <th className="py-3 px-4">Артикул</th>
+                                                        <th className="py-3 px-4">Компонент</th>
                                                         <th className="py-3 px-4 text-right">Потребуется</th>
                                                         <th className="py-3 px-4 text-right">Есть на складе</th>
                                                         <th className="py-3 px-4 text-right">Баланс</th>
@@ -459,8 +459,8 @@ export default function ProductionCalculator() {
                                                 <tbody className="divide-y divide-slate-800">
                                                     {planningResults.ingredients.map((ing, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-800/50 transition-colors">
+                                                            <td className="py-3 px-4 text-slate-400 font-mono">{ing.sku}</td>
                                                             <td className="py-3 px-4 font-medium text-slate-200">{ing.ingredientName}</td>
-                                                            <td className="py-3 px-4 text-slate-400">{ing.sku}</td>
                                                             <td className="py-3 px-4 text-right text-slate-300">{ing.requiredTotal.toFixed(2)}</td>
                                                             <td className="py-3 px-4 text-right text-slate-300">{ing.inStock}</td>
                                                             <td className={clsx(

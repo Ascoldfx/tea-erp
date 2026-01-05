@@ -631,7 +631,7 @@ export const inventoryService = {
                     // If date field doesn't exist, Supabase will ignore it
                     // The created_at will be set automatically
                     try {
-                        movementData.date = m.date;
+                        movementData.created_at = m.date;
                     } catch (e) {
                         // Ignore if date field doesn't exist
                     }

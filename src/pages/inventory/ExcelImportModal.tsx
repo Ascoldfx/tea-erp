@@ -153,33 +153,44 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
 
-            // Helper function to parse month name to date string (ROBUST V2.14)
+            // Helper function to parse month name to date string (ROBUST V2.15)
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const cleanInput = String(monthName || '').trim();
                 let monthLower = cleanInput.toLowerCase();
 
-                // 1. SEEK EXPLICIT YEAR: Search for 2000-2099 anywhere in the string
-                // converting "Декабрь 2025" -> explicitYear = 2025
+                // 1. SEEK EXPLICIT YEAR
                 let explicitYear: number | undefined = undefined;
-                const yearMatch = cleanInput.match(/20\d{2}/);
-                if (yearMatch) {
-                    explicitYear = parseInt(yearMatch[0]);
-                    // Remove year from string to avoid interference with month matching (optional, but cleaner)
+
+                // Strategy A: Full Year "2025"
+                const fullYearMatch = cleanInput.match(/20\d{2}/);
+                if (fullYearMatch) {
+                    explicitYear = parseInt(fullYearMatch[0]);
+                }
+                // Strategy B: Short Year "25", "26" at word boundary or after dot/space
+                // Look for 21-30 (reasonable range for now)
+                else {
+                    const shortYearMatch = cleanInput.match(/(?:^|[\s\.\-])(2[1-9])(?:\b|$)/);
+                    if (shortYearMatch) {
+                        const yy = parseInt(shortYearMatch[1]);
+                        explicitYear = 2000 + yy;
+                    }
                 }
 
+                // Expanded map with short names (MMM) for Cyrillic
+                // Based on "дек.25" screenshot
                 const monthMap: Record<string, number> = {
-                    'январь': 1, 'января': 1, 'січень': 1, 'січня': 1, 'january': 1, 'jan': 1,
-                    'февраль': 2, 'февраля': 2, 'лютий': 2, 'лютого': 2, 'february': 2, 'feb': 2,
-                    'март': 3, 'марта': 3, 'березень': 3, 'березня': 3, 'march': 3, 'mar': 3,
-                    'апрель': 4, 'апреля': 4, 'квітень': 4, 'квітня': 4, 'april': 4, 'apr': 4,
-                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5, 'may': 5,
-                    'июнь': 6, 'июня': 6, 'червень': 6, 'червня': 6, 'june': 6, 'jun': 6,
-                    'июль': 7, 'июля': 7, 'липень': 7, 'липня': 7, 'july': 7, 'jul': 7,
-                    'август': 8, 'августа': 8, 'серпень': 8, 'серпня': 8, 'august': 8, 'aug': 8,
-                    'сентябрь': 9, 'сентября': 9, 'вересень': 9, 'вересня': 9, 'september': 9, 'sep': 9,
-                    'октябрь': 10, 'октября': 10, 'жовтень': 10, 'жовтня': 10, 'october': 10, 'oct': 10,
-                    'ноябрь': 11, 'ноября': 11, 'листопад': 11, 'листопада': 11, 'november': 11, 'nov': 11,
-                    'декабрь': 12, 'декабря': 12, 'грудень': 12, 'грудня': 12, 'december': 12, 'dec': 12
+                    'январь': 1, 'января': 1, 'янв': 1, 'січень': 1, 'січня': 1, 'січ': 1, 'january': 1, 'jan': 1,
+                    'февраль': 2, 'февраля': 2, 'фев': 2, 'лютий': 2, 'лютого': 2, 'лют': 2, 'february': 2, 'feb': 2,
+                    'март': 3, 'марта': 3, 'мар': 3, 'березень': 3, 'березня': 3, 'бер': 3, 'march': 3, 'mar': 3,
+                    'апрель': 4, 'апреля': 4, 'апр': 4, 'квітень': 4, 'квітня': 4, 'кві': 4, 'april': 4, 'apr': 4,
+                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5, 'тра': 5, 'may': 5,
+                    'июнь': 6, 'июня': 6, 'июн': 6, 'червень': 6, 'червня': 6, 'чер': 6, 'june': 6, 'jun': 6,
+                    'июль': 7, 'июля': 7, 'июл': 7, 'липень': 7, 'липня': 7, 'лип': 7, 'july': 7, 'jul': 7,
+                    'август': 8, 'августа': 8, 'авг': 8, 'серпень': 8, 'серпня': 8, 'сер': 8, 'august': 8, 'aug': 8,
+                    'сентябрь': 9, 'сентября': 9, 'сен': 9, 'вересень': 9, 'вересня': 9, 'вер': 9, 'september': 9, 'sep': 9,
+                    'октябрь': 10, 'октября': 10, 'окт': 10, 'жовтень': 10, 'жовтня': 10, 'жов': 10, 'october': 10, 'oct': 10,
+                    'ноябрь': 11, 'ноября': 11, 'ноя': 11, 'листопад': 11, 'листопада': 11, 'лис': 11, 'november': 11, 'nov': 11,
+                    'декабрь': 12, 'декабря': 12, 'дек': 12, 'грудень': 12, 'грудня': 12, 'гру': 12, 'december': 12, 'dec': 12
                 };
 
                 // Find which month key exists in the input string
@@ -202,10 +213,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                     let finalYear = year || currentYear;
 
-                    // PRIORITY 1: EXPLICIT YEAR
+                    // PRIORITY 1: EXPLICIT YEAR (Full "2025" or Short "25")
                     if (explicitYear) {
                         finalYear = explicitYear;
-                        console.log(`[Parse V2.14] "${cleanInput}" -> Found Explicit Year: ${finalYear}, Month: ${foundMonth}`);
+                        console.log(`[Parse V2.15] "${cleanInput}" -> Found Explicit Year: ${finalYear}, Month: ${foundMonth}`);
                     }
                     // PRIORITY 2: INFERENCE (Only if no explicit year found)
                     else {
@@ -214,7 +225,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         // Then assume previous year (Historical Data context)
                         if (finalYear === currentYear && foundMonth > currentMonth + 2) {
                             finalYear = finalYear - 1;
-                            console.log(`[Parse V2.14] "${cleanInput}" -> Inferred Previous Year: ${finalYear} (was ${currentYear})`);
+                            console.log(`[Parse V2.15] "${cleanInput}" -> Inferred Previous Year: ${finalYear} (was ${currentYear})`);
                         }
                     }
 
@@ -953,7 +964,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.14 LOGIC REWORK)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.15 SHORT FORMAT)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

@@ -290,27 +290,27 @@ export default function ProductionPlanning() {
                 if (movementsError) throw movementsError;
 
                 // Filter by month - prefer 'date' field if available, otherwise use 'created_at'
+                // Filter by month using robust string matching
+                const targetPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+
                 const filteredMovements = (movements || []).filter(movement => {
                     // Try 'date' field first (used for imported actual consumption)
-                    // Date is stored as YYYY-MM-15 (15th of month) for imported data
-                    if (movement.date) {
-                        const movementDate = new Date(movement.date);
-                        if (!isNaN(movementDate.getTime())) {
-                            const movementYear = movementDate.getFullYear();
-                            const movementMonth = movementDate.getMonth();
-                            const matches = movementYear === selectedYear && movementMonth === selectedMonth;
-                            if (matches) {
-                                console.log(`[ProductionPlanning] Matched actual consumption: item_id=${movement.item_id}, date=${movement.date}, quantity=${movement.quantity}`);
-                            }
-                            return matches;
+                    // Date is stored as YYYY-MM-DD
+                    if (movement.date && typeof movement.date === 'string') {
+                        if (movement.date.startsWith(targetPrefix)) {
+                            return true;
                         }
                     }
 
-                    // Fallback to 'created_at' (for manually created movements)
+                    // Fallback to 'created_at' if date is missing
                     if (movement.created_at) {
-                        const movementDate = new Date(movement.created_at);
-                        if (!isNaN(movementDate.getTime())) {
-                            return movementDate.getFullYear() === selectedYear && movementDate.getMonth() === selectedMonth;
+                        try {
+                            const d = new Date(movement.created_at);
+                            const y = d.getFullYear();
+                            const m = d.getMonth(); // 0-11
+                            return y === selectedYear && m === selectedMonth;
+                        } catch (e) {
+                            return false;
                         }
                     }
 

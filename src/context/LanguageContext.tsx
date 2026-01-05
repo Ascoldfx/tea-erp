@@ -134,6 +134,9 @@ const translations: Record<Language, Record<string, string>> = {
         'production.warning': 'Внимание',
         'production.ok': 'ОК',
         'production.noData': 'Нет данных для отображения',
+        'production.weeklySchedule': 'Недельный план / Факт',
+        'production.schedule': 'График партий',
+        'production.scheduleDesc': 'Недельный план производства и фактический выпуск',
 
         // Settings
         'settings.title': 'Настройки',
@@ -423,6 +426,9 @@ const translations: Record<Language, Record<string, string>> = {
         'production.warning': 'Увага',
         'production.ok': 'ОК',
         'production.noData': 'Немає даних для відображення',
+        'production.weeklySchedule': 'Тижневий план / Факт',
+        'production.schedule': 'Графік партій',
+        'production.scheduleDesc': 'Тижневий план виробництва та фактичний випуск',
 
         // Settings
         'settings.title': 'Налаштування',

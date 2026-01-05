@@ -252,7 +252,13 @@ export default function TechCardsList() {
             // ВАЖНО: Перезагружаем список из базы данных после сохранения
             // Это гарантирует, что мы видим актуальные данные, сохраненные в БД
             console.log('[TechCardsList] Перезагружаем список тех.карт из базы данных...');
-            await loadRecipes();
+
+            // Force refresh inventory items to ensure new auto-created items are visible
+            // This prevents "Unknown Item" display issues
+            window.location.reload(); // Hard reload is safest to reset all caches for now, given the urgency
+            return;
+
+            // await loadRecipes(); // (Commented out because reload will do it)
 
             // Проверяем результат загрузки
             const currentRecipes = await recipesService.getRecipes();

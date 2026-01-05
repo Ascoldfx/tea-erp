@@ -267,8 +267,12 @@ export function parseTechCardsFromExcel(
 
     // 1. Находим строку заголовков
     let headerRowIndex = -1;
-    // Expanded keywords to be more robust
-    const headerKeywords = ['артикул гп', 'назва гп', 'название гп', 'артикул ксм', 'назва ксм', 'эталон', 'норма', 'ingredients', 'компонент'];
+    // Expanded keywords to be more robust (RU + UA)
+    const headerKeywords = [
+        'артикул гп', 'назва гп', 'название гп', 'артикул', 'name',
+        'артикул ксм', 'назва ксм', 'артикул сировини', 'назва сировини', 'код ксм', 'код сировини',
+        'эталон', 'еталон', 'норма', 'ingredients', 'компонент', 'сировина', 'матеріал'
+    ];
 
     // Scan deeper - up to 100 rows
     for (let i = 0; i < Math.min(100, rawData.length); i++) {
@@ -312,13 +316,13 @@ export function parseTechCardsFromExcel(
         return idx !== -1 ? idx : defaultIdx;
     };
 
-    const gpSkuIndex = findCol(['артикул гп', 'код гп', 'gp sku'], 0);
-    const gpNameIndex = findCol(['назва гп', 'название гп', 'gp name', 'продукция'], 1);
-    const materialCategoryIndex = findCol(['група ксм', 'категория', 'category'], 2);
-    const materialSkuIndex = findCol(['артикул ксм', 'код ксм', 'код компонента', 'sku', 'art'], 3);
-    const materialNameIndex = findCol(['назва ксм', 'название ксм', 'компонент', 'материал', 'name'], 4);
-    const unitIndex = findCol(['од. вим.', 'ед. изм.', 'unit'], 5);
-    const normIndex = findCol(['еталон', 'норма', 'norm', 'quantity'], 6);
+    const gpSkuIndex = findCol(['артикул гп', 'код гп', 'gp sku', 'артикул', 'sku'], 0);
+    const gpNameIndex = findCol(['назва гп', 'название гп', 'gp name', 'продукция', 'назва', 'name'], 1);
+    const materialCategoryIndex = findCol(['група ксм', 'категория', 'category', 'група', 'group'], 2);
+    const materialSkuIndex = findCol(['артикул ксм', 'код ксм', 'код компонента', 'sku', 'art', 'артикул сировини', 'код сировини', 'артикул матеріалу', 'код матеріалу'], 3);
+    const materialNameIndex = findCol(['назва ксм', 'название ксм', 'компонент', 'материал', 'name', 'назва сировини', 'назва матеріалу', 'сировина', 'матеріал'], 4);
+    const unitIndex = findCol(['од. вим.', 'ед. изм.', 'unit', 'од.', 'ед.'], 5);
+    const normIndex = findCol(['еталон', 'норма', 'norm', 'quantity', 'кількість'], 6);
 
     console.log('[parseTechCardsFromExcel] DYNAMIC COLUMN DETECTION:', {
         gpSkuIndex,

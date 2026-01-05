@@ -35,7 +35,7 @@ export default function InventoryList() {
     // Filtering
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | 'all'>('all');
-    const [showZeroStockCardboard, setShowZeroStockCardboard] = useState(false);
+    const [showZeroBalance, setShowZeroBalance] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [transferData, setTransferData] = useState({
@@ -141,27 +141,30 @@ export default function InventoryList() {
                 const locationMatch = item.storage_location?.toLowerCase().includes(query);
 
                 if (!skuMatch && !nameMatch && !locationMatch) return false;
+
+                // If search matches, we ALWAYS show the item (bypassing zero stock filter)
+                return true;
             }
 
             // Filter by warehouse
-            if (selectedWarehouseId && item.totalStock === 0) return false;
+            // If a warehouse is selected, item.totalStock is only stock in that warehouse
+            // If showZeroBalance is FALSE, hide items with 0 stock in this warehouse
+            if (selectedWarehouseId && item.totalStock === 0 && !showZeroBalance) return false;
 
             // Filter by category
-            if (selectedCategory === 'all') return true;
+            if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
 
-            // Exact match for specific categories
-            const matches = item.category === selectedCategory;
-
-            // Hide cardboard packaging with zero stock and zero planned consumption
-            if (item.category === 'packaging_cardboard' && !showZeroStockCardboard) {
-                if (item.totalStock === 0 && item.totalPlannedConsumption === 0) {
-                    return false; // Hide this item
+            // Global Zero Stock Filter
+            // If NOT searching (search handled above) AND NOT showZeroBalance -> Hide Zero Stock items
+            if (!showZeroBalance) {
+                if (item.totalStock <= 0) {
+                    return false;
                 }
             }
 
-            return matches;
+            return true;
         });
-    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroStockCardboard, searchQuery]);
+    }, [selectedWarehouseId, selectedCategory, items, stock, plannedConsumption, showZeroBalance, searchQuery]);
 
     const handleDeleteItem = async () => {
         if (!itemToDelete) return;
@@ -337,26 +340,24 @@ export default function InventoryList() {
                 </div>
             </div>
 
-            {/* Button to show zero stock cardboard */}
-            {(selectedCategory === 'all' || selectedCategory === 'packaging_cardboard') && (
-                <div className="flex items-center gap-2 pb-2">
-                    <button
-                        onClick={() => setShowZeroStockCardboard(!showZeroStockCardboard)}
-                        className={clsx(
-                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
-                            showZeroStockCardboard
-                                ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40"
-                                : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
-                        )}
-                    >
-                        <Filter className="w-4 h-4" />
-                        {showZeroStockCardboard
-                            ? (t('materials.hideZeroStockCardboard') || 'Скрыть картонную упаковку с нулевыми остатками')
-                            : (t('materials.showZeroStockCardboard') || 'Показать картонную упаковку с нулевыми остатками')
-                        }
-                    </button>
-                </div>
-            )}
+            {/* Button to show zero stock items */}
+            <div className="flex items-center gap-2 pb-2">
+                <button
+                    onClick={() => setShowZeroBalance(!showZeroBalance)}
+                    className={clsx(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
+                        showZeroBalance
+                            ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40"
+                            : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
+                    )}
+                >
+                    <Filter className="w-4 h-4" />
+                    {showZeroBalance
+                        ? (t('materials.hideZeroBalance') || 'Скрыть с нулевым остатком')
+                        : (t('materials.showZeroBalance') || 'Показать с нулевым остатком')
+                    }
+                </button>
+            </div>
 
             {/* Category Filter - Only Dynamic Categories from Database */}
             <div className="flex flex-wrap gap-2 pb-4 items-center">

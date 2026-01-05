@@ -25,7 +25,7 @@ const translations: Record<Language, Record<string, string>> = {
         'common.all': 'Все',
         'common.yes': 'Да',
         'common.no': 'Нет',
-        
+
         // Navigation
         'nav.orders': 'Заказы',
         'nav.materials': 'Материалы',
@@ -34,7 +34,7 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.logistics': 'Календарь',
         'nav.calculator': 'Калькулятор',
         'nav.contractors': 'Подрядчики',
-        
+
         // Contractors
         'contractors.subtitle': 'Управление подрядчиками по фасовке чая',
         'contractors.search': 'Поиск по названию или коду...',
@@ -67,7 +67,7 @@ const translations: Record<Language, Record<string, string>> = {
         'contractors.doubleClickToDetails': 'Двойной клик для просмотра деталей',
         'contractors.searchMaterials': 'Поиск по названию или артикулу...',
         'contractors.noMaterialsFound': 'Материалы не найдены',
-        
+
         // Materials details
         'materials.usedInProducts': 'Используется в готовой продукции',
         'materials.techCard': 'Техкарта',
@@ -76,7 +76,7 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.users': 'Пользователи',
         'nav.settings': 'Настройки',
         'nav.logout': 'Выйти',
-        
+
         // Calendar
         'calendar.title': 'Календарь',
         'calendar.subtitle': 'Планирование производства и логистики',
@@ -94,7 +94,7 @@ const translations: Record<Language, Record<string, string>> = {
         'calendar.materialsAvailability': 'Наличие материалов',
         'calendar.add': 'Добавить',
         'calendar.addMoreOrClose': 'Добавьте еще позиции или закройте окно',
-        
+
         // Production
         'production.title': 'Производство',
         'production.subtitle': 'Планирование и учет производства',
@@ -134,7 +134,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.warning': 'Внимание',
         'production.ok': 'ОК',
         'production.noData': 'Нет данных для отображения',
-        
+
         // Settings
         'settings.title': 'Настройки',
         'settings.subtitle': 'Конфигурация системы и управление доступом',
@@ -144,7 +144,7 @@ const translations: Record<Language, Record<string, string>> = {
         'settings.tab.users': 'Пользователи',
         'settings.tab.general': 'Импорт и Общие',
         'settings.tab.dev': 'Dev Tools (Roles)',
-        
+
         // Materials
         'materials.title': 'Материалы',
         'materials.subtitle': 'Управление запасами сырья, упаковки и материалов',
@@ -176,8 +176,8 @@ const translations: Record<Language, Record<string, string>> = {
         'materials.article': 'Артикул',
         'materials.copy': 'Копировать',
         'materials.copied': 'Скопировано',
-        'materials.showZeroStockCardboard': 'Показать картонную упаковку с нулевыми остатками',
-        'materials.hideZeroStockCardboard': 'Скрыть картонную упаковку с нулевыми остатками',
+        'materials.showZeroBalance': 'Показать с нулевым остатком',
+        'materials.hideZeroBalance': 'Скрыть с нулевым остатком',
         'materials.name': 'Наименование',
         'materials.location': 'Местонахождение',
         'materials.location.main': 'СКЛАД',
@@ -192,7 +192,7 @@ const translations: Record<Language, Record<string, string>> = {
         'materials.status.ok': 'В норме',
         'materials.deleteConfirm': 'Вы уверены, что хотите удалить материал',
         'materials.deleteWarning': 'Это действие нельзя отменить. Все связанные данные (остатки, заказы) также будут удалены.',
-        
+
         // Suppliers
         'suppliers.title': 'Поставщики',
         'suppliers.subtitle': 'Управление контрагентами и история заказов',
@@ -202,13 +202,13 @@ const translations: Record<Language, Record<string, string>> = {
         'suppliers.ordersHistory': 'История заказов',
         'suppliers.deleteConfirm': 'Вы уверены, что хотите удалить поставщика',
         'suppliers.deleteWarning': 'Это действие нельзя отменить. Поставщик с существующими заказами не может быть удален.',
-        
+
         // Orders
         'orders.title': 'Заказы',
         'orders.subtitle': 'История и статус текущих заказов',
         'orders.loading': 'Загрузка заказов...',
         'orders.suppliers': 'Заказы поставщикам',
-        
+
         // Users
         'users.title': 'Пользователи',
         'users.subtitle': 'Управление пользователями и ролями',
@@ -231,7 +231,7 @@ const translations: Record<Language, Record<string, string>> = {
         'users.status': 'Статус',
         'users.status.active': 'Активен',
         'users.saveChanges': 'Сохранить изменения',
-        
+
         // Settings - additional
         'settings.inviteUser': 'Пригласить пользователя',
         'settings.usersList': 'Список пользователей',
@@ -243,7 +243,7 @@ const translations: Record<Language, Record<string, string>> = {
         'settings.currentRole': 'Текущая роль:',
         'settings.roleSwitcherDisabled': '⚠️ Role switcher отключен. Используйте реальную аутентификацию через страницу входа.',
         'settings.requiresRealUser': 'требует реального пользователя',
-        
+
         // Excel Import
         'excel.title': 'Импорт из Excel',
         'excel.uploadFile': 'Загрузите файл Excel',
@@ -269,7 +269,7 @@ const translations: Record<Language, Record<string, string>> = {
         'excel.previewCategory': 'Категория',
         'excel.previewWarehouse': 'Склад',
         'excel.previewProduction': 'Цех',
-        
+
         // Suppliers - additional
         'suppliers.loading': 'Загрузка поставщиков...',
         'suppliers.edit': 'Редактировать',
@@ -280,11 +280,11 @@ const translations: Record<Language, Record<string, string>> = {
         'suppliers.contactPerson': 'Контактное лицо',
         'suppliers.phone': 'Телефон',
         'suppliers.email': 'Email',
-        
+
         // Materials - additional
         'materials.deleteTitle': 'Подтверждение удаления',
         'materials.deleteMaterial': 'Удалить материал',
-        
+
         // Common - additional
         'common.back': 'Назад',
         'common.send': 'Отправить',
@@ -292,7 +292,7 @@ const translations: Record<Language, Record<string, string>> = {
         'common.saveChanges': 'Сохранить изменения',
         'common.loadingItems': 'Загрузка...',
         'common.refresh': 'Обновить',
-        
+
         // Login
         'login.title': 'Вход в систему',
         'login.email': 'Email',
@@ -315,7 +315,7 @@ const translations: Record<Language, Record<string, string>> = {
         'common.yes': 'Так',
         'common.no': 'Ні',
         'common.error': 'Помилка',
-        
+
         // Navigation
         'nav.orders': 'Замовлення',
         'nav.materials': 'Матеріали',
@@ -323,7 +323,7 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.production': 'Виробництво',
         'nav.calculator': 'Калькулятор',
         'nav.contractors': 'Підрядники',
-        
+
         // Contractors
         'contractors.subtitle': 'Управління підрядниками по фасівці чаю',
         'contractors.search': 'Пошук за назвою або кодом...',
@@ -356,7 +356,7 @@ const translations: Record<Language, Record<string, string>> = {
         'contractors.doubleClickToDetails': 'Подвійний клік для перегляду деталей',
         'contractors.searchMaterials': 'Пошук за назвою або артикулом...',
         'contractors.noMaterialsFound': 'Матеріали не знайдені',
-        
+
         // Materials details
         'materials.usedInProducts': 'Використовується в готовій продукції',
         'materials.techCard': 'Техкарта',
@@ -365,7 +365,7 @@ const translations: Record<Language, Record<string, string>> = {
         'nav.users': 'Користувачі',
         'nav.settings': 'Налаштування',
         'nav.logout': 'Вийти',
-        
+
         // Calendar
         'calendar.title': 'Календар',
         'calendar.subtitle': 'Планування виробництва та логістики',
@@ -383,7 +383,7 @@ const translations: Record<Language, Record<string, string>> = {
         'calendar.materialsAvailability': 'Наявність матеріалів',
         'calendar.add': 'Додати',
         'calendar.addMoreOrClose': 'Додайте ще позиції або закрийте вікно',
-        
+
         // Production
         'production.title': 'Виробництво',
         'production.subtitle': 'Планування та облік виробництва',
@@ -423,7 +423,7 @@ const translations: Record<Language, Record<string, string>> = {
         'production.warning': 'Увага',
         'production.ok': 'ОК',
         'production.noData': 'Немає даних для відображення',
-        
+
         // Settings
         'settings.title': 'Налаштування',
         'settings.subtitle': 'Конфігурація системи та управління доступом',
@@ -433,7 +433,7 @@ const translations: Record<Language, Record<string, string>> = {
         'settings.tab.users': 'Користувачі',
         'settings.tab.general': 'Імпорт та Загальні',
         'settings.tab.dev': 'Dev Tools (Roles)',
-        
+
         // Materials
         'materials.title': 'Матеріали',
         'materials.subtitle': 'Управління запасами сировини, упаковки та матеріалів',
@@ -465,8 +465,8 @@ const translations: Record<Language, Record<string, string>> = {
         'materials.article': 'Артикул',
         'materials.copy': 'Копіювати',
         'materials.copied': 'Скопійовано',
-        'materials.showZeroStockCardboard': 'Показати картонну упаковку з нульовими залишками',
-        'materials.hideZeroStockCardboard': 'Приховати картонну упаковку з нульовими залишками',
+        'materials.showZeroBalance': 'Показати з нульовим залишком',
+        'materials.hideZeroBalance': 'Приховати з нульовим залишком',
         'materials.name': 'Найменування',
         'materials.location': 'Місцезнаходження',
         'materials.location.main': 'СКЛАД',
@@ -481,7 +481,7 @@ const translations: Record<Language, Record<string, string>> = {
         'materials.status.ok': 'В нормі',
         'materials.deleteConfirm': 'Ви впевнені, що хочете видалити матеріал',
         'materials.deleteWarning': 'Цю дію неможливо скасувати. Всі пов\'язані дані (залишки, замовлення) також будуть видалені.',
-        
+
         // Suppliers
         'suppliers.title': 'Постачальники',
         'suppliers.subtitle': 'Управління контрагентами та історія замовлень',
@@ -491,13 +491,13 @@ const translations: Record<Language, Record<string, string>> = {
         'suppliers.ordersHistory': 'Історія замовлень',
         'suppliers.deleteConfirm': 'Ви впевнені, що хочете видалити постачальника',
         'suppliers.deleteWarning': 'Цю дію неможливо скасувати. Постачальник з існуючими замовленнями не може бути видалений.',
-        
+
         // Orders
         'orders.title': 'Замовлення',
         'orders.subtitle': 'Історія та статус поточних замовлень',
         'orders.loading': 'Завантаження замовлень...',
         'orders.suppliers': 'Замовлення постачальникам',
-        
+
         // Users
         'users.title': 'Користувачі',
         'users.subtitle': 'Управління користувачами та ролями',
@@ -520,7 +520,7 @@ const translations: Record<Language, Record<string, string>> = {
         'users.status': 'Статус',
         'users.status.active': 'Активний',
         'users.saveChanges': 'Зберегти зміни',
-        
+
         // Settings - additional
         'settings.inviteUser': 'Запросити користувача',
         'settings.usersList': 'Список користувачів',
@@ -532,7 +532,7 @@ const translations: Record<Language, Record<string, string>> = {
         'settings.currentRole': 'Поточна роль:',
         'settings.roleSwitcherDisabled': '⚠️ Перемикач ролей вимкнено. Використовуйте реальну аутентифікацію через сторінку входу.',
         'settings.requiresRealUser': 'потребує реального користувача',
-        
+
         // Excel Import
         'excel.title': 'Імпорт з Excel',
         'excel.uploadFile': 'Завантажте файл Excel',
@@ -558,7 +558,7 @@ const translations: Record<Language, Record<string, string>> = {
         'excel.previewCategory': 'Категорія',
         'excel.previewWarehouse': 'Склад',
         'excel.previewProduction': 'Цех',
-        
+
         // Suppliers - additional
         'suppliers.loading': 'Завантаження постачальників...',
         'suppliers.edit': 'Редагувати',
@@ -569,18 +569,18 @@ const translations: Record<Language, Record<string, string>> = {
         'suppliers.contactPerson': 'Контактна особа',
         'suppliers.phone': 'Телефон',
         'suppliers.email': 'Email',
-        
+
         // Materials - additional
         'materials.deleteTitle': 'Підтвердження видалення',
         'materials.deleteMaterial': 'Видалити матеріал',
-        
+
         // Common - additional
         'common.back': 'Назад',
         'common.send': 'Відправити',
         'common.create': 'Створити',
         'common.saveChanges': 'Зберегти зміни',
         'common.loadingItems': 'Завантаження...',
-        
+
         // Login
         'login.title': 'Вхід в систему',
         'login.email': 'Email',

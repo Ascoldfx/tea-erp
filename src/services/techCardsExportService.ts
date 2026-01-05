@@ -298,13 +298,11 @@ export function parseTechCardsFromExcel(
     // Normalize headers: remove newlines, extra spaces, toLowerCase
     const headers = helperHeaders.map((h: any) => String(h || '').replace(/\s+/g, ' ').trim());
 
-    // DEBUG: Dump raw headers
-    console.log('[parseTechCardsFromExcel] Normalized Headers (Row ' + headerRowIndex + '):', JSON.stringify(headers));
-
-    // Helper: Find index prioritizing exact match, then loose match
-    // Added allowUsed (default false) to specifically prevent reusing columns
-
-
+    // DEBUG: Dump raw headers and first rows to troubleshoot column indices
+    console.log('[parseTechCardsFromExcel] 🔍 PARSER DEBUG 🔍');
+    console.log('[parseTechCardsFromExcel] RAW HEADERS (Row ' + headerRowIndex + '):', headers);
+    console.log('[parseTechCardsFromExcel] HARDCODED INDICES: GP_SKU=0, MAT_SKU=3');
+    console.log('[parseTechCardsFromExcel] FIRST 3 RAW ROWS:', rawData.slice(headerRowIndex + 1, headerRowIndex + 4));
 
 
     // HARDCODED INDICES based on static 7-column structure

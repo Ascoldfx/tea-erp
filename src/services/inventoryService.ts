@@ -510,7 +510,31 @@ export const inventoryService = {
 
         if (plannedConsumptionInserts.length > 0) {
             console.log(`Импортируем плановые расходы для ${plannedConsumptionInserts.length} записей (после удаления дубликатов)...`);
-            console.log('[Import] Sample planned consumption to insert:', plannedConsumptionInserts.slice(0, 5));
+
+            // CLEANUP: Delete existing FUTURE planned consumption for these items
+            // This prevents "Ghost" data (e.g. invalid 2026 entries from previous bad imports) from persisting
+            // We delete all plans for these items starting from current month
+            try {
+                const itemIds = Array.from(new Set(plannedConsumptionInserts.map(p => p.item_id)));
+                const now = new Date();
+                const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+                console.log(`[Import Cleanup] Removing existing future plans for ${itemIds.length} items from ${currentMonthStr}...`);
+
+                const { error: deleteError } = await supabase
+                    .from('planned_consumption')
+                    .delete()
+                    .in('item_id', itemIds)
+                    .gte('planned_date', currentMonthStr);
+
+                if (deleteError) {
+                    console.warn('[Import Cleanup] Failed to clear old plans:', deleteError);
+                } else {
+                    console.log('[Import Cleanup] Successfully cleared old future plans');
+                }
+            } catch (e) {
+                console.warn('[Import Cleanup] Error during cleanup:', e);
+            }
 
             const { error: plannedError, data: insertedData } = await supabase
                 .from('planned_consumption')

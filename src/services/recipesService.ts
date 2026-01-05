@@ -216,10 +216,18 @@ export const recipesService = {
         const namesToCheck = Array.from(nameSet);
         if (namesToCheck.length > 0) {
             console.log(`[RecipesService] Resolving ${namesToCheck.length} Names (Fallback)...`);
-            // Supabase doesn't support .in() for large arrays well on text columns? It should be fine.
-            for (let i = 0; i < namesToCheck.length; i += CHUNK_SIZE) {
-                const chunk = namesToCheck.slice(i, i + CHUNK_SIZE);
-                const { data } = await supabase.from('items').select('id, name').in('name', chunk);
+            // Names can be long (Cyrillic + Special Chars), so Keep Chunk Size SMALL
+            const NAME_CHUNK_SIZE = 10;
+
+            for (let i = 0; i < namesToCheck.length; i += NAME_CHUNK_SIZE) {
+                const chunk = namesToCheck.slice(i, i + NAME_CHUNK_SIZE);
+                const { data, error } = await supabase.from('items').select('id, name').in('name', chunk);
+
+                if (error) {
+                    console.error('[RecipesService] Error resolving names chunk:', error);
+                    // continue best effort
+                }
+
                 if (data) {
                     data.forEach(item => nameToIdMap.set(item.name, item.id));
                 }

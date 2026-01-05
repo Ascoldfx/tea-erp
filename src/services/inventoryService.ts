@@ -5,16 +5,38 @@ export const inventoryService = {
     async getItems(): Promise<InventoryItem[]> {
         if (!supabase) return [];
 
-        const { data, error } = await supabase.from('items').select('*');
-        if (error) {
-            console.error('Error fetching items:', error);
-            return [];
+        let allItems: any[] = [];
+        const BATCH_SIZE = 1000;
+        let from = 0;
+        let hasMore = true;
+
+        // Fetch items in batches to bypass Supabase 1000 row limit
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('items')
+                .select('*')
+                .range(from, from + BATCH_SIZE - 1);
+
+            if (error) {
+                console.error('Error fetching items batch:', error);
+                break;
+            }
+
+            if (data && data.length > 0) {
+                allItems = [...allItems, ...data];
+                from += BATCH_SIZE;
+                if (data.length < BATCH_SIZE) {
+                    hasMore = false;
+                }
+            } else {
+                hasMore = false;
+            }
         }
 
         // Map database columns to TypeScript interface
-        return (data || []).map((item: any) => ({
+        return allItems.map((item: any) => ({
             ...item,
-            // Map other snake_case fields if needed (e.g. min_stock_level -> minStockLevel is handled by convention or potential type mismatch, but let's at least handle the new field explicitly)
+            // Map other snake_case fields if needed
         })) as InventoryItem[];
     },
 
@@ -79,33 +101,55 @@ export const inventoryService = {
 
         console.log(`Начинаем импорт ${items.length} позиций...`);
 
-        // 1. Get all existing items by SKU to map codes to IDs
-        const skus = items.map(i => i.code).filter(Boolean);
-        const { data: existingItems, error: fetchError } = await supabase
-            .from('items')
-            .select('id, sku, name, category')
-            .in('sku', skus);
+        // 1. Get ALL existing items to resolve by SKU AND Name (to catch auto-created items)
+        // We need this because Recipe Import might have created items with "auto-..." SKUs
+        // but the Stock Import file might only have the Name.
+        console.log('[Import] Fetching all existing items for robust resolution...');
+        let allExistingItems: any[] = [];
+        let from = 0;
+        let hasMore = true;
+        const BATCH_SIZE = 1000;
 
-        if (fetchError) {
-            console.error('Error fetching existing items:', fetchError);
-            throw new Error(`Ошибка при проверке существующих материалов: ${fetchError.message}`);
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('items')
+                .select('id, sku, name, category')
+                .range(from, from + BATCH_SIZE - 1);
+
+            if (error) {
+                console.error('[Import] Error fetching existing items batch:', error);
+                throw new Error(`Ошибка при загрузке справочника материалов: ${error.message}`);
+            }
+
+            if (data && data.length > 0) {
+                allExistingItems = [...allExistingItems, ...data];
+                from += BATCH_SIZE;
+                if (data.length < BATCH_SIZE) hasMore = false;
+            } else {
+                hasMore = false;
+            }
         }
 
-        // Create a map: SKU -> ID and track existing items for logging
+        // Create match maps
         const skuToIdMap = new Map<string, string>();
-        const existingItemsMap = new Map<string, { id: string; name: string; category: string }>();
-        if (existingItems) {
-            existingItems.forEach(item => {
-                if (item.sku) {
-                    skuToIdMap.set(item.sku, item.id);
-                    existingItemsMap.set(item.sku, {
-                        id: item.id,
-                        name: item.name || '',
-                        category: item.category || 'other'
-                    });
-                }
+        const nameToIdMap = new Map<string, string>(); // New: for Name-based fallback
+        // Key by ID for reliable lookup after resolution
+        const existingItemsMap = new Map<string, { id: string; name: string; category: string; sku: string }>();
+
+        allExistingItems.forEach(item => {
+            if (item.sku) skuToIdMap.set(item.sku, item.id);
+            if (item.name) {
+                // Clean name for better matching: lowercase, trim
+                const cleanName = item.name.trim().toLowerCase();
+                nameToIdMap.set(cleanName, item.id);
+            }
+            existingItemsMap.set(item.id, {
+                id: item.id,
+                name: item.name || '',
+                category: item.category || 'other',
+                sku: item.sku || ''
             });
-        }
+        });
 
         console.log(`[Import] Found ${existingItemsMap.size} existing items that may be updated`);
 
@@ -125,6 +169,15 @@ export const inventoryService = {
             // Check if we have existing item with this SKU
             let itemId = skuToIdMap.get(code);
 
+            // NEW: Fallback to Name Resolution if SKU not found
+            if (!itemId) {
+                const cleanName = (i.name || '').trim().toLowerCase();
+                if (cleanName && nameToIdMap.has(cleanName)) {
+                    itemId = nameToIdMap.get(cleanName);
+                    console.log(`[Import] Resolved item by Name: "${i.name}" -> ID: ${itemId} (Excel Code: ${code} ignored/updated)`);
+                }
+            }
+
             // If not found, use code as ID (assuming code is valid text identifier)
             if (!itemId) {
                 itemId = code; // Use code as ID (items.id is TEXT, so this should work)
@@ -143,7 +196,8 @@ export const inventoryService = {
             const category = i.category || 'other';
 
             // Check if this is an update to existing material
-            const existingItem = existingItemsMap.get(code);
+            // NOTE: existingItemsMap is now keyed by ID
+            const existingItem = existingItemsMap.get(itemId);
             if (existingItem) {
                 const isCategoryChange = existingItem.category !== category;
                 const isNameChange = existingItem.name !== (i.name?.trim() || 'Без названия');

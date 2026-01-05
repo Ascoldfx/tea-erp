@@ -489,10 +489,39 @@ export function parseTechCardsFromExcel(
         const gpSku = getCell(currentIndices.gpSku);
         const gpName = getCell(currentIndices.gpName);
         const materialCategory = getCell(currentIndices.materialCategory);
-        const materialSku = getCell(currentIndices.materialSku);
+        let materialSku = getCell(currentIndices.materialSku);
         const materialName = getCell(currentIndices.materialName);
         const unit = getCell(currentIndices.unit);
-        const rawNorm = getCell(currentIndices.norm);
+        let rawNorm = getCell(currentIndices.norm);
+
+        // SMART NEIGHBOR SEARCH (Fuzzy Fetch)
+        // If Material Name is present but SKU is missing, look left/right
+        if (materialName && !materialSku) {
+            const left = getCell(currentIndices.materialSku - 1);
+            const right = getCell(currentIndices.materialSku + 1);
+            // Simple heuristic: SKU is usually numeric or short alphanumeric
+            // Avoid grabbing names or units.
+            if (left && left.length < 15 && /\d/.test(left)) {
+                console.log(`[Parser] 🔦 Found SKU in LEFT neighbor for ${materialName}: ${left}`);
+                materialSku = left;
+            } else if (right && right.length < 15 && /\d/.test(right)) {
+                console.log(`[Parser] 🔦 Found SKU in RIGHT neighbor for ${materialName}: ${right}`);
+                materialSku = right;
+            }
+        }
+
+        // SMART NORM SEARCH
+        // If Norm is empty, check right (sometimes unit/norm swapped)
+        if (!rawNorm || rawNorm === '0') {
+            const right = getCell(currentIndices.norm + 1);
+            const left = getCell(currentIndices.norm - 1);
+            // Look for numeric-ish string
+            if (right && /^\d+([.,]\d+)?$/.test(right)) {
+                rawNorm = right;
+            } else if (left && /^\d+([.,]\d+)?$/.test(left)) {
+                rawNorm = left;
+            }
+        }
 
         // Extract Monthly Norms using currentIndices.monthIndices
         const monthlyNorms: Array<{ date: string; quantity: number }> = [];

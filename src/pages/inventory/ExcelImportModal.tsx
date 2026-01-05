@@ -700,35 +700,48 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         // Rule: If imported month is > current month + 2, it's likely previous year.
                         // Example: It's Jan 2026. Import has "December". Dec (11) > Jan (0) + 2. -> Year 2025.
                         // Example: It's Jan 2026. Import has "February". Feb (1) < Jan (0) + 2. -> Year 2026.
+
                         let year = now.getFullYear();
+
+                        // Parse year from header if present (e.g. "December 2026")
                         if (monthMatch[2]) {
                             year = parseInt(monthMatch[2]);
-                        } else {
-                            const monthMapLower: Record<string, number> = {
-                                'январь': 0, 'января': 0, 'січень': 0, 'січня': 0,
-                                'февраль': 1, 'февраля': 1, 'лютий': 1, 'лютого': 1,
-                                'март': 2, 'марта': 2, 'березень': 2, 'березня': 2,
-                                'апрель': 3, 'апреля': 3, 'квітень': 3, 'квітня': 3,
-                                'май': 4, 'мая': 4, 'травень': 4, 'травня': 4,
-                                'июнь': 5, 'июня': 5, 'червень': 5, 'червня': 5,
-                                'июль': 6, 'июля': 6, 'липень': 6, 'липня': 6,
-                                'август': 7, 'августа': 7, 'серпень': 7, 'серпня': 7,
-                                'сентябрь': 8, 'сентября': 8, 'вересень': 8, 'вересня': 8,
-                                'октябрь': 9, 'октября': 9, 'жовтень': 9, 'жовтня': 9,
-                                'ноябрь': 10, 'ноября': 10, 'листопад': 10, 'листопада': 10,
-                                'декабрь': 11, 'декабря': 11, 'грудень': 11, 'грудня': 11
-                            };
-
-                            const monthIdx = monthMapLower[monthName.toLowerCase()];
-                            const currentMonthIdx = now.getMonth();
-
-                            // If imported month > current month + 2, assume previous year
-                            // (e.g. Current=Jan, Import=Dec -> 11 > 0+2 -> Prev Year)
-                            if (monthIdx > currentMonthIdx + 2) {
-                                year = year - 1;
-                                console.log(`[Import Date Inference] "${monthName}": Inferred Year ${year} (Current: ${currentMonthIdx}, Imported: ${monthIdx})`);
-                            }
                         }
+
+                        // Map month name to index 0-11
+                        const monthMapLower: Record<string, number> = {
+                            'январь': 0, 'января': 0, 'січень': 0, 'січня': 0,
+                            'февраль': 1, 'февраля': 1, 'лютий': 1, 'лютого': 1,
+                            'март': 2, 'марта': 2, 'березень': 2, 'березня': 2,
+                            'апрель': 3, 'апреля': 3, 'квітень': 3, 'квітня': 3,
+                            'май': 4, 'мая': 4, 'травень': 4, 'травня': 4,
+                            'июнь': 5, 'июня': 5, 'червень': 5, 'червня': 5,
+                            'июль': 6, 'июля': 6, 'липень': 6, 'липня': 6,
+                            'август': 7, 'августа': 7, 'серпень': 7, 'серпня': 7,
+                            'сентябрь': 8, 'сентября': 8, 'вересень': 8, 'вересня': 8,
+                            'октябрь': 9, 'октября': 9, 'жовтень': 9, 'жовтня': 9,
+                            'ноябрь': 10, 'ноября': 10, 'листопад': 10, 'листопада': 10,
+                            'декабрь': 11, 'декабря': 11, 'грудень': 11, 'грудня': 11
+                        };
+
+                        const monthIdx = monthMapLower[monthName.toLowerCase()];
+                        const currentMonthIdx = now.getMonth();
+                        const currentYear = now.getFullYear();
+
+                        // INFERENCE LOGIC: 
+                        // If we are in the Current Year (e.g. 2026), and the imported month is significantly in the future (e.g. Dec vs Jan),
+                        // AND the user likely intended "Last December" (common in monthly closing).
+                        // We override even explicit years if they match Current Year, because Excel/SheetJS often defaults ambiguous dates to Current Year.
+
+                        // Condition: Year is Current Year AND Month is > Current Month + 2
+                        if (year === currentYear && monthIdx > currentMonthIdx + 2) {
+                            year = year - 1;
+                            console.log(`[Import Date Inference] "${monthName} ${currentYear}" adjusted to Prev Year: ${year} (Reason: ${monthName} is > 2 months ahead of now)`);
+                        }
+                        // Condition 2: Explicit inference for missing year (handled by initialization to currentYear and logic above)
+
+                        // Additional check: If inferred year is < 2020 (bad parse), reset to current
+                        if (year < 2020) year = currentYear;
 
                         const monthMap: Record<string, number> = {
                             'январь': 1, 'января': 1, 'січень': 1, 'січня': 1,

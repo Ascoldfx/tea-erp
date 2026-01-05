@@ -173,7 +173,21 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
                 if (monthMap[monthLower]) {
                     const month = monthMap[monthLower];
-                    const finalYear = year || new Date().getFullYear();
+
+                    const now = new Date();
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth() + 1; // 1-indexed
+
+                    let finalYear = year || currentYear;
+
+                    // Smart Inference: If year is current year (defaulted or explicit)
+                    // AND month is significantly in the future (e.g. Dec vs Jan)
+                    // Then assume previous year.
+                    if (finalYear === currentYear && month > currentMonth + 2) {
+                        finalYear = finalYear - 1;
+                        console.log(`[Strict Parse Inference] "${monthName}" mapped to ${finalYear} (was ${currentYear})`);
+                    }
+
                     return `${finalYear}-${String(month).padStart(2, '0')}-01`;
                 }
                 return null;
@@ -965,7 +979,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.9 FIXED)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.10 FIXED)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

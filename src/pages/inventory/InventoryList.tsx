@@ -47,11 +47,67 @@ export default function InventoryList() {
 
     // Get all unique categories from items (including dynamic ones)
     // Generate normalized items FIRST, before any other logic
+    // ALSO DEDUPLICATE: Group by normalized SKU
     const normalizedItems = useMemo(() => {
-        return items.map(item => ({
-            ...item,
-            category: normalizeCategory(item.category)
-        }));
+        const skuMap = new Map<string, any>();
+
+        // We need robust SKU normalization here too
+        const normalizeSku = (sku: string) => {
+            if (!sku) return 'unknown-' + Math.random();
+            return sku.toString().toLowerCase().trim().replace(/\\/g, '/').replace(/\s+/g, '');
+        };
+
+        // Category Priority: "Packaging Cardboard" > "Label" > "Other"
+        // We want to keep the "Best" category if we merge items
+        const getCategoryPriority = (cat: string) => {
+            const lower = cat.toLowerCase();
+            if (lower.includes('cardboard') || lower.includes('картон') || lower.includes('box')) return 10;
+            if (lower.includes('packaging') && !lower.includes('consumable')) return 8;
+            if (lower.includes('label') || lower.includes('sticker')) return 7;
+            if (lower.includes('flavor')) return 6;
+            if (lower === 'other' || lower === 'raw_material') return 0;
+            return 5;
+        };
+
+        items.forEach(item => {
+            const normCat = normalizeCategory(item.category);
+            const normSku = normalizeSku(item.sku);
+
+            // If this SKU already exists, merge it
+            if (skuMap.has(normSku)) {
+                const existing = skuMap.get(normSku);
+
+                // 1. Merge Stock (will be recalculated in inventoryCombined, but good to have base merged)
+                // Actually relying on inventoryCombined to sum stock is safer, but we need to MERGE the item definitions
+                // primarily to pick the BEST CATEGORY and BEST NAME.
+
+                // Pick best category
+                if (getCategoryPriority(normCat) > getCategoryPriority(existing.category)) {
+                    existing.category = normCat;
+                }
+
+                // Pick longest name (usually most descriptive)
+                if (item.name.length > existing.name.length) {
+                    existing.name = item.name;
+                }
+
+                // Keep track of merged IDs if we needed to sum stock manually later, 
+                // but for now inventoryCombined filters by item.id. 
+                // WAIT: inventoryCombined iterates `normalizedItems`. If we reduce 5 items to 1,
+                // we only get 1 row. But `stock` array still has entries for 5 different Item IDs.
+                // So we need to map the "Merged Item" to possess ALL IDs of its children.
+                existing.mergedIds = [...(existing.mergedIds || []), item.id];
+
+            } else {
+                skuMap.set(normSku, {
+                    ...item,
+                    category: normCat,
+                    mergedIds: [item.id] // Track own ID
+                });
+            }
+        });
+
+        return Array.from(skuMap.values());
     }, [items]);
 
     // All categories are now dynamic (from normalized data)
@@ -103,8 +159,11 @@ export default function InventoryList() {
 
     const inventoryCombined = useMemo(() => {
         const mapped = normalizedItems.map(item => {
-            // Get ALL stock levels for this item (for the Details Modal)
-            const allStockLevels = stock.filter(s => s.itemId === item.id);
+            // Get ALL stock levels for this item (AND its merged duplicates)
+            // item.mergedIds contains [id1, id2, id3...] from the deduplication step
+            const allIds = item.mergedIds || [item.id];
+
+            const allStockLevels = stock.filter(s => allIds.includes(s.itemId));
 
             // Calculate stock for the CURRENT view (filtered by warehouse)
             const relevantStockLevels = selectedWarehouseId

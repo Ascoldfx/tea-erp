@@ -535,13 +535,13 @@ export default function ProductionPlanning() {
                     return pcItemId === itemIdStr && itemIdStr;
                 });
                 if (allForItem.length > 0) {
-                    console.warn(`[ProductionPlanning] Item ${item.sku} (${item.id}): есть ${allForItem.length} записей planned consumption, но не для месяца ${targetYearMonth}`);
-                    console.warn(`[ProductionPlanning] Доступные месяцы для этого item:`, [...new Set(allForItem.map(pc => {
-                        const dateStr = String(pc.plannedDate || '').trim();
-                        return dateStr.substring(0, 7);
-                    }))]);
+                    // console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): есть ${allForItem.length} записей planned consumption, но не для месяца ${targetYearMonth}`);
+                    // console.log(`[ProductionPlanning] Доступные месяцы для этого item:`, [...new Set(allForItem.map(pc => {
+                    //    const dateStr = String(pc.plannedDate || '').trim();
+                    //    return dateStr.substring(0, 7);
+                    // }))]);
                 } else {
-                    console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): NO planned consumption вообще`);
+                    // console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): NO planned consumption вообще`);
                 }
             }
 

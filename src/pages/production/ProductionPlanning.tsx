@@ -437,11 +437,23 @@ export default function ProductionPlanning() {
     // Note: We compare by year and month directly, not by date strings
     // This ensures accurate filtering of planned consumption data
 
-    // Filter items by category
+    // Filter items by category AND deduplicate by ID
     const filteredItems = useMemo(() => {
         if (!Array.isArray(safeItems)) return [];
-        if (selectedCategory === 'all') return safeItems;
-        return safeItems.filter(item => item.category === selectedCategory);
+        let itemsToFilter = safeItems;
+        if (selectedCategory !== 'all') {
+            itemsToFilter = safeItems.filter(item => item.category === selectedCategory);
+        }
+
+        // Deduplicate by ID
+        const uniqueMap = new Map();
+        itemsToFilter.forEach(item => {
+            if (!uniqueMap.has(item.id)) {
+                uniqueMap.set(item.id, item);
+            }
+        });
+
+        return Array.from(uniqueMap.values());
     }, [safeItems, selectedCategory]);
 
     // Calculate planning data for each item

@@ -215,7 +215,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Year Determination
                     const now = new Date();
                     const currentYear = now.getFullYear();
-                    const currentMonth = now.getMonth() + 1;
+                    // currentMonth unused in v3.2
 
                     let finalYear = year || currentYear;
 
@@ -223,13 +223,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         finalYear = explicitYear;
                     }
 
-                    // FORCE ROLLBACK: If we detected a future month (e.g. Dec in Jan), 
-                    // and the year is current (OR EXPLICITLY SET to current), assume mistake/legacy and rollback.
-                    // This fixes "Dec 2026" being imported as 2026 when it should be 2025.
-                    if (finalYear === currentYear && foundMonth > currentMonth + 2) {
-                        console.log(`[Parse V2.17] "${cleanInput}" -> Rolling back year: ${finalYear} -> ${finalYear - 1} (Month ${foundMonth} vs Current ${currentMonth})`);
-                        finalYear = finalYear - 1;
-                    }
+                    // v3.2 LITERAL IMPORT: Removed Force Rollback.
+                    // User reports that dates should be interpreted literally.
+                    // "Dec 2026" means Dec 2026. "Dec 2025" means Dec 2025.
+                    // The previous logic (V2.17) caused confusion by altering years.
 
                     return `${finalYear}-${String(foundMonth).padStart(2, '0')}-01`;
                 }
@@ -696,7 +693,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 // Под будущим и текущим месяцем - плановый расход
                 const plannedConsumption: Array<{ date: string; quantity: number; isActual?: boolean }> = [];
 
-                const now = new Date();
+                // const now = new Date(); // Unused in v3.2
 
                 // =================================================================================
                 // UNIFIED COLUMN PARSER v3.0 (PLAN BY DEFAULT)
@@ -733,15 +730,11 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         const parts = dateMatch[0].split('.');
                         // d (day) is unused
                         const m = parseInt(parts[1]);
-                        let y = parseInt(parts[2]);
+                        const y = parseInt(parts[2]);
 
-                        // Year Correction for explicit dates
-                        // If file says 01.12.2026, and we are in Jan 2026, user intends Dec 2025.
-                        // Logic: If month > currentMonth + 2, and year == currentYear.
-                        if (y === now.getFullYear() && m > now.getMonth() + 3) {
-                            console.log(`[Excel Import v3.1] Explicit Date "${header}" -> Rolling back year: ${y} -> ${y - 1} (Month ${m} vs Current ${now.getMonth() + 1})`);
-                            y = y - 1;
-                        }
+                        // v3.2 LITERAL IMPORT: No heuristics. Trust the file.
+                        // If user writes 2025, it is 2025.
+                        // If user writes 2026, it is 2026.
 
                         dateString = `${y}-${String(m).padStart(2, '0')}-01`;
                     }
@@ -946,7 +939,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.1 UNIFIED ROLLBACK + PLAN BY DEFAULT)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.2 LITERAL DATE IMPORT)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

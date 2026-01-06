@@ -487,9 +487,15 @@ export const inventoryService = {
             if (normalizedDate && !normalizedDate.endsWith('-01')) {
                 // If date is not in YYYY-MM-01 format, normalize it
                 try {
-                    const date = new Date(normalizedDate);
-                    if (!isNaN(date.getTime())) {
-                        normalizedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                    // Safe string parsing without UTC/Local timezone shifts
+                    // Supports YYYY-MM-DD or YYYY.MM.DD
+                    const cleanDate = normalizedDate.replace(/\./g, '-');
+                    const parts = cleanDate.split('-');
+                    if (parts.length >= 2) {
+                        const y = parts[0];
+                        const m = parts[1];
+                        // Always force day 01
+                        normalizedDate = `${y}-${m.padStart(2, '0')}-01`;
                     }
                 } catch (e) {
                     console.warn(`[Import] Invalid date format: ${normalizedDate}, using as-is`);

@@ -438,24 +438,39 @@ export default function ProductionPlanning() {
     // Note: We compare by year and month directly, not by date strings
     // This ensures accurate filtering of planned consumption data
 
-    // Filter items by category AND deduplicate by ID
+    // Filter items by category, search query AND deduplicate by SKU/ID
     const filteredItems = useMemo(() => {
         if (!Array.isArray(safeItems)) return [];
         let itemsToFilter = safeItems;
+
+        // 1. Filter by Category
         if (selectedCategory !== 'all') {
-            itemsToFilter = safeItems.filter(item => item.category === selectedCategory);
+            itemsToFilter = itemsToFilter.filter(item => item.category === selectedCategory);
         }
 
-        // Deduplicate by ID
+        // 2. Filter by Search Query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            itemsToFilter = itemsToFilter.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const sku = (item.sku || '').toLowerCase();
+                return name.includes(query) || sku.includes(query);
+            });
+        }
+
+        // 3. Deduplicate by SKU (Priority) or ID
+        // Project Rule: SKU is the primary identifier.
+        // We must prevent duplicates even if multiple IDs exist for the same SKU.
         const uniqueMap = new Map();
         itemsToFilter.forEach(item => {
-            if (!uniqueMap.has(item.id)) {
-                uniqueMap.set(item.id, item);
+            const key = item.sku ? `sku:${item.sku}` : `id:${item.id}`;
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, item);
             }
         });
 
         return Array.from(uniqueMap.values());
-    }, [safeItems, selectedCategory]);
+    }, [safeItems, selectedCategory, searchQuery]);
 
     // Calculate planning data for each item
     const planningData = useMemo((): PlanningDataItem[] => {

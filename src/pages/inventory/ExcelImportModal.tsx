@@ -731,21 +731,16 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const dateMatch = header.match(/\d{2}\.\d{2}\.\d{4}/);
                     if (dateMatch) {
                         const parts = dateMatch[0].split('.');
+                        // d (day) is unused
                         const m = parseInt(parts[1]);
                         let y = parseInt(parts[2]);
 
-                        // Year Correction for explicit dates?
-                        // If file says 01.12.2026, and we are in Jan 2026...
-                        // Should we rollback? 
-                        // If it's explicit DD.MM.YYYY, usually we trust it.
-                        // But user issue is explicitly "2026 instead of 2025".
-                        // So let's apply the smart inference here too if it feels futuristic.
+                        // Year Correction for explicit dates
+                        // If file says 01.12.2026, and we are in Jan 2026, user intends Dec 2025.
                         // Logic: If month > currentMonth + 2, and year == currentYear.
-                        if (y === now.getFullYear() && m > now.getMonth() + 3) { // +3 buffer
-                            // Maybe explicit dates are trustworthy? 
-                            // Let's stick to trusted unless user complains about DD.MM.YYYY bugs too.
-                            // User screenshots show "December 2026" text headers mostly?
-                            // Let's trust DD.MM.YYYY for now, BUT force PLAN type.
+                        if (y === now.getFullYear() && m > now.getMonth() + 3) {
+                            console.log(`[Excel Import v3.1] Explicit Date "${header}" -> Rolling back year: ${y} -> ${y - 1} (Month ${m} vs Current ${now.getMonth() + 1})`);
+                            y = y - 1;
                         }
 
                         dateString = `${y}-${String(m).padStart(2, '0')}-01`;
@@ -951,7 +946,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.0 PLAN BY DEFAULT)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.1 UNIFIED ROLLBACK + PLAN BY DEFAULT)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

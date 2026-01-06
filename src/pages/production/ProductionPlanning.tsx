@@ -596,8 +596,9 @@ export default function ProductionPlanning() {
             const isPastMonth = selectedMonthDate < currentMonth;
 
             // Для прошедших месяцев: скрывать материалы с 0 фактическим расходом, 0 остатком и 0 фактическим приходом
+            // UPDATE v3.3: Also show if there is PLANNED consumption (for historical plan analysis)
             if (isPastMonth) {
-                return data.actualConsumption > 0 || data.totalStock > 0 || data.actualArrival > 0;
+                return data.actualConsumption > 0 || data.totalStock > 0 || data.actualArrival > 0 || data.totalPlannedConsumption > 0;
             }
 
             // Для текущего и будущих месяцев: скрывать материалы с 0 планируемым расходом, 0 остатком, 0 плановым приходом и 0 фактическим приходом

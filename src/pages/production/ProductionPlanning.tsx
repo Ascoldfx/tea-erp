@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { supabase } from '../../lib/supabase';
@@ -122,6 +122,7 @@ export default function ProductionPlanning() {
         }
     }, [plannedConsumption, selectedMonth, selectedYear]);
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
+    const [searchQuery, setSearchQuery] = useState('');
     const [refreshKey, setRefreshKey] = useState(0);
 
     // State for open orders (for planned arrival calculation)
@@ -702,6 +703,23 @@ export default function ProductionPlanning() {
                             </Button>
                         </div>
 
+                        {/* Search Input */}
+                        <div className="flex-1 min-w-[200px] relative">
+                            <label className="text-sm font-medium text-slate-300 mb-1.5 block">
+                                {t('common.search') || 'Поиск'}
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder={t('production.searchPlaceholder') || 'Поиск по названию или артикулу...'}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-md py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                />
+                            </div>
+                        </div>
+
                         {/* Category Filter */}
                         <div className="flex-1 min-w-[200px]">
                             <Select
@@ -859,7 +877,7 @@ export default function ProductionPlanning() {
                 warehouses={warehouses}
             />
 
-        </div>
+        </div >
     );
 }
 

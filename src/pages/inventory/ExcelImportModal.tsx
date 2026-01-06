@@ -697,7 +697,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 const plannedConsumption: Array<{ date: string; quantity: number; isActual?: boolean }> = [];
 
                 const now = new Date();
-                const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
                 // =================================================================================
                 // UNIFIED COLUMN PARSER v3.0 (PLAN BY DEFAULT)
@@ -717,12 +716,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     return h.includes('факт') || h.includes('fact') || h.includes('залишки') || h.includes('остаток') || h.includes('stock');
                 };
 
-                // Helper to determine if column is Explicit Plan (confirming)
-                const isExplicitPlan = (header: string) => {
-                    const h = header.toLowerCase();
-                    return (h.includes('план') && (h.includes('витрат') || h.includes('расход')));
-                };
-
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
                     if (!header) continue;
@@ -738,7 +731,6 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     const dateMatch = header.match(/\d{2}\.\d{2}\.\d{4}/);
                     if (dateMatch) {
                         const parts = dateMatch[0].split('.');
-                        const d = parseInt(parts[0]);
                         const m = parseInt(parts[1]);
                         let y = parseInt(parts[2]);
 

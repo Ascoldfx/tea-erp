@@ -458,18 +458,7 @@ export default function ProductionPlanning() {
             });
         }
 
-        // 3. Deduplicate by SKU (Priority) or ID
-        // Project Rule: SKU is the primary identifier.
-        // We must prevent duplicates even if multiple IDs exist for the same SKU.
-        const uniqueMap = new Map();
-        itemsToFilter.forEach(item => {
-            const key = item.sku ? `sku:${item.sku}` : `id:${item.id}`;
-            if (!uniqueMap.has(key)) {
-                uniqueMap.set(key, item);
-            }
-        });
-
-        return Array.from(uniqueMap.values());
+        return itemsToFilter;
     }, [safeItems, selectedCategory, searchQuery]);
 
     // Calculate planning data for each item
@@ -649,6 +638,109 @@ export default function ProductionPlanning() {
         });
     }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems, openOrders, actualArrivals, actualConsumptions]);
 
+    // SMART AGGREGATION: Merge duplicates by SKU
+    // 1. Group items by SKU
+    // 2. Sum metrics (Stock, Plan, Fact)
+    // 3. Select "Best" Master Item (Highest Activity)
+    const aggregatedData = useMemo(() => {
+        const groups = new Map<string, PlanningDataItem[]>();
+        const noSkuItems: PlanningDataItem[] = [];
+
+        planningData.forEach(data => {
+            // Check if item exists and has SKU
+            if (data?.item?.sku) {
+                const key = data.item.sku.trim();
+                // Skip empty SKUs
+                if (!key) {
+                    noSkuItems.push(data);
+                    return;
+                }
+
+                if (!groups.has(key)) {
+                    groups.set(key, []);
+                }
+                groups.get(key)?.push(data);
+            } else {
+                noSkuItems.push(data);
+            }
+        });
+
+        const mergedItems: PlanningDataItem[] = [];
+
+        groups.forEach((groupItems) => {
+            if (groupItems.length === 1) {
+                mergedItems.push(groupItems[0]);
+                return;
+            }
+
+            // Merge logic
+            const totalStock = groupItems.reduce((sum, i) => sum + (i.totalStock || 0), 0);
+            const totalPlanned = groupItems.reduce((sum, i) => sum + (i.totalPlannedConsumption || 0), 0);
+            const totalActual = groupItems.reduce((sum, i) => sum + (i.actualConsumption || 0), 0);
+            const totalPlannedArrival = groupItems.reduce((sum, i) => sum + (i.plannedArrival || 0), 0);
+            const totalActualArrival = groupItems.reduce((sum, i) => sum + (i.actualArrival || 0), 0);
+            const totalPrevDiff = groupItems.reduce((sum, i) => sum + (i.previousMonthDifference || 0), 0);
+
+            // Recalculate difference based on summed values
+            const consumptionToUse = totalActual > 0 ? totalActual : totalPlanned;
+            const arrivalToUse = totalActualArrival + totalPlannedArrival;
+            const difference = totalPrevDiff + arrivalToUse - consumptionToUse;
+
+            // Select Best Master Item
+            // Score = Stock + Consumption + Plan
+            const sortedItems = [...groupItems].sort((a, b) => {
+                const scoreA = (a.totalStock || 0) + (a.actualConsumption || 0) + (a.totalPlannedConsumption || 0);
+                const scoreB = (b.totalStock || 0) + (b.actualConsumption || 0) + (b.totalPlannedConsumption || 0);
+                return scoreB - scoreA;
+            });
+
+            const bestItem = sortedItems[0]?.item;
+            if (!bestItem) return; // Should not happen since groupItems.length > 1
+
+            mergedItems.push({
+                item: bestItem,
+                totalStock,
+                totalPlannedConsumption: totalPlanned,
+                plannedArrival: totalPlannedArrival,
+                actualArrival: totalActualArrival,
+                actualConsumption: totalActual,
+                previousMonthDifference: totalPrevDiff,
+                difference,
+                stockLevels: groupItems.flatMap(i => i.stockLevels || [])
+            });
+        });
+
+        // Combine and filter
+        const final = [...mergedItems, ...noSkuItems].filter((data: PlanningDataItem) => {
+            if (!data?.item) return false;
+
+            // Define isPastMonth check inside useMemo for closure safety
+            const now = new Date();
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const selectedMonthDate = new Date(selectedYear, selectedMonth, 1);
+            const isPastMonth = selectedMonthDate < currentMonth;
+
+            // Filter logic
+            if (isPastMonth) {
+                return (data.actualConsumption > 0) || (data.totalStock > 0) || (data.actualArrival > 0) || (data.totalPlannedConsumption > 0);
+            }
+            return (data.totalPlannedConsumption > 0) || (data.totalStock > 0) || (data.plannedArrival > 0) || (data.actualArrival > 0);
+        });
+
+        // Sort by original order (using the order of the first appearance of the SKU/ID)
+        const itemOrderMap = new Map<string, number>();
+        safeItems.forEach((item, index) => {
+            itemOrderMap.set(item.id, index);
+        });
+
+        return final.sort((a, b) => {
+            const orderA = itemOrderMap.get(a.item.id) ?? Infinity;
+            const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
+            return orderA - orderB;
+        });
+
+    }, [planningData, selectedYear, selectedMonth, safeItems]);
+
 
     return (
         <div className="space-y-6 p-6">
@@ -786,7 +878,7 @@ export default function ProductionPlanning() {
                         <div className="text-center py-8 text-slate-400">
                             {t('common.loading') || 'Загрузка...'}
                         </div>
-                    ) : planningData.length === 0 ? (
+                    ) : aggregatedData.length === 0 ? (
                         <div className="text-center py-8 text-slate-400">
                             {t('production.noData') || 'Нет данных для отображения'}
                         </div>
@@ -806,7 +898,7 @@ export default function ProductionPlanning() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {planningData.map((data: PlanningDataItem) => {
+                                    {aggregatedData.map((data: PlanningDataItem) => {
                                         return (
                                             <tr key={data.item.id} className="hover:bg-slate-800/50 group">
                                                 <td

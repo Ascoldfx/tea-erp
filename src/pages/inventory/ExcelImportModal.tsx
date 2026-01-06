@@ -699,137 +699,109 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 const now = new Date();
                 const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-                // Parse date columns (e.g., "01.12.2025", "01.01.2026") - these are consumption columns
-                const datePattern = /\d{2}\.\d{2}\.\d{4}/;
+                // =================================================================================
+                // UNIFIED COLUMN PARSER v3.0 (PLAN BY DEFAULT)
+                // =================================================================================
+                // 1. Scan all headers
+                // 2. Identify if it's a Date Column (Regex or Month Name)
+                // 3. Determine Type: 
+                //    - Contains "fact"/"факт"/"залишки"/"остаток" -> STOCK/FACT (isActual=true)
+                //    - Otherwise -> PLAN (isActual=false), even if date is in past.
+                // 4. Apply Year Correction (2026 -> 2025 rollback) if needed.
+
+                const processedIndices = new Set<number>();
+
+                // Helper to determine if column is Explicit Fact
+                const isExplicitFact = (header: string) => {
+                    const h = header.toLowerCase();
+                    return h.includes('факт') || h.includes('fact') || h.includes('залишки') || h.includes('остаток') || h.includes('stock');
+                };
+
+                // Helper to determine if column is Explicit Plan (confirming)
+                const isExplicitPlan = (header: string) => {
+                    const h = header.toLowerCase();
+                    return (h.includes('план') && (h.includes('витрат') || h.includes('расход')));
+                };
+
                 for (let i = 0; i < headers.length; i++) {
                     const header = String(headers[i] || '').trim();
-                    const headerLower = header.toLowerCase();
+                    if (!header) continue;
 
-                    // Skip stock columns
-                    if (headerLower.includes('залишки') || headerLower.includes('зал') || headerLower.includes('остаток')) {
-                        continue;
-                    }
+                    // Skip if explicit stock column handled elsewhere (though we can double check)
+                    // The stock parsing logic (lines 620-680) handles 'Code', 'Category', 'Stock' specific columns.
+                    // Here we focus on CONSUMPTION columns (Dates).
 
-                    // Check if this is a date column (DD.MM.YYYY format)
-                    const dateMatch = String(header || '').match(datePattern);
+                    let dateString: string | null = null;
+                    let isFact = isExplicitFact(header);
+
+                    // A. Try Standard Date Pattern (DD.MM.YYYY)
+                    const dateMatch = header.match(/\d{2}\.\d{2}\.\d{4}/);
                     if (dateMatch) {
-                        // Parse date from header (DD.MM.YYYY)
-                        const dateParts = dateMatch[0].split('.');
-                        if (dateParts.length === 3) {
-                            const day = parseInt(dateParts[0]);
-                            const month = parseInt(dateParts[1]);
-                            const year = parseInt(dateParts[2]);
+                        const parts = dateMatch[0].split('.');
+                        const d = parseInt(parts[0]);
+                        const m = parseInt(parts[1]);
+                        let y = parseInt(parts[2]);
 
-                            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                                const monthDate = `${year}-${String(month).padStart(2, '0')}-01`;
-                                const monthDateObj = new Date(year, month - 1, 1);
-
-                                // Determine if this is actual (past month) or planned (current/future month)
-                                const isActual = monthDateObj < currentMonth;
-
-                                const value = row[headers[i]] || row[`__EMPTY_${i}`];
-                                const quantity = Number(value) || 0;
-
-                                if (quantity > 0) {
-                                    plannedConsumption.push({
-                                        date: monthDate,
-                                        quantity,
-                                        isActual
-                                    });
-                                    console.log(`[Excel Import] Item "${name}" (code: ${code}): Date column "${header}" -> ${monthDate}, quantity: ${quantity}, isActual: ${isActual}`);
-                                }
-                            }
+                        // Year Correction for explicit dates?
+                        // If file says 01.12.2026, and we are in Jan 2026...
+                        // Should we rollback? 
+                        // If it's explicit DD.MM.YYYY, usually we trust it.
+                        // But user issue is explicitly "2026 instead of 2025".
+                        // So let's apply the smart inference here too if it feels futuristic.
+                        // Logic: If month > currentMonth + 2, and year == currentYear.
+                        if (y === now.getFullYear() && m > now.getMonth() + 3) { // +3 buffer
+                            // Maybe explicit dates are trustworthy? 
+                            // Let's stick to trusted unless user complains about DD.MM.YYYY bugs too.
+                            // User screenshots show "December 2026" text headers mostly?
+                            // Let's trust DD.MM.YYYY for now, BUT force PLAN type.
                         }
-                        continue; // Skip to next column
+
+                        dateString = `${y}-${String(m).padStart(2, '0')}-01`;
+                    }
+                    // B. Try Month Name Parsing (Robust)
+                    else {
+                        // Use our helper which includes explicit year detection and rollback logic
+                        const robustDate = parseMonthToDate(header);
+                        if (robustDate) {
+                            dateString = robustDate;
+                        }
+                        // C. Check ColumnToMonth Map (Row Above)
+                        else if (columnToMonthMap.has(i)) {
+                            // This date came from parseMonthToDate logic earlier, so it already has rollback applied!
+                            dateString = columnToMonthMap.get(i)!;
+                        }
                     }
 
-                    // (v2.14) Parse month name from header using robust helper
-                    // This handles "December 2025", "Декабрь", and applies improved inference logic
-                    // We check this BEFORE skipping "plan" columns, because "Plan Dec 2025" might be valid?
-                    // But legacy logic skipped explicit "plan expenses". Let's respect existing skip if strict.
-                    // Actually, let's just parse it. If it's a date, it's a consumption column.
+                    if (dateString) {
+                        // We found a date. Now decide: Plan or Fact?
+                        // v3.0 Rule: If NOT explicit fact -> PLAN.
+                        // (Legacy logic was: if date < now -> Fact) -> CAUSE OF BUG
 
-                    const robustDate = parseMonthToDate(header);
-                    if (robustDate) {
-                        const monthDateObj = new Date(robustDate);
-                        const isActual = monthDateObj < currentMonth;
+                        const isActual = isFact;
+                        // Note: isActual=true -> Stock Movements (Fact)
+                        //       isActual=false -> Planned Consumption (Plan)
 
-                        // Check if we already have this month (e.g. from strict parsing above or previous loop)
-                        // If strict parsing (columnToMonthMap) already handled this idx, we might be duplicating?
-                        // Strict Parsing sets `columnToMonthMap` but doesn't process rows itself (wait, does it?).
-                        // Ah, strict parsing was mapping `idx` to Date.
-                        // Lines 830+ handle `columnToMonthMap`.
-                        // So if we parse it here directly, we might double count if `columnToMonthMap` also has it?
-                        // Strict parsing usually fires on "Row Above". This loop is on "Header Row".
-                        // If Header Row contains date, strict parsing (Row Above) probably didn't find date there?
-                        // Or if it did, user might have put date in BOTH places.
-                        // Let's check strict map first.
+                        // Avoid double processing?
+                        if (processedIndices.has(i)) continue;
+                        processedIndices.add(i);
 
-                        if (!columnToMonthMap.has(i)) {
-                            const value = row[headers[i]] || row[`__EMPTY_${i}`];
-                            const quantity = Number(value) || 0;
+                        const value = row[headers[i]] || row[`__EMPTY_${i}`];
+                        const quantity = Number(value) || 0;
 
-                            if (quantity > 0) {
+                        if (quantity > 0) {
+                            // Check for duplicates in this row (e.g. if header matched 2 ways)
+                            const existingIdx = plannedConsumption.findIndex(pc => pc.date === dateString && pc.isActual === isActual);
+
+                            if (existingIdx === -1) {
                                 plannedConsumption.push({
-                                    date: robustDate,
+                                    date: dateString,
                                     quantity,
                                     isActual
                                 });
-                                console.log(`[Excel Import V2.14] Item "${name}" (code: ${code}): Main Header "${header}" -> ${robustDate}, quantity: ${quantity}, isActual: ${isActual}`);
-                            }
-                            continue; // Logic matched, move to next column
-                        }
-                    }
-                }
-
-                // Also check for explicit "план витрат" columns (for backward compatibility and specific plan columns)
-                for (let i = 0; i < headers.length; i++) {
-                    const header = String(headers[i] || '').trim();
-                    const headerLower = header.toLowerCase();
-
-                    // Check if this is a planned consumption column
-                    const isPlannedConsumption = (headerLower.includes('план') && (headerLower.includes('витрат') || headerLower.includes('расход'))) ||
-                        headerLower.includes('план витрат') || headerLower.includes('план расход');
-
-                    if (isPlannedConsumption) {
-                        // Determine date
-                        let monthDate: string | undefined;
-
-                        // Case A: Month mapped from row above
-                        if (columnToMonthMap.has(i)) {
-                            monthDate = columnToMonthMap.get(i)!;
-                        }
-                        // Case B: Date in header itself (e.g. "План 01.12.2025") usually handled by datePattern loop, but check logic
-                        // If datePattern loop handled it, it pushed to plannedConsumption with isActual based on date.
-                        // We need to ensure we don't double add, OR if datePattern added it as Actual, we might want to correct it to Plan?
-                        // But datePattern loop usually skips text headers.
-
-                        if (monthDate) {
-                            // CRITICAL FIX V2.18: If explicit "Plan" column, ALWAYS treat as Plan (isActual = false)
-                            // Even if date is in the past (e.g. importing Plan for Dec 2025 in Jan 2026).
-                            // User wants to see this in "Planned Consumption" table.
-                            const isActual = false;
-
-                            const value = row[headers[i]] || row[`__EMPTY_${i}`];
-                            const quantity = Number(value) || 0;
-
-                            // Only add non-zero quantities
-                            if (quantity > 0) {
-                                // Check if we already have this month from month name columns
-                                const existingIndex = plannedConsumption.findIndex(pc => pc.date === monthDate);
-                                if (existingIndex === -1) {
-                                    plannedConsumption.push({ date: monthDate, quantity, isActual });
-                                    console.log(`[Excel Import V2.18] Item "${name}" (code: ${code}): Explicit Plan Column "${header}" -> ${monthDate}, quantity: ${quantity}, FORCED PLAN (isActual: false)`);
-                                } else {
-                                    // If exists, maybe update? Or checking if previous was Actual and this is Plan?
-                                    // If previous was from "Month Name" loop, it handles "Plan" logic poorly.
-                                    // Let's override if this is explicit plan.
-                                    if (plannedConsumption[existingIndex].isActual === true) {
-                                        console.log(`[Excel Import V2.18] Overriding previous Actual with Explicit Plan for ${monthDate}`);
-                                        plannedConsumption[existingIndex].isActual = false;
-                                        plannedConsumption[existingIndex].quantity = quantity; // Trust the explicit column?
-                                    }
-                                }
+                                console.log(`[Excel Import v3.0] Item "${name}" (code: ${code}): Column "${header}" -> ${dateString}, Qty: ${quantity}, Type: ${isActual ? 'FACT' : 'PLAN'}`);
+                            } else {
+                                // If duplicate, update?
+                                // Sometimes Plan and Fact are in same column?? No.
                             }
                         }
                     }
@@ -987,7 +959,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v2.18 HISTORICAL PLAN FIX)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.0 PLAN BY DEFAULT)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">

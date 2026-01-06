@@ -351,10 +351,23 @@ export default function ProductionPlanning() {
     const safeStock = Array.isArray(stock) ? stock : [];
     const safePlannedConsumption = Array.isArray(plannedConsumption) ? plannedConsumption : [];
 
+    // Helper to normalize category names manually
+    // This fixes issues where 'арри' should be 'flavoring', etc.
+    const normalizeCategory = (cat: string | undefined | null): string => {
+        if (!cat) return 'other';
+        const lower = cat.toLowerCase().trim();
+
+        // Manual mapping based on user feedback and known anomalies
+        if (lower === 'арри' || lower === 'arri') return 'flavor';
+        if (lower.startsWith('плівка') || lower.startsWith('пленка')) return 'soft_packaging'; // Unified soft packaging
+
+        return lower;
+    };
+
     // Get all unique categories
     const categories = useMemo(() => {
         if (!Array.isArray(safeItems)) return [];
-        return [...new Set(safeItems.map(item => item.category))].sort();
+        return [...new Set(safeItems.map(item => normalizeCategory(item.category)))].sort();
     }, [safeItems]);
 
     // Get month name
@@ -445,7 +458,7 @@ export default function ProductionPlanning() {
 
         // 1. Filter by Category
         if (selectedCategory !== 'all') {
-            itemsToFilter = itemsToFilter.filter(item => item.category === selectedCategory);
+            itemsToFilter = itemsToFilter.filter(item => normalizeCategory(item.category) === selectedCategory);
         }
 
         // 2. Filter by Search Query
@@ -821,7 +834,7 @@ export default function ProductionPlanning() {
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder={t('production.searchPlaceholder') || 'Поиск по названию или артикулу...'}
+                                    placeholder={t('production.searchPlaceholder') === 'production.searchPlaceholder' ? 'Поиск по названию или артикулу...' : (t('production.searchPlaceholder') || 'Поиск по названию или артикулу...')}
                                     className="w-full bg-slate-900 border border-slate-700 rounded-md py-2 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                 />
                             </div>

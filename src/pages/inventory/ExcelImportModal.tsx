@@ -42,6 +42,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     const [sheetNames, setSheetNames] = useState<string[]>([]);
     const [selectedSheet, setSelectedSheet] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [overrideYear, setOverrideYear] = useState<number | null>(null);
     const { refresh } = useInventory();
 
     // Reset state when modal opens
@@ -753,6 +754,17 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     }
 
                     if (dateString) {
+                        // v3.3 MANUAL OVERRIDE LOGIC
+                        if (overrideYear) {
+                            const [, m] = dateString.split('-');
+                            // Force strict year replacement
+                            const oldDate = dateString;
+                            dateString = `${overrideYear}-${m}-01`;
+                            if (oldDate !== dateString) {
+                                // console.log(`[Excel Import v3.3] OVERRIDE APPLIED: ${oldDate} -> ${dateString}`);
+                            }
+                        }
+
                         // We found a date. Now decide: Plan or Fact?
                         // v3.0 Rule: If NOT explicit fact -> PLAN.
                         // (Legacy logic was: if date < now -> Fact) -> CAUSE OF BUG
@@ -939,10 +951,31 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.2 LITERAL DATE IMPORT)">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Импорт из Excel (v3.3 MANUAL OVERRIDE)">
             <div className="space-y-6">
                 {step === 'upload' && (
                     <div className="space-y-4">
+                        {/* Year Override Selector */}
+                        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Настройка года (для коррекции ошибок в файле)
+                            </label>
+                            <select
+                                value={overrideYear || ''}
+                                onChange={(e) => setOverrideYear(e.target.value ? Number(e.target.value) : null)}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="">Авто (как в файле)</option>
+                                <option value="2024">Принудительно 2024</option>
+                                <option value="2025">Принудительно 2025</option>
+                                <option value="2026">Принудительно 2026</option>
+                                <option value="2027">Принудительно 2027</option>
+                            </select>
+                            <p className="text-xs text-slate-500 mt-2">
+                                Если в файле указан неверный год (например, 2026 вместо 2025), выберите нужный год здесь. Все даты будут загружены в выбранный год.
+                            </p>
+                        </div>
+
                         <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 rounded-xl p-10 bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
                             <FileSpreadsheet className="w-12 h-12 text-emerald-500 mb-4" />
                             <h3 className="text-lg font-medium text-slate-200 mb-2">{t('excel.uploadFile')}</h3>

@@ -45,7 +45,8 @@ export default function TechCardsList() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         loadRecipes();
-    }, []);
+        console.log('[TechCardsList] Current User state:', user, 'Role check:', user?.role);
+    }, [user]);
 
     // Проверка, является ли техкарта приоритетной (топ-25)
     const isPriorityRecipe = useMemo(() => {

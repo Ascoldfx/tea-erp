@@ -14,8 +14,10 @@ export default function GuestWelcomeAnimation() {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
+        console.log('GuestWelcomeAnimation useEffect running, user:', user, 'role:', user?.role, 'show:', show);
         // Only trigger for guest role if we haven't seen it yet
         if (user?.role === 'guest' && show) {
+            console.log('GuestWelcomeAnimation starting: fading in');
             // Trigger fade in
             const showTimer = setTimeout(() => setIsVisible(true), 100);
 

@@ -191,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!supabase) return;
 
         await supabase.auth.signOut();
+        sessionStorage.removeItem('guestWelcomeShown');
         setUser(null);
     };
 

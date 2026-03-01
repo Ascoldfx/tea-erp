@@ -120,13 +120,15 @@ export default function SuppliersPage() {
                     <h1 className="text-2xl font-bold text-slate-100">{t('suppliers.title')}</h1>
                     <p className="text-slate-400">{t('suppliers.subtitle')}</p>
                 </div>
-                <Button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {t('suppliers.add')}
-                </Button>
+                {user?.role !== 'guest' && (
+                    <Button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        {t('suppliers.add')}
+                    </Button>
+                )}
             </div>
 
             {/* Search */}

@@ -162,17 +162,17 @@ export const inventoryService = {
         const existingItemsMap = new Map<string, { id: string; name: string; category: string; sku: string }>();
 
         allExistingItems.forEach(item => {
-            if (item.sku) skuToIdMap.set(item.sku, item.id);
+            if (item.sku) skuToIdMap.set(item.sku as string, item.id as string);
             if (item.name) {
                 // Clean name for better matching: lowercase, trim
-                const cleanName = item.name.trim().toLowerCase();
-                nameToIdMap.set(cleanName, item.id);
+                const cleanName = (item.name as string).trim().toLowerCase();
+                nameToIdMap.set(cleanName, item.id as string);
             }
-            existingItemsMap.set(item.id, {
-                id: item.id,
-                name: item.name || '',
-                category: item.category || 'other',
-                sku: item.sku || ''
+            existingItemsMap.set(item.id as string, {
+                id: item.id as string,
+                name: (item.name as string) || '',
+                category: (item.category as string) || 'other',
+                sku: (item.sku as string) || ''
             });
         });
 
@@ -185,7 +185,7 @@ export const inventoryService = {
         const itemsMap = new Map<string, Record<string, unknown>>();
 
         items.forEach(i => {
-            const code = i.code?.trim();
+            const code = (i.code as string)?.trim();
             if (!code) {
                 console.warn(`Пропущен материал без кода: ${i.name || 'Неизвестный'}`);
                 return;
@@ -196,7 +196,7 @@ export const inventoryService = {
 
             // NEW: Fallback to Name Resolution if SKU not found
             if (!itemId) {
-                const cleanName = (i.name || '').trim().toLowerCase();
+                const cleanName = (i.name as string || '').trim().toLowerCase();
                 if (cleanName && nameToIdMap.has(cleanName)) {
                     itemId = nameToIdMap.get(cleanName);
                     console.log(`[Import] Resolved item by Name: "${i.name}" -> ID: ${itemId} (Excel Code: ${code} ignored/updated)`);
@@ -222,10 +222,10 @@ export const inventoryService = {
 
             // Check if this is an update to existing material
             // NOTE: existingItemsMap is now keyed by ID
-            const existingItem = existingItemsMap.get(itemId);
+            const existingItem = existingItemsMap.get(itemId as string);
             if (existingItem) {
                 const isCategoryChange = existingItem.category !== category;
-                const isNameChange = existingItem.name !== (i.name?.trim() || 'Без названия');
+                const isNameChange = existingItem.name !== ((i.name as string)?.trim() || 'Без названия');
 
                 if (isCategoryChange || isNameChange) {
                     console.log(`[Import] Updating existing material: ${code} (${existingItem.name})`);
@@ -233,13 +233,13 @@ export const inventoryService = {
                         console.log(`[Import] Category change: ${existingItem.category} -> ${category}`);
                     }
                     if (isNameChange) {
-                        console.log(`[Import] Name change: "${existingItem.name}" -> "${i.name?.trim() || 'Без названия'}"`);
+                        console.log(`[Import] Name change: "${existingItem.name}" -> "${(i.name as string)?.trim() || 'Без названия'}"`);
                     }
                 } else {
                     console.log(`[Import] Updating existing material: ${code} (${existingItem.name}) - same category and name`);
                 }
             } else {
-                console.log(`[Import] New material: ${code} (${i.name?.trim() || 'Без названия'}) - category: ${category}`);
+                console.log(`[Import] New material: ${code} (${(i.name as string)?.trim() || 'Без названия'}) - category: ${category}`);
             }
 
             if (category === 'flavor') {
@@ -250,16 +250,16 @@ export const inventoryService = {
             }
 
             // Normalize unit: convert pcs to шт
-            let normalizedUnit = i.unit || 'шт';
+            let normalizedUnit = (i.unit as string) || 'шт';
             if (normalizedUnit.toLowerCase() === 'pcs') {
                 normalizedUnit = 'шт';
             }
 
             // IMPORTANT: Always use the category from the NEW import (priority to new data)
-            itemsMap.set(itemId, {
+            itemsMap.set(itemId as string, {
                 id: itemId,
                 sku: code,
-                name: i.name?.trim() || 'Без названия',
+                name: (i.name as string)?.trim() || 'Без названия',
                 category: category, // Always use the category from import (new data takes priority)
                 unit: normalizedUnit,
                 min_stock_level: 0,
@@ -279,7 +279,8 @@ export const inventoryService = {
 
         // Debug: log category distribution
         const categoryCounts = dbItems.reduce((acc, item) => {
-            acc[item.category] = (acc[item.category] || 0) + 1;
+            const cat = item.category as string;
+            acc[cat] = (Number(acc[cat]) || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
         console.log('[Category Debug] Category distribution:', categoryCounts);
@@ -307,9 +308,9 @@ export const inventoryService = {
 
         // CRITICAL: Refresh skuToIdMap after items are saved to include newly created items
         // This ensures planned consumption can be linked to the correct item IDs
-        dbItems.forEach(item => {
+        dbItems.forEach((item) => {
             if (item.sku) {
-                skuToIdMap.set(item.sku, item.id);
+                skuToIdMap.set(item.sku as string, item.id as string);
             }
         });
         console.log(`[Import] Refreshed skuToIdMap after items save: ${skuToIdMap.size} items mapped`);
@@ -324,7 +325,7 @@ export const inventoryService = {
         if (categoryFetchError) {
             console.error('Error fetching saved items for category verification:', categoryFetchError);
         } else if (savedItems && savedItems.length > 0) {
-            const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: Record<string, unknown>) => {
+            const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: { category: string }) => {
                 acc[item.category] = (acc[item.category] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);
@@ -333,8 +334,8 @@ export const inventoryService = {
             // Log flavor items specifically
             if (savedCategoryCounts['flavor']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['flavor']} items with flavor category`);
-                const flavorItems = savedItems.filter((item: Record<string, unknown>) => item.category === 'flavor');
-                flavorItems.forEach((item: Record<string, unknown>) => {
+                const flavorItems = savedItems.filter((item: { category: string }) => item.category === 'flavor');
+                flavorItems.forEach((item: { name: string, sku: string, category: string }) => {
                     console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
                 });
             }
@@ -342,8 +343,8 @@ export const inventoryService = {
             // Log sticker items specifically
             if (savedCategoryCounts['sticker']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['sticker']} items with sticker category`);
-                const stickerItems = savedItems.filter((item: Record<string, unknown>) => item.category === 'sticker');
-                stickerItems.forEach((item: Record<string, unknown>) => {
+                const stickerItems = savedItems.filter((item: { category: string }) => item.category === 'sticker');
+                stickerItems.forEach((item: { name: string, sku: string, category: string }) => {
                     console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
                 });
             }
@@ -357,14 +358,14 @@ export const inventoryService = {
         // Get item categories to check if it's cardboard packaging
         const itemCategories = new Map<string, string>();
         for (const item of items) {
-            const code = item.code?.trim();
+            const code = (item.code as string)?.trim();
             if (!code) continue;
             const itemId = skuToIdMap.get(code) || code;
-            itemCategories.set(itemId, item.category || 'other');
+            itemCategories.set(itemId, (item.category as string) || 'other');
         }
 
         for (const item of items) {
-            const code = item.code?.trim();
+            const code = (item.code as string)?.trim();
             if (!code) continue;
 
             // Get the item ID (either from map or use code)
@@ -451,11 +452,12 @@ export const inventoryService = {
         // Collect all planned and actual consumption data
         const allPlannedConsumption: Array<{ code: string; date: string; quantity: number }> = [];
         for (const item of items) {
-            const code = item.code?.trim();
+            const code = (item.code as string)?.trim();
             if (!code) continue;
 
-            if (item.plannedConsumption && item.plannedConsumption.length > 0) {
-                item.plannedConsumption.forEach((pc: { date: string; quantity: number; isActual?: boolean }) => {
+            const plannedConsumption = item.plannedConsumption as Array<{ date: string; quantity: number; isActual?: boolean }>;
+            if (plannedConsumption && plannedConsumption.length > 0) {
+                plannedConsumption.forEach((pc) => {
                     if (pc.quantity <= 0) return;
 
                     // Фактический расход (isActual === true) - сохраним в stock_movements после сохранения items

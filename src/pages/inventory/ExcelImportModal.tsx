@@ -915,7 +915,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             console.log('Начинаем импорт данных...', parsedData.length, 'позиций');
 
             // Import materials first
-            await inventoryService.importData(parsedData);
+            await inventoryService.importData(parsedData as unknown as Record<string, unknown>[]);
             console.log('Материалы импортированы');
 
             // Import suppliers if any

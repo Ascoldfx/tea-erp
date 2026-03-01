@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
@@ -47,7 +47,7 @@ export default function ProductionCalculator() {
     }, []);
 
     // --- Helper: Check Priority (Top 25) ---
-    const isPriorityRecipe = (recipe: Recipe): boolean => {
+    const isPriorityRecipe = useCallback((recipe: Recipe): boolean => {
         // Try to find SKU in items or description
         let sku = '';
         const finishedGood = items.find(i => i.id === recipe.outputItemId);
@@ -73,7 +73,7 @@ export default function ProductionCalculator() {
         }
 
         return TOP_25_SKUS.some(s => s === sku);
-    };
+    }, [items]);
 
     // Sorted Recipes: Priority first, then Alphabetical
     const sortedRecipesOptions = useMemo(() => {
@@ -95,7 +95,7 @@ export default function ProductionCalculator() {
             ...others.map(r => ({ value: r.id, label: r.name }))
         ];
         return options;
-    }, [recipes, items]);
+    }, [recipes, isPriorityRecipe]);
 
     // Helper for fuzzy SKU matching
     const normalizeSku = (sku: string) => {
@@ -108,7 +108,7 @@ export default function ProductionCalculator() {
     };
 
     // --- Helper: Smart Stock Lookup ---
-    const getSmartTotalStock = (itemId: string, ingredient?: RecipeIngredient) => {
+    const getSmartTotalStock = useCallback((itemId: string, ingredient?: RecipeIngredient) => {
         // 1. Direct ID Match
         const byId = stock.filter(s => s.itemId === itemId).reduce((acc, curr) => acc + curr.quantity, 0);
         if (byId > 0) return byId;
@@ -190,17 +190,17 @@ export default function ProductionCalculator() {
         }
 
         return 0;
-    };
+    }, [stock, items]);
 
-    const getItemDetails = (itemId: string) => {
+    const getItemDetails = useCallback((itemId: string) => {
         return items.find(i => i.id === itemId);
-    };
+    }, [items]);
 
     // Helper to get effective quantity based on monthly norms (Smart Logic)
     // 1. Current Month Norm
     // 2. Most Recent Past Norm (Fallback)
     // 3. Base Quantity
-    const getEffectiveQuantity = (ing: any): { value: number; source: 'current' | 'recent' | 'base'; date?: string } => {
+    const getEffectiveQuantity = (ing: RecipeIngredient): { value: number; source: 'current' | 'recent' | 'base'; date?: string } => {
         const now = new Date();
         const currentMonthIdx = now.getMonth();
         const currentYear = now.getFullYear();
@@ -212,17 +212,17 @@ export default function ProductionCalculator() {
         }
 
         // 1. Try Exact Match
-        const exactMatch = ing.monthlyNorms.find((n: any) => n.date === currentMonthStr);
+        const exactMatch = ing.monthlyNorms.find((n) => n.date === currentMonthStr);
         if (exactMatch && exactMatch.quantity > 0) {
             return { value: exactMatch.quantity, source: 'current', date: exactMatch.date };
         }
 
         // 2. Try Most Recent Past
         // Filter norms that are strictly in the past (< currentMonthStr)
-        const pastNorms = ing.monthlyNorms.filter((n: any) => n.date < currentMonthStr && n.quantity > 0);
+        const pastNorms = ing.monthlyNorms.filter((n) => n.date < currentMonthStr && n.quantity > 0);
         if (pastNorms.length > 0) {
             // Sort descending (newest first)
-            pastNorms.sort((a: any, b: any) => b.date.localeCompare(a.date));
+            pastNorms.sort((a, b) => b.date.localeCompare(a.date));
             const recent = pastNorms[0];
             return { value: recent.quantity, source: 'recent', date: recent.date };
         }
@@ -279,7 +279,7 @@ export default function ProductionCalculator() {
             maxPossibleOutput: maxPossibleOutput === Infinity ? '∞' : maxPossibleOutput,
             ingredients: ingredientLimits
         };
-    }, [selectedRecipeId, recipes, stock, items]);
+    }, [selectedRecipeId, recipes, getSmartTotalStock, getItemDetails]);
 
     // --- Mode 2: Plan Requirement ---
     const planningResults = useMemo(() => {
@@ -313,7 +313,7 @@ export default function ProductionCalculator() {
             recipeName: recipe.name,
             ingredients: requirements
         };
-    }, [selectedRecipeId, targetQuantity, recipes, stock, items]);
+    }, [selectedRecipeId, targetQuantity, recipes, getSmartTotalStock, getItemDetails]);
 
 
     const handleRecipeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

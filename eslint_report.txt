@@ -1,0 +1,349 @@
+
+> tea-erp@0.0.0 lint
+> eslint .
+
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/components/ui/Card.tsx
+  4:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/context/AuthContext.tsx
+   59:19  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  102:23  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  178:23  error  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  206:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/context/LanguageContext.tsx
+  622:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/hooks/useInventory.ts
+  28:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/auth/LoginPage.tsx
+  34:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/contractors/ContractorDetailsModal.tsx
+   53:8   warning  React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array                                                                                         react-hooks/exhaustive-deps
+  128:11  warning  The 'formatCategoryName' function makes the dependencies of useMemo Hook (at line 190) change on every render. To fix this, wrap the definition of 'formatCategoryName' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  159:66  warning  React Hook useMemo has a missing dependency: 'getContractorMaterials'. Either include it or remove the dependency array                                                                                react-hooks/exhaustive-deps
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/crm/ContractorsList.tsx
+  15:24  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  16:17  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  18:20  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  35:38  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `inventoryItems`, but the source dependencies were [newJob]. Inferred different dependency than source.
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/crm/ContractorsList.tsx:35:38
+  33 |
+  34 |     // Material Analysis for New Job (Aggregate across all items)
+> 35 |     const materialAnalysis = useMemo(() => {
+     |                                      ^^^^^^^
+> 36 |         if (!newJob.contractorId || newJob.items.length === 0) return null;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 37 |
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 85 |         });
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 86 |     }, [newJob]);
+     | ^^^^^^ Could not preserve existing manual memoization
+  87 |
+  88 |
+  89 |     const handleCreateJob = (e: React.FormEvent) => {  react-hooks/preserve-manual-memoization
+  54:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  86:8   warning  React Hook useMemo has missing dependencies: 'inventoryItems' and 'recipes'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/dashboard/Dashboard.tsx
+  4:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  6:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  7:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/CreateOrderModal.tsx
+   99:77  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  101:9   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  193:21  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  226:80  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  333:78  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/ExcelImportModal.tsx
+   51:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/ExcelImportModal.tsx:51:13
+  49 |     useEffect(() => {
+  50 |         if (isOpen) {
+> 51 |             setStep('upload');
+     |             ^^^^^^^ Avoid calling setState() directly within an effect
+  52 |             setParsedData([]);
+  53 |             setParsedSuppliers([]);
+  54 |             setError(null);  react-hooks/set-state-in-effect
+  124:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  151:47  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  172:70  error  Unnecessary escape character: \.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-useless-escape
+  172:72  error  Unnecessary escape character: \-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-useless-escape
+  275:28  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  293:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  366:56  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  524:50  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  636:91  error  Unnecessary escape character: \.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-useless-escape
+  879:32  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  935:23  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/InventoryList.tsx
+  126:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  539:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  542:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/MaterialDetailsModal.tsx
+   9:21  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  23:60  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  26:66  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  34:8   warning  React Hook useEffect has missing dependencies: 'loadMovementHistory' and 'loadPlannedConsumption'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  84:67  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  85:43  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  96:47  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+  97:62  error    Unexpected any. Specify a different type                                                                                                               @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/inventory/ReceiveGoodsModal.tsx
+   8:25  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  41:77  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  43:9   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/logistics/LogisticsCalendar.tsx
+  180:23   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:61   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  195:63   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  322:75   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  368:55   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  450:164  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/orders/OrderDetailsModal.tsx
+  30:13  error    Error: Cannot access variable before it is declared
+
+`loadOrder` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/orders/OrderDetailsModal.tsx:30:13
+  28 |     useEffect(() => {
+  29 |         if (isOpen && orderId) {
+> 30 |             loadOrder();
+     |             ^^^^^^^^^ `loadOrder` accessed before it is declared
+  31 |         }
+  32 |     }, [isOpen, orderId]);
+  33 |
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/orders/OrderDetailsModal.tsx:34:5
+  32 |     }, [isOpen, orderId]);
+  33 |
+> 34 |     const loadOrder = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |         setLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |         const data = await ordersService.getOrderWithItems(orderId);
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |         setLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 47 |     };
+     | ^^^^^^^ `loadOrder` is declared here
+  48 |
+  49 |     const handleStatusChange = async (newStatus: string) => {
+  50 |         if (!order) return;  react-hooks/immutability
+  32:8   warning  React Hook useEffect has a missing dependency: 'loadOrder'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/orders/OrdersList.tsx
+   58:88  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   65:58  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   66:62  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   74:49  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  164:46  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  196:74  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/BatchDetailsModal.tsx
+  3:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/MaterialDetailsModal.tsx
+  99:117  error  Unnecessary escape character: \.  no-useless-escape
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/ProductionCalculator.tsx
+   98:8   warning  React Hook useMemo has a missing dependency: 'isPriorityRecipe'. Either include it or remove the dependency array                           react-hooks/exhaustive-deps
+  203:40  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  215:54  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  222:55  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  225:32  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  225:40  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  282:8   warning  React Hook useMemo has missing dependencies: 'getItemDetails' and 'getSmartTotalStock'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  316:8   warning  React Hook useMemo has missing dependencies: 'getItemDetails' and 'getSmartTotalStock'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/ProductionPlanning.tsx
+   86:8   warning  React Hook useEffect has missing dependencies: 'actualConsumptions', 'items', and 'plannedConsumption'. Either include them or remove the dependency array                                                                                                    react-hooks/exhaustive-deps
+  145:8   warning  React Hook useEffect has a missing dependency: 'refresh'. Either include it or remove the dependency array                                                                                                                                                    react-hooks/exhaustive-deps
+  311:34  error    'e' is defined but never used                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  350:11  warning  The 'safeItems' conditional could make the dependencies of useMemo Hook (at line 371) change on every render. To fix this, wrap the initialization of 'safeItems' in its own useMemo() Hook                                                                   react-hooks/exhaustive-deps
+  350:11  warning  The 'safeItems' conditional could make the dependencies of useMemo Hook (at line 475) change on every render. To fix this, wrap the initialization of 'safeItems' in its own useMemo() Hook                                                                   react-hooks/exhaustive-deps
+  350:11  warning  The 'safeItems' conditional could make the dependencies of useMemo Hook (at line 652) change on every render. To fix this, wrap the initialization of 'safeItems' in its own useMemo() Hook                                                                   react-hooks/exhaustive-deps
+  350:11  warning  The 'safeItems' conditional could make the dependencies of useMemo Hook (at line 755) change on every render. To fix this, wrap the initialization of 'safeItems' in its own useMemo() Hook                                                                   react-hooks/exhaustive-deps
+  351:11  warning  The 'safeStock' conditional could make the dependencies of useMemo Hook (at line 652) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'safeStock' in its own useMemo() Hook                            react-hooks/exhaustive-deps
+  352:11  warning  The 'safePlannedConsumption' conditional could make the dependencies of useMemo Hook (at line 652) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'safePlannedConsumption' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  543:26  error    'e' is defined but never used                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/ProductionSchedule.tsx
+  238:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  308:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/RecipeEditor.tsx
+  18:20  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/RecipeEditor.tsx:18:20
+  16 |
+  17 |     const [recipe, setRecipe] = useState<Recipe>({
+> 18 |         id: `rcp-${Date.now()}`,
+     |                    ^^^^^^^^^^ Cannot call impure function
+  19 |         name: '',
+  20 |         description: '',
+  21 |         outputItemId: '',  react-hooks/purity
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/TechCardsImportModal.tsx
+   34:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/TechCardsImportModal.tsx:34:13
+  32 |     useEffect(() => {
+  33 |         if (isOpen) {
+> 34 |             setStep('upload');
+     |             ^^^^^^^ Avoid calling setState() directly within an effect
+  35 |             setParsedData([]);
+  36 |             setError(null);
+  37 |             setSheetNames([]);  react-hooks/set-state-in-effect
+  106:23  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  358:23  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/TechCardsList.tsx
+  44:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/production/TechCardsList.tsx:44:9
+  42 |     // Загружаем техкарты из базы данных при монтировании компонента
+  43 |     useEffect(() => {
+> 44 |         loadRecipes();
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  45 |     }, []);
+  46 |
+  47 |     // Проверка, является ли техкарта приоритетной (топ-25)  react-hooks/set-state-in-effect
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/suppliers/CreateSupplierModal.tsx
+  105:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/suppliers/EditSupplierModal.tsx
+  79:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/suppliers/SupplierOrdersModal.tsx
+  30:8  warning  React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/suppliers/SuppliersPage.tsx
+  102:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/users/CreateUserModal.tsx
+  34:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/pages/users/EditUserModal.tsx
+  48:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/inventoryService.ts
+    8:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:25  error  '_sourceId' is defined but never used     @typescript-eslint/no-unused-vars
+  105:44  error  '_targetId' is defined but never used     @typescript-eslint/no-unused-vars
+  105:63  error  '_itemId' is defined but never used       @typescript-eslint/no-unused-vars
+  105:80  error  '_qty' is defined but never used          @typescript-eslint/no-unused-vars
+  116:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  326:95  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  335:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  336:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  344:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  345:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  400:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  410:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  500:26  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  608:30  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  655:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  668:30  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  855:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/ordersService.ts
+   94:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  100:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/recipesBackupService.ts
+    7:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    8:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/recipesService.ts
+   85:21  error  'totalFetched' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  398:43  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  405:42  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  429:52  error  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/techCardsExportService.ts
+  262:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  303:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:36  error  Unnecessary escape character: \.          no-useless-escape
+  339:38  error  Unnecessary escape character: \/          no-useless-escape
+  339:55  error  Unnecessary escape character: \.          no-useless-escape
+  339:57  error  Unnecessary escape character: \/          no-useless-escape
+  340:41  error  Unnecessary escape character: \.          no-useless-escape
+  340:43  error  Unnecessary escape character: \/          no-useless-escape
+  340:60  error  Unnecessary escape character: \.          no-useless-escape
+  340:62  error  Unnecessary escape character: \/          no-useless-escape
+  356:22  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  356:25  error  Empty block statement                     no-empty
+  399:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  423:40  error  Unnecessary escape character: \.          no-useless-escape
+  423:42  error  Unnecessary escape character: \/          no-useless-escape
+  423:59  error  Unnecessary escape character: \.          no-useless-escape
+  423:61  error  Unnecessary escape character: \/          no-useless-escape
+  424:45  error  Unnecessary escape character: \.          no-useless-escape
+  424:47  error  Unnecessary escape character: \/          no-useless-escape
+  424:64  error  Unnecessary escape character: \.          no-useless-escape
+  424:66  error  Unnecessary escape character: \/          no-useless-escape
+  469:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  483:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  483:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  527:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  528:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/services/usersService.ts
+  55:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/antongotskyi/Documents/cursor/tea-erp/src/utils/excelParser.ts
+  8:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 163 problems (145 errors, 18 warnings)
+

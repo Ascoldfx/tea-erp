@@ -99,7 +99,8 @@ export default function SettingsPage() {
                                             { value: 'warehouse', label: t('users.role.warehouse') },
                                             { value: 'procurement', label: t('users.role.procurement') },
                                             { value: 'production_planner', label: t('users.role.production_planner') },
-                                            { value: 'director', label: t('users.role.director') }
+                                            { value: 'director', label: t('users.role.director') },
+                                            { value: 'guest', label: t('users.role.guest') }
                                         ]}
                                         value={inviteRole}
                                         onChange={(e) => setInviteRole(e.target.value as UserRole)}
@@ -256,7 +257,7 @@ export default function SettingsPage() {
                             {t('settings.roleSwitcherDisabled')}
                         </p>
                         <div className="flex flex-wrap gap-2">
-                            {(['admin', 'warehouse', 'procurement', 'production_planner', 'director'] as UserRole[]).map(role => (
+                            {(['admin', 'warehouse', 'procurement', 'production_planner', 'director', 'guest'] as UserRole[]).map(role => (
                                 <Button
                                     key={role}
                                     variant="outline"

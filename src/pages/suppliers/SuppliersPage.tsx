@@ -99,7 +99,8 @@ export default function SuppliersPage() {
             alert('Поставщик успешно удален!');
             fetchContractors();
             setSupplierToDelete(null);
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error & { details?: string; hint?: string };
             console.error('Error deleting supplier:', error);
             alert(`Ошибка при удалении поставщика: ${error?.message || 'Неизвестная ошибка'}`);
         } finally {
@@ -253,15 +254,15 @@ export default function SuppliersPage() {
                         ⚠️ Это действие нельзя отменить. Поставщик с существующими заказами не может быть удален.
                     </p>
                     <div className="flex justify-end gap-3 pt-4">
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
+                        <Button
+                            type="button"
+                            variant="ghost"
                             onClick={() => setSupplierToDelete(null)}
                             disabled={isDeleting}
                         >
                             {t('common.cancel')}
                         </Button>
-                        <Button 
+                        <Button
                             type="button"
                             onClick={handleDelete}
                             disabled={isDeleting}

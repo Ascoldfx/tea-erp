@@ -4,8 +4,8 @@ import type { Recipe } from '../types/production';
 export interface RecipeBackup {
     id: string;
     recipe_id: string;
-    recipe_data: any;
-    ingredients_data: any[];
+    recipe_data: Record<string, unknown>;
+    ingredients_data: Record<string, unknown>[];
     backup_type: 'auto' | 'manual';
     created_at: string;
     created_by?: string;
@@ -111,7 +111,7 @@ export const recipesBackupService = {
 
             // Восстанавливаем техкарту
             const { recipesService } = await import('./recipesService');
-            
+
             const recipe: Recipe = {
                 id: backup.recipe_data.id,
                 name: backup.recipe_data.name,
@@ -121,7 +121,15 @@ export const recipesBackupService = {
                 actualQuantity: backup.recipe_data.actual_quantity,
                 materialsHandoverDate: backup.recipe_data.materials_handover_date,
                 materialsAcceptedDate: backup.recipe_data.materials_accepted_date,
-                ingredients: (backup.ingredients_data || []).map((ing: any) => ({
+                ingredients: ((backup.ingredients_data || []) as Array<{
+                    item_id: string;
+                    quantity: number;
+                    tolerance?: number;
+                    is_duplicate_sku?: boolean;
+                    is_auto_created?: boolean;
+                    temp_material_sku?: string;
+                    temp_material_name?: string;
+                }>).map((ing) => ({
                     itemId: ing.item_id,
                     quantity: ing.quantity,
                     tolerance: ing.tolerance,
@@ -250,11 +258,11 @@ export const recipesBackupService = {
 
             const now = new Date();
             const protectedCount = data?.filter(b => b.is_protected).length || 0;
-            const expiredCount = data?.filter(b => 
+            const expiredCount = data?.filter(b =>
                 !b.is_protected && b.expires_at && new Date(b.expires_at) < now
             ).length || 0;
             const totalSizeKb = data?.reduce((sum, b) => sum + (b.backup_size_kb || 0), 0) || 0;
-            
+
             const dates = data?.map(b => b.created_at).filter(Boolean) || [];
             const oldestBackup = dates.length > 0 ? dates.sort()[0] : undefined;
             const newestBackup = dates.length > 0 ? dates.sort().reverse()[0] : undefined;

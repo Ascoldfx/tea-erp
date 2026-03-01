@@ -60,7 +60,6 @@ export const recipesService = {
             let allIngredients: RecipeIngredientDB[] = [];
             const BATCH_SIZE = 1000;
             let from = 0;
-            let totalFetched = 0;
             let hasMore = true;
 
             // Fetch ingredients in batches to bypass Supabase 1000 row limit
@@ -82,7 +81,6 @@ export const recipesService = {
 
                 if (data && data.length > 0) {
                     allIngredients = [...allIngredients, ...data];
-                    totalFetched += data.length;
                     from += BATCH_SIZE;
                     // If we got less than requested, we are done
                     if (data.length < BATCH_SIZE) {
@@ -395,14 +393,14 @@ export const recipesService = {
                             realItemId = resolveId;
                         } else {
                             // VERBOSE DEBUG: Why is it missing?
-                            if (!(this as any)._debugLoggedOnce) {
+                            if (!(this as Record<string, unknown>)._debugLoggedOnce) {
                                 console.log('[RecipesService] DEBUG SKU LOOKUP FAIL:', {
                                     lookingForSku: skuToCheck,
                                     hasSku: resolution.skuToIdMap.has(skuToCheck),
                                     lookingForName: ing.tempMaterial?.name,
                                     hasName: resolution.nameToIdMap.has(ing.tempMaterial?.name || '')
                                 });
-                                (this as any)._debugLoggedOnce = true;
+                                (this as Record<string, unknown>)._debugLoggedOnce = true;
                             }
 
                             console.warn(`[RecipesService] ⚠️ Could not resolve SKU "${skuToCheck}" or Name "${ing.tempMaterial?.name}" for ingredient in "${recipe.name}". Skipping.`);
@@ -426,7 +424,7 @@ export const recipesService = {
                         temp_material_sku: tempSku,
                         temp_material_name: ing.tempMaterial?.name,
                         monthly_norms: ing.monthlyNorms && Array.isArray(ing.monthlyNorms) && ing.monthlyNorms.length > 0
-                            ? (ing.monthlyNorms as any)
+                            ? (ing.monthlyNorms as Array<{ date: string; quantity: number }>)
                             : null
                     });
                 });

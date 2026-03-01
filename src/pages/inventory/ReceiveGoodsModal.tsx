@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useInventory } from '../../hooks/useInventory';
 // import { MOCK_CONTRACTORS } from '../../data/mockContractors';
-const MOCK_CONTRACTORS: any[] = [];
+const MOCK_CONTRACTORS: { id: string, name: string }[] = [];
 import { Plus, Trash, CheckCircle } from 'lucide-react';
 
 interface ReceiveGoodsModalProps {
@@ -38,10 +38,9 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
+    const handleItemChange = (index: number, field: keyof OrderItem, value: string | number) => {
         const newItems = [...items];
-        // @ts-ignore
-        newItems[index][field] = value;
+        newItems[index] = { ...newItems[index], [field]: value };
         setItems(newItems);
     };
 

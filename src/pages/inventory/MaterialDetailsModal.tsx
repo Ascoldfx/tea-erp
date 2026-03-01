@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import type { InventoryItem, StockLevel, Warehouse } from '../../types/inventory';
+import type { InventoryItem, StockLevel, Warehouse, PlannedConsumption } from '../../types/inventory';
 import { History, Play, CheckCircle, Copy, Check, Package } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../context/LanguageContext';
-// import { MOCK_RECIPES } from '../../data/mockProduction';
-const MOCK_RECIPES: any[] = [];
+import type { Recipe } from '../../types/production';
+const MOCK_RECIPES: Recipe[] = [];
 import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -17,13 +17,22 @@ interface MaterialDetailsModalProps {
     warehouses?: Warehouse[];
 }
 
+interface StockMovementDB {
+    id: string;
+    item_id: string;
+    quantity: number;
+    type: 'in' | 'out' | 'transfer' | 'adjustment';
+    comment?: string;
+    created_at: string;
+}
+
 export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses = [] }: MaterialDetailsModalProps) {
     const { t } = useLanguage();
     const { items: allItems } = useInventory();
-    const [movementHistory, setMovementHistory] = useState<any[]>([]);
+    const [movementHistory, setMovementHistory] = useState<StockMovementDB[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [plannedConsumption, setPlannedConsumption] = useState<any[]>([]);
+    const [plannedConsumption, setPlannedConsumption] = useState<PlannedConsumption[]>([]);
     const [loadingPlanned, setLoadingPlanned] = useState(false);
 
     useEffect(() => {
@@ -31,6 +40,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
             loadMovementHistory();
             loadPlannedConsumption();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item, isOpen]);
 
     const loadMovementHistory = async () => {
@@ -81,8 +91,8 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
         if (!item) return [];
 
         // Find recipes that use this material
-        const recipesUsingMaterial = MOCK_RECIPES.filter((recipe: any) =>
-            recipe.ingredients.some((ing: any) => ing.itemId === item.id)
+        const recipesUsingMaterial = MOCK_RECIPES.filter((recipe) =>
+            recipe.ingredients.some((ing) => ing.itemId === item.id)
         );
 
         // Get unique finished goods from these recipes
@@ -93,8 +103,8 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
             quantity: number; // Normalized quantity per output
         }>();
 
-        recipesUsingMaterial.forEach((recipe: any) => {
-            const ingredient = recipe.ingredients.find((ing: any) => ing.itemId === item.id);
+        recipesUsingMaterial.forEach((recipe) => {
+            const ingredient = recipe.ingredients.find((ing) => ing.itemId === item.id);
 
             if (!ingredient) return;
 

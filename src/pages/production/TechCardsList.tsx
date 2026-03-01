@@ -9,11 +9,13 @@ import { useInventory } from '../../hooks/useInventory';
 
 import TechCardsImportModal from './TechCardsImportModal';
 import RecipeDetailsModal from './RecipeDetailsModal';
+import { useAuth } from '../../context/AuthContext';
 import { TOP_25_SKUS } from '../../data/top25Skus';
 import { recipesService } from '../../services/recipesService';
 import type { Recipe } from '../../types/production';
 
 export default function TechCardsList() {
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -41,6 +43,7 @@ export default function TechCardsList() {
 
     // Загружаем техкарты из базы данных при монтировании компонента
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadRecipes();
     }, []);
 
@@ -295,19 +298,22 @@ export default function TechCardsList() {
                     <p className="text-slate-400 mt-1">Рецептуры и нормы расхода (на 1 ящик)</p>
                 </div>
                 <div className="flex gap-3">
-
-                    <Button
-                        variant="outline"
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="border-slate-600 hover:bg-slate-800"
-                    >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Импорт из Excel
-                    </Button>
-                    <Button onClick={() => navigate('/production/recipes/new')}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Создать карту
-                    </Button>
+                    {user?.role !== 'guest' && (
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="border-slate-600 hover:bg-slate-800"
+                            >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Импорт из Excel
+                            </Button>
+                            <Button onClick={() => navigate('/production/recipes/new')}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Создать карту
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 

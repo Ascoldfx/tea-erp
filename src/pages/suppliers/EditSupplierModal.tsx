@@ -76,10 +76,11 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
             alert(t('editSupplier.success'));
             onSuccess();
             onClose();
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error & { details?: string; hint?: string };
             console.error('Error updating supplier:', error);
             let errorMessage = t('editSupplier.error');
-            
+
             if (error?.message) {
                 errorMessage = error.message;
             } else if (error?.details) {
@@ -87,11 +88,11 @@ export default function EditSupplierModal({ isOpen, onClose, onSuccess, supplier
             } else if (typeof error === 'string') {
                 errorMessage = error;
             }
-            
+
             if (error?.hint) {
                 errorMessage += `\n\n${t('common.hint')}: ${error.hint}`;
             }
-            
+
             alert(`${t('editSupplier.error')}:\n\n${errorMessage}\n\n${t('common.checkConsole')}`);
         } finally {
             setSaving(false);

@@ -55,23 +55,23 @@ export default function OrdersList() {
             // Fetch order items for each order
             const ordersWithItems = await Promise.all(
                 (ordersData || []).map(async (order) => {
-                    if (!supabase) return { ...order, contractor: order.contractors as any, items: [] };
+                    if (!supabase) return { ...order, contractor: (order.contractors as unknown) as { name: string }, items: [] };
 
                     const { data: itemsData } = await supabase
                         .from('order_items')
                         .select('id, item_id, quantity, received_quantity, items(name, sku, unit)')
                         .eq('order_id', order.id);
 
-                    const supplier = (order.suppliers as any) || null;
-                    const contractor = (order.contractors as any) || null;
-                    
+                    const supplier = ((order.suppliers as unknown) as { name: string }) || null;
+                    const contractor = ((order.contractors as unknown) as { name: string }) || null;
+
                     return {
                         ...order,
                         supplier,
                         contractor,
                         items: (itemsData || []).map(item => ({
                             ...item,
-                            item: item.items as any
+                            item: (item.items as unknown) as { name: string; sku: string; unit: string }
                         }))
                     };
                 })
@@ -161,7 +161,7 @@ export default function OrdersList() {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-slate-200">
-                                            {/* @ts-ignore - Supabase join typing is tricky without generated types */}
+                                            {/* @ts-expect-error - Supabase join typing is tricky without generated types */}
                                             {(order.supplier || order.contractor)?.name || 'Неизвестный поставщик'}
                                         </h3>
                                         <p className="text-sm text-slate-400">
@@ -193,10 +193,10 @@ export default function OrdersList() {
                                     <p className="text-xs text-slate-400 mb-2">Состав заказа:</p>
                                     <div className="space-y-1">
                                         {order.items.slice(0, 3).map(item => {
-                                            const receivedQty = (item as any).received_quantity || 0;
+                                            const receivedQty = ((item as unknown) as { received_quantity?: number }).received_quantity || 0;
                                             const hasReceivedQty = receivedQty > 0;
                                             const qtyDiffers = hasReceivedQty && receivedQty !== item.quantity;
-                                            
+
                                             return (
                                                 <div key={item.id} className="flex justify-between text-sm">
                                                     <span className="text-slate-300">

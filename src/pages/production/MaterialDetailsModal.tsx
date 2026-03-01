@@ -96,7 +96,7 @@ export default function MaterialDetailsModal({ isOpen, onClose, materialInfo, al
                                     }
 
                                     // 3. Search in description (supports "SKU:", "Артикул:", "Код:", etc.)
-                                    const descMatch = recipe.description?.match(/(?:SKU|Артикул|Sku|Articul|Код)[\s:\.\-№]+([^\s,;]+)/i);
+                                    const descMatch = recipe.description?.match(/(?:SKU|Артикул|Sku|Articul|Код)[\s:.\-№]+([^\s,;]+)/i);
                                     if (descMatch) {
                                         const val = descMatch[1];
                                         if (!val.startsWith('rcp-')) return val;

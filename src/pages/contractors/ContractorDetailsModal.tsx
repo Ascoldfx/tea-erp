@@ -50,6 +50,7 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
         if (isOpen && contractor) {
             fetchOrders();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, contractor]);
 
     const fetchOrders = async () => {
@@ -90,12 +91,12 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
     // Get materials at contractor's warehouse
     const getContractorMaterials = () => {
         if (!contractor) return [];
-        
+
         // Find warehouse for this contractor
         // Склады подрядчиков имеют ID, совпадающий с ID подрядчика (wh-ts, wh-fito)
         // Также проверяем type='contractor' или совпадение ID
-        const contractorWarehouse = warehouses.find(w => 
-            w.id === contractor.id || 
+        const contractorWarehouse = warehouses.find(w =>
+            w.id === contractor.id ||
             (w.type === 'contractor' && w.contractor_id === contractor.id)
         );
 
@@ -125,13 +126,13 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
     };
 
     // Helper function to format category name for display
-    const formatCategoryName = (category: string): string => {
+    const formatCategoryName = useMemo(() => (category: string): string => {
         const translationKey = `materials.filter.${category}`;
         const translated = t(translationKey);
         if (translated !== translationKey) {
             return translated;
         }
-        
+
         const categoryMap: Record<string, string> = {
             'envelope': language === 'uk' ? 'Конверти' : 'Конверты',
             'label': language === 'uk' ? 'Ярлики' : 'Ярлыки',
@@ -144,26 +145,27 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
             'other': language === 'uk' ? 'Інше' : 'Прочее',
             'packaging_cardboard': language === 'uk' ? 'Картонна упаковка' : 'Картонная упаковка'
         };
-        
+
         if (categoryMap[category]) {
             return categoryMap[category];
         }
-        
+
         return category
             .replace(/_/g, ' ')
             .replace(/\b\w/g, (char) => char.toUpperCase())
             .trim();
-    };
+    }, [t, language]);
 
     // Get all materials and filter by search term
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const allMaterials = useMemo(() => getContractorMaterials(), [contractor, warehouses, stock, items]);
-    
+
     // Filter materials by search term
     const filteredMaterials = useMemo(() => {
         if (!materialSearchTerm.trim()) return allMaterials;
-        
+
         const searchLower = materialSearchTerm.toLowerCase().trim();
-        return allMaterials.filter(mat => 
+        return allMaterials.filter(mat =>
             mat.itemName.toLowerCase().includes(searchLower) ||
             mat.sku.toLowerCase().includes(searchLower)
         );
@@ -172,7 +174,7 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
     // Group materials by category
     const groupedMaterials = useMemo(() => {
         const groups = new Map<string, typeof filteredMaterials>();
-        
+
         filteredMaterials.forEach(mat => {
             const category = mat.category || 'other';
             if (!groups.has(category)) {
@@ -180,12 +182,12 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
             }
             groups.get(category)!.push(mat);
         });
-        
+
         // Sort groups by category name
         const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
             return formatCategoryName(a[0]).localeCompare(formatCategoryName(b[0]));
         });
-        
+
         return sortedGroups;
     }, [filteredMaterials, formatCategoryName]);
 
@@ -279,11 +281,11 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                                             </div>
                                             <span className={clsx(
                                                 "px-2.5 py-0.5 rounded-full text-xs font-medium ml-3",
-                                                order.status === 'in_progress' 
-                                                    ? 'bg-blue-900/30 text-blue-400' 
+                                                order.status === 'in_progress'
+                                                    ? 'bg-blue-900/30 text-blue-400'
                                                     : 'bg-yellow-900/30 text-yellow-400'
                                             )}>
-                                                {order.status === 'in_progress' 
+                                                {order.status === 'in_progress'
                                                     ? (t('contractors.inProgress') || 'В работе')
                                                     : (t('contractors.pending') || 'Ожидает')}
                                             </span>
@@ -357,7 +359,7 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                             {t('contractors.materialsAtContractor') || 'Наши материалы на складе подрядчика'}
                         </h3>
                     </div>
-                    
+
                     {/* Search Filter */}
                     {allMaterials.length > 0 && (
                         <div className="relative mb-4">
@@ -383,10 +385,10 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                                             const materialItem = items.find(i => i.id === mat.itemId);
                                             const materialStockLevels = stock.filter(s => s.itemId === mat.itemId);
                                             const totalStock = materialStockLevels.reduce((sum, s) => sum + s.quantity, 0);
-                                            
+
                                             return (
-                                                <div 
-                                                    key={mat.itemId} 
+                                                <div
+                                                    key={mat.itemId}
                                                     className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 cursor-pointer hover:border-emerald-500/50 transition-colors group"
                                                     onDoubleClick={() => {
                                                         if (materialItem) {

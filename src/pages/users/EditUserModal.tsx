@@ -45,7 +45,8 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
             }
 
             onUserUpdated();
-        } catch (err: any) {
+        } catch (error) {
+            const err = error as Error;
             console.error('Error updating user:', err);
             setError(err.message || 'Ошибка при обновлении пользователя');
         } finally {
@@ -83,7 +84,7 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
                 <Select
                     label="Роль"
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UpdateUserData['role'] })}
                     options={[
                         { value: 'director', label: 'Директор (только чтение)' },
                         { value: 'warehouse', label: 'Кладовщик (свой склад)' },

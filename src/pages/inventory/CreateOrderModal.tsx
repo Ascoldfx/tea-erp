@@ -96,9 +96,8 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
+    const handleItemChange = <K extends keyof OrderItem>(index: number, field: K, value: OrderItem[K]) => {
         const newItems = [...items];
-        // @ts-ignore
         newItems[index][field] = value;
         setItems(newItems);
     };
@@ -190,9 +189,10 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             setPrepayment(0);
             setDeliveryCost(0);
 
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
             console.error('Order placement error:', e);
-            alert('Ошибка при размещении заказа: ' + e.message);
+            alert('Ошибка при размещении заказа: ' + errorMsg);
         }
     };
 
@@ -223,7 +223,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                 { value: 'supplier_extra', label: 'Доставка поставщиком (Доп. затраты)' }
                             ]}
                             value={deliveryMethod}
-                            onChange={e => setDeliveryMethod(e.target.value as any)}
+                            onChange={e => setDeliveryMethod(e.target.value as typeof deliveryMethod)}
                         />
                         {deliveryMethod === 'supplier_extra' && (
                             <Input
@@ -330,7 +330,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                 { value: '50_50', label: '50/50 (Часть пред, часть отлож)' }
                             ]}
                             value={paymentTerms}
-                            onChange={e => setPaymentTerms(e.target.value as any)}
+                            onChange={e => setPaymentTerms(e.target.value as typeof paymentTerms)}
                         />
                         <Input
                             label="Отсрочка (дней)"

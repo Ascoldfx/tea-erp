@@ -259,7 +259,7 @@ export function parseTechCardsFromExcel(
         defval: '',
         raw: false,
         header: 1
-    }) as any[][];
+    }) as unknown[][];
 
     if (!rawData || rawData.length === 0) {
         throw new Error('Файл пуст или не содержит данных');
@@ -300,7 +300,7 @@ export function parseTechCardsFromExcel(
 
     const helperHeaders = rawData[headerRowIndex] || [];
     // Normalize headers: remove newlines, extra spaces, toLowerCase
-    const headers = helperHeaders.map((h: any) => String(h || '').replace(/\s+/g, ' ').trim());
+    const headers = helperHeaders.map((h) => String(h || '').replace(/\s+/g, ' ').trim());
 
     // DEBUG: Dump raw headers and first rows to troubleshoot column indices
     console.log('[parseTechCardsFromExcel] 🔍 PARSER DEBUG 🔍');
@@ -336,8 +336,8 @@ export function parseTechCardsFromExcel(
 
     // 3. Предварительно находим колонки с датами (для месячных норм)
     // Это оптимизация: ищем паттерны дат ОДИН раз, а не для каждой строки
-    const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY
-    const datePatternShort = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{2})/; // DD.MM.YY
+    const datePattern = /(\d{1,2})[./\-\s](\d{1,2})[./\-\s](\d{4})/; // DD.MM.YYYY
+    const datePatternShort = /(\d{1,2})[./\-\s](\d{1,2})[./\-\s](\d{2})/; // DD.MM.YY
     const dateColumnIndices: { index: number; dateIso: string }[] = [];
 
     headers.forEach((header, idx) => {
@@ -353,7 +353,9 @@ export function parseTechCardsFromExcel(
             try {
                 const date = XLSX.SSF.parse_date_code(rawHeader);
                 if (date) headerStr = `${String(date.d).padStart(2, '0')}.${String(date.m).padStart(2, '0')}.${date.y}`;
-            } catch (e) { }
+            } catch {
+                // Ignore parsing errors for date conversion 
+            }
         }
 
         // Парсинг строки даты
@@ -396,7 +398,7 @@ export function parseTechCardsFromExcel(
     };
 
     // Helper to update indices based on a new header row
-    const updateIndices = (row: any[]) => {
+    const updateIndices = (row: unknown[]) => {
         const rowHeaders = row.map(h => String(h || '').replace(/\s+/g, ' ').trim());
 
         // Local find helper
@@ -420,14 +422,14 @@ export function parseTechCardsFromExcel(
         // For simplicity, reusing strict keywords based detection might be complex inline.
         // Assuming month columns are > normIndex?
         // Let's implement a quick date scan for the new row indices
-        const datePattern = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/; // DD.MM.YYYY
-        const datePatternShort = /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{2})/; // DD.MM.YY
+        const datePattern = /(\d{1,2})[./\-\s](\d{1,2})[./\-\s](\d{4})/; // DD.MM.YYYY
+        const datePatternShort = /(\d{1,2})[./\-\s](\d{1,2})[./\-\s](\d{2})/; // DD.MM.YY
 
         rowHeaders.forEach((header, idx) => {
             // Skip core columns to define date range safely
             if (idx <= 6) return; // Approximate check
 
-            let headerStr = header;
+            const headerStr = header;
             // Date parsing simplified here (just string match)
             let day, month, year;
             const matchFull = headerStr.match(datePattern);
@@ -466,7 +468,7 @@ export function parseTechCardsFromExcel(
         if (!row || row.length === 0) continue;
 
         // CHECK FOR NEW HEADER: 
-        const rowText = row.map((c: any) => String(c || '').toLowerCase()).join(' ');
+        const rowText = row.map((c) => String(c || '').toLowerCase()).join(' ');
         const keywordMatches = headerKeywords.reduce((acc, k) => acc + (rowText.includes(k) ? 1 : 0), 0);
 
         if (keywordMatches >= 2) { // Relaxed confidence to catch smaller tables
@@ -480,7 +482,7 @@ export function parseTechCardsFromExcel(
             if (idx < 0 || row[idx] === undefined || row[idx] === null) return '';
             const cell = row[idx];
             if (typeof cell === 'object' && cell !== null) {
-                return String((cell as any).w || (cell as any).v || '').trim();
+                return String((cell as Record<string, unknown>).w || (cell as Record<string, unknown>).v || '').trim();
             }
             return String(cell).trim();
         };
@@ -524,8 +526,8 @@ export function parseTechCardsFromExcel(
         }
 
         // NUCLEAR FALLBACK: If we still have no Material Name/SKU, but row has content
-        if ((!materialName || !materialSku) && row.some((c: any) => c && String(c).trim().length > 0)) {
-            const rowStrings = row.map((c: any) => String(c || '').trim());
+        if ((!materialName || !materialSku) && row.some((c) => c && String(c).trim().length > 0)) {
+            const rowStrings = row.map((c) => String(c || '').trim());
             const textCells = rowStrings.filter(s => s.length > 3 && isNaN(Number(s.replace(',', '.'))));
             const numCells = rowStrings.filter(s => /^\d+([.,]\d+)?$/.test(s));
 

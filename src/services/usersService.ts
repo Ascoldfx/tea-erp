@@ -52,7 +52,7 @@ class UsersService {
         return data;
     }
 
-    async createUser(userData: CreateUserData): Promise<{ user: any; profile: UserProfile }> {
+    async createUser(userData: CreateUserData): Promise<{ user: unknown; profile: UserProfile }> {
         if (!supabase) throw new Error('Supabase not initialized');
 
         // Get current session for authorization

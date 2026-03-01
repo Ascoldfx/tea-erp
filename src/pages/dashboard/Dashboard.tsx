@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
 // Mocks removed
-const MOCK_BATCHES: any[] = [];
-const MOCK_RECIPES: any[] = [];
-const MOCK_JOBS: any[] = [];
-const MOCK_CONTRACTORS: any[] = [];
+const MOCK_BATCHES: Array<{ status: string; recipeId: string; targetQuantity: number }> = [];
+const MOCK_RECIPES: Array<{ id: string; outputQuantity: number }> = [];
+const MOCK_JOBS: Array<{ status: string }> = [];
+const MOCK_CONTRACTORS: Array<{ balance?: number }> = [];
 import { Factory, Clock, Banknote, Scale } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';

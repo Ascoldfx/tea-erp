@@ -33,7 +33,7 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
         try {
             // Generate unique ID
             const id = `cnt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
+
             // Generate code from name (handle Cyrillic and special chars)
             let code = name
                 .substring(0, 20)
@@ -51,19 +51,19 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
                     };
                     return map[char] || '';
                 });
-            
+
             // If code is empty or too short, use fallback
             if (!code || code.length < 3) {
                 code = `SUPPLIER_${id.slice(-8)}`;
             }
-            
+
             // Ensure code is unique by checking existing codes
             const { data: existing } = await supabase
                 .from('suppliers')
                 .select('code')
                 .eq('code', code)
                 .limit(1);
-            
+
             if (existing && existing.length > 0) {
                 code = `${code}_${Date.now().toString().slice(-6)}`;
             }
@@ -102,10 +102,11 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
             setEmail('');
             onSuccess();
             onClose();
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error & { details?: string; hint?: string };
             console.error('Error creating supplier:', error);
             let errorMessage = 'Ошибка при создании поставщика.';
-            
+
             if (error?.message) {
                 errorMessage = error.message;
             } else if (error?.details) {
@@ -113,12 +114,12 @@ export default function CreateSupplierModal({ isOpen, onClose, onSuccess }: Crea
             } else if (typeof error === 'string') {
                 errorMessage = error;
             }
-            
+
             // Add hint if available
             if (error?.hint) {
                 errorMessage += `\n\nПодсказка: ${error.hint}`;
             }
-            
+
             alert(`Ошибка при создании поставщика:\n\n${errorMessage}\n\nПроверьте консоль браузера (F12) для деталей.`);
         } finally {
             setSaving(false);

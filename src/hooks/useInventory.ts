@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import type { InventoryItem, StockLevel, Warehouse, PlannedConsumption } from '../types/inventory';
 import { inventoryService } from '../services/inventoryService';
 
+interface PlannedConsumptionRaw {
+    id: string;
+    item_id: string;
+    planned_date: string;
+    quantity: number;
+    notes?: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export function useInventory() {
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -25,7 +35,7 @@ export function useInventory() {
             if (fetchedItems.length > 0) {
                 const { supabase } = await import('../lib/supabase');
                 if (supabase) {
-                    let allPlannedConsumption: any[] = [];
+                    let allPlannedConsumption: PlannedConsumptionRaw[] = [];
                     let from = 0;
                     let hasMore = true;
                     const BATCH_SIZE = 1000;
@@ -55,7 +65,7 @@ export function useInventory() {
 
                     if (data.length > 0) {
                         // Transform snake_case DB columns to camelCase TS interface
-                        const transformed = data.map((pc: any) => ({
+                        const transformed = data.map((pc: PlannedConsumptionRaw) => ({
                             id: pc.id,
                             itemId: pc.item_id,
                             plannedDate: pc.planned_date,

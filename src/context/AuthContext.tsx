@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
-export type UserRole = 'admin' | 'warehouse' | 'procurement' | 'production_planner' | 'director';
+export type UserRole = 'admin' | 'warehouse' | 'procurement' | 'production_planner' | 'director' | 'guest';
 
 export interface User {
     id: string;
@@ -18,7 +18,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     warehouse: ['receive_goods'],
     procurement: ['edit_materials', 'view_financials'],
     production_planner: ['plan_production', 'edit_materials'],
-    director: ['view_financials']
+    director: ['view_financials'],
+    guest: []
 };
 
 interface AuthContextType {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { data: profile, error } = await Promise.race([
                 profilePromise,
                 timeoutPromise.then(() => ({ data: null, error: { message: 'Timeout' } }))
-            ]) as any;
+            ]) as { data: { id: string; full_name?: string; email: string; role: string; } | null; error: Error | { message: string } | null };
 
             if (error || !profile) {
                 console.error('Error loading profile:', error);
@@ -96,11 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setTimeout(() => reject(new Error('Session check timeout')), 5000);
                 });
 
-                const { data: { session } } = await Promise.race([
+                const response = await Promise.race([
                     sessionPromise,
                     timeoutPromise
-                ]) as any;
-                
+                ]) as { data: { session: { user?: { id: string } } | null } | null; error: unknown };
+                const session = response?.data?.session;
+
                 if (session?.user) {
                     const userProfile = await loadUserProfile(session.user.id);
                     if (userProfile) {
@@ -124,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session?.user?.email);
-            
+
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 if (session?.user) {
                     const userProfile = await loadUserProfile(session.user.id);
@@ -175,9 +177,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             setUser(userProfile);
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Обработка сетевых ошибок
-            if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
                 throw new Error('Ошибка подключения к серверу. Проверьте интернет-соединение и настройки Supabase.');
             }
             throw err;
@@ -203,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const context = useContext(AuthContext);
     if (context === undefined) {

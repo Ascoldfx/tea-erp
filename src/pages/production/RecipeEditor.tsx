@@ -15,13 +15,21 @@ export default function RecipeEditor() {
     const isNew = !id || id === 'new';
 
     const [recipe, setRecipe] = useState<Recipe>({
-        id: `rcp-${Date.now()}`,
+        id: '',
         name: '',
         description: '',
         outputItemId: '',
         outputQuantity: 1, // 1 ящик
         ingredients: []
     });
+
+    // Set initial ID for new recipes in useEffect to avoid impure function during render
+    useEffect(() => {
+        if (isNew && !recipe.id) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setRecipe(prev => ({ ...prev, id: `rcp-${Date.now()}` }));
+        }
+    }, [isNew, recipe.id]);
 
     const { items } = useInventory();
 

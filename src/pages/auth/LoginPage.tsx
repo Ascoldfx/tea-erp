@@ -31,9 +31,10 @@ export function LoginPage() {
             await login(email, password);
             const from = location.state?.from?.pathname || '/';
             navigate(from, { replace: true });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Login error:', err);
-            setError(err.message || 'Ошибка входа. Проверьте email и пароль.');
+            const errorMessage = err instanceof Error ? err.message : 'Ошибка входа. Проверьте email и пароль.';
+            setError(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -100,6 +101,38 @@ export function LoginPage() {
                             ) : (
                                 'Войти'
                             )}
+                        </Button>
+
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-slate-700"></span>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-slate-900 px-2 text-slate-500">Или</span>
+                            </div>
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={async () => {
+                                setError(null);
+                                setIsSubmitting(true);
+                                try {
+                                    await login('guest@tea.com', '123456');
+                                    const from = location.state?.from?.pathname || '/';
+                                    navigate(from, { replace: true });
+                                } catch (err: unknown) {
+                                    console.error('Guest login error:', err);
+                                    setError('Гостевой аккаунт (guest@tea.com / 123456) не найден или пароль неверен. Убедитесь, что он создан в Supabase.');
+                                } finally {
+                                    setIsSubmitting(false);
+                                }
+                            }}
+                            disabled={isSubmitting}
+                            className="w-full h-12 text-base font-medium border-slate-700 text-slate-300 hover:bg-slate-800"
+                        >
+                            Войти как Гость
                         </Button>
                     </form>
                 </CardContent>

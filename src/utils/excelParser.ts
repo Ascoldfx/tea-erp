@@ -5,7 +5,7 @@
  * by forcing integer mode for specific units/categories and stripping all non-digits.
  */
 export const parseStockValueStrict = (
-    val: any,
+    val: unknown,
     unit: string = '',
     category: string = '',
     itemName: string = ''

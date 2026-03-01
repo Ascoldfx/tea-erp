@@ -226,9 +226,10 @@ const translations: Record<Language, Record<string, string>> = {
         'users.role': 'Роль',
         'users.role.admin': 'Администратор (Полный доступ)',
         'users.role.warehouse': 'Склад (Только приемка)',
-        'users.role.procurement': 'Закупки (Материалы)',
-        'users.role.production_planner': 'Планировщик (Производство)',
-        'users.role.director': 'Директор (Просмотр)',
+        'users.role.procurement': 'Закупки',
+        'users.role.production_planner': 'Планировщик производства',
+        'users.role.director': 'Директор (Только просмотр отчетов)',
+        'users.role.guest': 'Гость (Только просмотр)',
         'users.send': 'Отправить',
         'users.user': 'Пользователь',
         'users.status': 'Статус',
@@ -518,9 +519,10 @@ const translations: Record<Language, Record<string, string>> = {
         'users.role': 'Роль',
         'users.role.admin': 'Адміністратор (Повний доступ)',
         'users.role.warehouse': 'Склад (Тільки прийомка)',
-        'users.role.procurement': 'Закупівлі (Матеріали)',
-        'users.role.production_planner': 'Планувальник (Виробництво)',
-        'users.role.director': 'Директор (Перегляд)',
+        'users.role.procurement': 'Закупівлі',
+        'users.role.production_planner': 'Планувальник виробництва',
+        'users.role.director': 'Директор (Тільки перегляд звітів)',
+        'users.role.guest': 'Гість (Тільки перегляд)',
         'users.send': 'Відправити',
         'users.user': 'Користувач',
         'users.status': 'Статус',
@@ -619,6 +621,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLanguage() {
     const context = useContext(LanguageContext);
     if (context === undefined) {

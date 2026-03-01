@@ -83,6 +83,7 @@ export default function ProductionPlanning() {
                 itemSku: items.find(i => i.id === ac.item_id)?.sku || 'NOT FOUND'
             })));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items.length, plannedConsumption.length, actualConsumptions.length, selectedMonth, selectedYear]);
 
     // Debug: log planned consumption data
@@ -142,6 +143,7 @@ export default function ProductionPlanning() {
     // Force refresh when component mounts or when refreshKey changes
     useEffect(() => {
         refresh();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshKey]);
 
     // Listen for storage events to refresh when data is imported from another tab
@@ -308,7 +310,7 @@ export default function ProductionPlanning() {
                             const y = d.getFullYear();
                             const m = d.getMonth(); // 0-11
                             return y === selectedYear && m === selectedMonth;
-                        } catch (e) {
+                        } catch {
                             return false;
                         }
                     }
@@ -346,11 +348,6 @@ export default function ProductionPlanning() {
         fetchActualConsumption();
     }, [selectedYear, selectedMonth, refreshKey]);
 
-    // Ensure items, stock, and plannedConsumption are arrays
-    const safeItems = Array.isArray(items) ? items : [];
-    const safeStock = Array.isArray(stock) ? stock : [];
-    const safePlannedConsumption = Array.isArray(plannedConsumption) ? plannedConsumption : [];
-
     // Helper to normalize category names manually
     // This fixes issues where 'арри' should be 'flavoring', etc.
     const normalizeCategory = (cat: string | undefined | null): string => {
@@ -366,9 +363,10 @@ export default function ProductionPlanning() {
 
     // Get all unique categories
     const categories = useMemo(() => {
+        const safeItems = Array.isArray(items) ? items : [];
         if (!Array.isArray(safeItems)) return [];
         return [...new Set(safeItems.map(item => normalizeCategory(item.category)))].sort();
-    }, [safeItems]);
+    }, [items]);
 
     // Get month name
     const getMonthName = (month: number) => {
@@ -453,6 +451,7 @@ export default function ProductionPlanning() {
 
     // Filter items by category, search query AND deduplicate by SKU/ID
     const filteredItems = useMemo(() => {
+        const safeItems = Array.isArray(items) ? items : [];
         if (!Array.isArray(safeItems)) return [];
         let itemsToFilter = safeItems;
 
@@ -472,10 +471,14 @@ export default function ProductionPlanning() {
         }
 
         return itemsToFilter;
-    }, [safeItems, selectedCategory, searchQuery]);
+    }, [items, selectedCategory, searchQuery]);
 
     // Calculate planning data for each item
     const planningData = useMemo((): PlanningDataItem[] => {
+        const safeItems = Array.isArray(items) ? items : [];
+        const safeStock = Array.isArray(stock) ? stock : [];
+        const safePlannedConsumption = Array.isArray(plannedConsumption) ? plannedConsumption : [];
+
         // Create a map of item SKU to item ID for faster lookup
         const skuToIdMap = new Map<string, string>();
         safeItems.forEach(item => {
@@ -540,7 +543,7 @@ export default function ProductionPlanning() {
                     }
 
                     return false;
-                } catch (e) {
+                } catch {
                     return false;
                 }
             });
@@ -649,7 +652,7 @@ export default function ProductionPlanning() {
             const orderB = itemOrderMap.get(b.item.id) ?? Infinity;
             return orderA - orderB;
         });
-    }, [filteredItems, safeStock, safePlannedConsumption, selectedYear, selectedMonth, safeItems, openOrders, actualArrivals, actualConsumptions]);
+    }, [filteredItems, stock, plannedConsumption, selectedYear, selectedMonth, items, openOrders, actualArrivals, actualConsumptions]);
 
     // SMART AGGREGATION: Merge duplicates by SKU
     // 1. Group items by SKU
@@ -742,6 +745,7 @@ export default function ProductionPlanning() {
 
         // Sort by original order (using the order of the first appearance of the SKU/ID)
         const itemOrderMap = new Map<string, number>();
+        const safeItems = Array.isArray(items) ? items : [];
         safeItems.forEach((item, index) => {
             itemOrderMap.set(item.id, index);
         });
@@ -752,7 +756,7 @@ export default function ProductionPlanning() {
             return orderA - orderB;
         });
 
-    }, [planningData, selectedYear, selectedMonth, safeItems]);
+    }, [planningData, items, selectedMonth, selectedYear]);
 
 
     return (

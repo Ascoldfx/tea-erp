@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { supabase } from '../../lib/supabase';
 import { ShoppingCart, Calendar, Package } from 'lucide-react';
@@ -23,13 +23,7 @@ export default function SupplierOrdersModal({ isOpen, onClose, supplierId, suppl
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (isOpen && supplierId) {
-            fetchOrders();
-        }
-    }, [isOpen, supplierId]);
-
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         if (!supabase) {
             setLoading(false);
             return;
@@ -65,7 +59,13 @@ export default function SupplierOrdersModal({ isOpen, onClose, supplierId, suppl
         } finally {
             setLoading(false);
         }
-    };
+    }, [supplierId]);
+
+    useEffect(() => {
+        if (isOpen && supplierId) {
+            fetchOrders();
+        }
+    }, [isOpen, supplierId, fetchOrders]);
 
     const getStatusLabel = (status: string) => {
         switch (status) {

@@ -5,7 +5,7 @@ export const inventoryService = {
     async getItems(): Promise<InventoryItem[]> {
         if (!supabase) return [];
 
-        let allItems: any[] = [];
+        let allItems: Record<string, unknown>[] = [];
         const BATCH_SIZE = 1000;
         let from = 0;
         let hasMore = true;
@@ -34,8 +34,8 @@ export const inventoryService = {
         }
 
         // Map database columns to TypeScript interface
-        return allItems.map((item: any) => ({
-            ...item,
+        return allItems.map((item) => ({
+            ...(item as object),
             // Map other snake_case fields if needed
         })) as InventoryItem[];
     },
@@ -64,7 +64,7 @@ export const inventoryService = {
     async getStockLevels(): Promise<StockLevel[]> {
         if (!supabase) return [];
 
-        let allStock: any[] = [];
+        let allStock: Record<string, unknown>[] = [];
         const BATCH_SIZE = 1000;
         let from = 0;
         let hasMore = true;
@@ -92,7 +92,7 @@ export const inventoryService = {
         }
 
         // Map snake_case DB columns to camelCase TS interface
-        return allStock.map((s: any) => ({
+        return allStock.map((s: Record<string, unknown>) => ({
             id: s.id,
             warehouseId: s.warehouse_id,
             itemId: s.item_id,
@@ -102,6 +102,7 @@ export const inventoryService = {
     },
 
     // Example of a mutation
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async transferStock(_sourceId: string, _targetId: string, _itemId: string, _qty: number) {
         if (!supabase) {
             return false;
@@ -113,7 +114,7 @@ export const inventoryService = {
         return true;
     },
 
-    async importData(items: any[]) {
+    async importData(items: Record<string, unknown>[]) {
         if (!supabase) {
             console.error('Supabase not connected');
             throw new Error('База данных не подключена');
@@ -129,7 +130,7 @@ export const inventoryService = {
         // We need this because Recipe Import might have created items with "auto-..." SKUs
         // but the Stock Import file might only have the Name.
         console.log('[Import] Fetching all existing items for robust resolution...');
-        let allExistingItems: any[] = [];
+        let allExistingItems: Record<string, unknown>[] = [];
         let from = 0;
         let hasMore = true;
         const BATCH_SIZE = 1000;
@@ -181,7 +182,7 @@ export const inventoryService = {
         // Strategy: Use code as ID if it's valid, otherwise generate UUID
         // If item with same SKU exists, use its existing ID
         // IMPORTANT: Remove duplicates by ID to avoid PostgreSQL error
-        const itemsMap = new Map<string, any>();
+        const itemsMap = new Map<string, Record<string, unknown>>();
 
         items.forEach(i => {
             const code = i.code?.trim();
@@ -323,7 +324,7 @@ export const inventoryService = {
         if (categoryFetchError) {
             console.error('Error fetching saved items for category verification:', categoryFetchError);
         } else if (savedItems && savedItems.length > 0) {
-            const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: any) => {
+            const savedCategoryCounts = savedItems.reduce((acc: Record<string, number>, item: Record<string, unknown>) => {
                 acc[item.category] = (acc[item.category] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);
@@ -332,8 +333,8 @@ export const inventoryService = {
             // Log flavor items specifically
             if (savedCategoryCounts['flavor']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['flavor']} items with flavor category`);
-                const flavorItems = savedItems.filter((item: any) => item.category === 'flavor');
-                flavorItems.forEach((item: any) => {
+                const flavorItems = savedItems.filter((item: Record<string, unknown>) => item.category === 'flavor');
+                flavorItems.forEach((item: Record<string, unknown>) => {
                     console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
                 });
             }
@@ -341,8 +342,8 @@ export const inventoryService = {
             // Log sticker items specifically
             if (savedCategoryCounts['sticker']) {
                 console.log(`[Category Debug] Successfully saved ${savedCategoryCounts['sticker']} items with sticker category`);
-                const stickerItems = savedItems.filter((item: any) => item.category === 'sticker');
-                stickerItems.forEach((item: any) => {
+                const stickerItems = savedItems.filter((item: Record<string, unknown>) => item.category === 'sticker');
+                stickerItems.forEach((item: Record<string, unknown>) => {
                     console.log(`[Category Debug] Material "${item.name}" (SKU: ${item.sku}) has category: ${item.category}`);
                 });
             }
@@ -397,7 +398,7 @@ export const inventoryService = {
                 }
             } else {
                 // Старый формат: stockMai и stockFito (для обратной совместимости)
-                const maiQty = Number((item as any).stockMai) || 0;
+                const maiQty = Number((item as Record<string, unknown>).stockMai) || 0;
                 if (maiQty > 0) {
                     const maiKey = `${itemId}_wh-ts`;
                     stockMap.set(maiKey, {
@@ -407,7 +408,7 @@ export const inventoryService = {
                     });
                 }
 
-                const fitoQty = Number((item as any).stockFito) || 0;
+                const fitoQty = Number((item as Record<string, unknown>).stockFito) || 0;
                 if (fitoQty > 0) {
                     const fitoKey = `${itemId}_wh-fito`;
                     stockMap.set(fitoKey, {
@@ -497,7 +498,7 @@ export const inventoryService = {
                         // Always force day 01
                         normalizedDate = `${y}-${m.padStart(2, '0')}-01`;
                     }
-                } catch (e) {
+                } catch {
                     console.warn(`[Import] Invalid date format: ${normalizedDate}, using as-is`);
                 }
             }
@@ -541,8 +542,8 @@ export const inventoryService = {
                 } else {
                     console.log(`[Import Cleanup] Successfully cleared ${count} old plan entries. Proceeding to insert new data.`);
                 }
-            } catch (e) {
-                console.warn('[Import Cleanup] Error during cleanup:', e);
+            } catch (_e) {
+                console.warn('[Import Cleanup] Error during cleanup:', _e);
             }
 
             const { error: plannedError, data: insertedData } = await supabase
@@ -605,7 +606,7 @@ export const inventoryService = {
                         if (!isNaN(date.getTime())) {
                             normalizedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
                         }
-                    } catch (e) {
+                    } catch {
                         console.warn(`[Import] Invalid date format for actual consumption: ${normalizedDate}`);
                         continue;
                     }
@@ -652,7 +653,7 @@ export const inventoryService = {
             const { error: movementsError } = await supabase
                 .from('stock_movements')
                 .insert(uniqueMovements.map(m => {
-                    const movementData: any = {
+                    const movementData: Record<string, unknown> = {
                         item_id: m.item_id,
                         quantity: m.quantity,
                         type: m.type,
@@ -665,7 +666,7 @@ export const inventoryService = {
                     // The created_at will be set automatically
                     try {
                         movementData.created_at = m.date;
-                    } catch (e) {
+                    } catch {
                         // Ignore if date field doesn't exist
                     }
 
@@ -716,7 +717,7 @@ export const inventoryService = {
             const nameLower = name.toLowerCase();
 
             // Generate base ID from name
-            let baseId = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
+            const baseId = `supplier-${nameLower.replace(/[^a-z0-9]/g, '-').substring(0, 30)}`;
             let id = baseId;
 
             // Ensure ID uniqueness within the batch
@@ -852,16 +853,16 @@ export const inventoryService = {
             return [];
         }
 
-        return (data || []).map((pc: any) => ({
-            id: pc.id,
-            itemId: pc.item_id,
-            plannedDate: pc.planned_date,
-            quantity: Number(pc.quantity),
-            notes: pc.notes || undefined,
-            createdAt: pc.created_at,
-            updatedAt: pc.updated_at,
-            createdBy: pc.created_by || undefined,
-        }));
+        return (data || []).map((pc: Record<string, unknown>) => ({
+            id: pc.id as string,
+            itemId: pc.item_id as string,
+            plannedDate: pc.planned_date as string,
+            quantity: pc.quantity as number,
+            notes: pc.notes as string | undefined,
+            createdAt: pc.created_at as string,
+            updatedAt: pc.updated_at as string,
+            createdBy: pc.created_by as string | undefined
+        })) as PlannedConsumption[];
     },
 
     async savePlannedConsumption(itemId: string, plannedDate: string, quantity: number, notes?: string): Promise<PlannedConsumption> {

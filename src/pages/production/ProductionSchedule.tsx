@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 // import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
 import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
-import type { ProductionBatch } from '../../types/production';
+import type { ProductionBatch, Recipe } from '../../types/production';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -58,7 +58,7 @@ export default function ProductionSchedule() {
         const weekStart = new Date(firstDay);
         weekStart.setDate(firstDay.getDate() - daysToMonday);
 
-        let currentWeekStart = new Date(weekStart);
+        const currentWeekStart = new Date(weekStart);
         let weekNumber = getWeekNumber(currentWeekStart);
 
         while (currentWeekStart <= monthEnd) {
@@ -235,7 +235,7 @@ export default function ProductionSchedule() {
                                             {plannedBatches.length > 0 ? (
                                                 <div className="space-y-2">
                                                     {plannedBatches.map(batch => {
-                                                        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
+                                                        const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
                                                         const totalOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
 
                                                         return (
@@ -305,7 +305,7 @@ export default function ProductionSchedule() {
 
                                         <div className="space-y-2">
                                             {actualBatches.map(batch => {
-                                                const recipe: any = null; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
+                                                const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
                                                 const plannedOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
                                                 const actualOutput = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
 

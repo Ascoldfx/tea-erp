@@ -31,7 +31,8 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
             await usersService.createUser(formData);
             setFormData({ email: '', password: '', full_name: '', role: 'director' });
             onUserCreated();
-        } catch (err: any) {
+        } catch (error) {
+            const err = error as Error;
             console.error('Error creating user:', err);
             setError(err.message || 'Ошибка при создании пользователя');
         } finally {
@@ -83,7 +84,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }: Crea
                 <Select
                     label="Роль"
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as CreateUserData['role'] })}
                     options={[
                         { value: 'director', label: 'Директор (только чтение)' },
                         { value: 'warehouse', label: 'Кладовщик (свой склад)' },

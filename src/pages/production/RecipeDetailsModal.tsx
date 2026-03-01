@@ -6,6 +6,7 @@ import { FileText, Edit, Package, Hash } from 'lucide-react';
 import MaterialDetailsModal from './MaterialDetailsModal';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
+import { useAuth } from '../../context/AuthContext';
 
 // Функция для получения нормы текущего месяца
 const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: number }>): number | null => {
@@ -29,6 +30,7 @@ interface RecipeDetailsModalProps {
 export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSelect, isOpen, onClose }: RecipeDetailsModalProps) {
     const navigate = useNavigate();
     const { items } = useInventory();
+    const { user } = useAuth();
 
     // Material Modal State
     const [selectedMaterial, setSelectedMaterial] = useState<{ itemId: string, name: string, sku: string, isTemp: boolean } | null>(null);
@@ -123,14 +125,16 @@ export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSe
                                     <p className="text-sm text-slate-400 mt-3">{recipe.description}</p>
                                 )}
                             </div>
-                            <Button
-                                variant="outline"
-                                onClick={handleEdit}
-                                className="ml-4"
-                            >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Редактировать
-                            </Button>
+                            {user?.role !== 'guest' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={handleEdit}
+                                    className="ml-4"
+                                >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Редактировать
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -386,10 +390,12 @@ export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSe
                         <Button variant="outline" onClick={onClose}>
                             Закрыть
                         </Button>
-                        <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Редактировать
-                        </Button>
+                        {user?.role !== 'guest' && (
+                            <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                                <Edit className="w-4 h-4 mr-2" />
+                                Редактировать
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>

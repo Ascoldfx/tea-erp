@@ -31,6 +31,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStep('upload');
             setParsedData([]);
             setError(null);
@@ -103,8 +104,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
             setParsedData(data);
             setStep('preview');
             setLoading(false);
-        } catch (err: any) {
-            setError(err.message || 'Ошибка парсинга данных');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Ошибка парсинга данных';
+            setError(errorMessage);
             setLoading(false);
         }
     };
@@ -133,7 +135,7 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
 
             // ВАЖНО: Используем dynamic список items
-            let currentItems = [...items];
+            const currentItems = [...items];
 
             // [OPTIMIZATION] Создаем индексы для быстрого поиска (O(1))
             const skuMap = new Map<string, typeof items[0]>();
@@ -355,8 +357,9 @@ export default function TechCardsImportModal({ isOpen, onClose, onImport }: Tech
 
             onImport(recipes);
             setStep('success');
-        } catch (err: any) {
-            setError(err.message || 'Ошибка при импорте тех.карт');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Ошибка при импорте тех.карт';
+            setError(errorMessage);
             setStep('preview');
         }
     };

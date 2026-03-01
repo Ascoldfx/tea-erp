@@ -100,6 +100,7 @@ export default function InventoryList() {
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
     const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -123,7 +124,13 @@ export default function InventoryList() {
     // Generate normalized items FIRST, before any other logic
     // ALSO DEDUPLICATE: Group by normalized SKU
     const normalizedItems = useMemo(() => {
-        const skuMap = new Map<string, any>();
+        type MergedInventoryItem = InventoryItem & {
+            mergedIds?: string[];
+            name: string;
+            category: string;
+            unit: string;
+        };
+        const skuMap = new Map<string, MergedInventoryItem>();
 
         // We need robust SKU normalization here too
         const normalizeSku = (sku: string) => {
@@ -151,9 +158,9 @@ export default function InventoryList() {
             const normSku = normalizeSku(item.sku);
             const itemName = item.name || ''; // Ensure name is string
 
+            const existing = skuMap.get(normSku);
             // If this SKU already exists, merge it
-            if (skuMap.has(normSku)) {
-                const existing = skuMap.get(normSku);
+            if (existing) {
                 const existingName = existing.name || '';
 
                 // Pick best category
@@ -177,7 +184,7 @@ export default function InventoryList() {
                     ...item,
                     name: itemName, // Ensure name is not null
                     category: normCat,
-                    mergedIds: [item.id] // Track own ID
+                    mergedIds: [item.id]
                 });
             }
         });
@@ -536,10 +543,10 @@ export default function InventoryList() {
 
                 if (selectedCategory === 'all') {
                     // Show all groups when "all" is selected (including dynamic categories)
-                    groupsToShow = allCategories as any[];
+                    groupsToShow = allCategories as unknown as typeof groupsToShow;
                 } else {
                     // Show only the selected category group (can be standard or dynamic)
-                    groupsToShow = [selectedCategory as any];
+                    groupsToShow = [selectedCategory as unknown as typeof groupsToShow[number]];
                 }
 
                 return groupsToShow.map(group => {
@@ -589,6 +596,19 @@ export default function InventoryList() {
                                                     <tr
                                                         key={item.id}
                                                         className="hover:bg-slate-800/50 transition-colors group"
+                                                        onDoubleClick={(e) => {
+                                                            const target = e.target as HTMLElement;
+                                                            if (target.tagName.toLowerCase() === 'td') {
+                                                                const eText = target.innerText || target.textContent || '';
+                                                                navigator.clipboard.writeText(eText).then(() => {
+                                                                    // Optional: Show a tooltip or toast notification
+                                                                    console.log('Text copied to clipboard:', eText);
+                                                                }).catch(err => {
+                                                                    console.error('Failed to copy text:', err);
+                                                                });
+                                                            }
+                                                            handleItemClick(item);
+                                                        }}
                                                     >
                                                         <td
                                                             className="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs cursor-pointer"

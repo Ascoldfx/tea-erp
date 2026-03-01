@@ -75,7 +75,7 @@ export interface PlannedConsumption {
     itemId: string;
     plannedDate: string; // ISO date (YYYY-MM-DD)
     quantity: number;
-    notes?: string;
+    notes?: string | null;
     createdAt: string;
     updatedAt: string;
     createdBy?: string;

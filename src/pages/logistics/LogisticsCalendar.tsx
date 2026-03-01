@@ -8,6 +8,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { clsx } from 'clsx';
 // Mocks removed
+import type { Recipe } from '../../types/production';
 import { useInventory } from '../../hooks/useInventory';
 
 interface DayProduction {
@@ -69,7 +70,7 @@ export default function LogisticsCalendar() {
         const weekStart = new Date(firstDay);
         weekStart.setDate(firstDay.getDate() - daysToMonday);
 
-        let currentWeekStart = new Date(weekStart);
+        const currentWeekStart = new Date(weekStart);
         let weekNumber = getWeekNumber(currentWeekStart);
 
         while (currentWeekStart <= monthEnd) {
@@ -177,11 +178,11 @@ export default function LogisticsCalendar() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const getMaterialsAvailability = (_recipeId: string) => {
         // TODO: Use real recipes
-        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === recipeId);
+        const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === recipeId);
         if (!recipe) return { internal: [], contractor: [] };
 
         const availability = {
-            internal: (recipe?.ingredients || []).map((ing: any) => {
+            internal: (recipe?.ingredients || []).map((ing: { itemId: string; quantity: number }) => {
                 const item = items.find(i => i.id === ing.itemId);
                 const itemStock = stock.filter(s => s.itemId === ing.itemId && (s.warehouseId === 'wh-kotsyubinske' || s.warehouseId === 'wh-ceh'));
                 const totalStock = itemStock.reduce((acc, curr) => acc + curr.quantity, 0);
@@ -192,7 +193,7 @@ export default function LogisticsCalendar() {
                     unit: item?.unit || 'шт'
                 };
             }),
-            contractor: (recipe?.ingredients || []).map((ing: any) => {
+            contractor: (recipe?.ingredients || []).map((ing: { itemId: string; quantity: number }) => {
                 const item = items.find(i => i.id === ing.itemId);
                 const contractorStock = stock.filter(s => {
                     if (newProduction.location === 'contractor' && newProduction.contractorId) {
@@ -319,7 +320,7 @@ export default function LogisticsCalendar() {
                                                     <div className="space-y-1">
                                                         {dayProds.slice(0, 2).map((_prod, idx) => {
                                                             // TODO: Real recipes
-                                                            const recipe: any = null; // MOCK_RECIPES.find(r => r.id === _prod.recipeId);
+                                                            const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === _prod.recipeId);
                                                             return (
                                                                 <div key={idx} className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded truncate">
                                                                     {recipe?.name || 'Unknown'}
@@ -365,7 +366,7 @@ export default function LogisticsCalendar() {
                                 <div className="space-y-2">
                                     {selectedDayProductions.map((prod, idx) => {
                                         // TODO: Real recipes
-                                        const recipe: any = null; // MOCK_RECIPES.find(r => r.id === prod.recipeId);
+                                        const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === prod.recipeId);
                                         const contractor = contractors.find(c => c.id === prod.contractorId);
                                         return (
                                             <div key={idx} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
@@ -447,7 +448,7 @@ export default function LogisticsCalendar() {
                                             {t('calendar.materialsAvailability') || 'Наличие материалов'}
                                         </h5>
                                         <div className="space-y-3">
-                                            {(newProduction.location === 'internal' ? materialsAvailability.internal : materialsAvailability.contractor).map((mat: any, idx: number) => (
+                                            {(newProduction.location === 'internal' ? materialsAvailability.internal : materialsAvailability.contractor).map((mat: { itemName: string, required: number, available: number, unit: string }, idx: number) => (
                                                 <div key={idx} className="flex items-center justify-between text-sm">
                                                     <span className="text-slate-400">{mat.itemName}</span>
                                                     <div className="flex items-center gap-2">

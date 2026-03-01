@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { useAuth } from '../../context/AuthContext';
 import { ordersService, type OrderWithItems } from '../../services/ordersService';
 import { useInventory } from '../../hooks/useInventory';
 
@@ -23,15 +24,10 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
     const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number | string>>({});
     const [selectedWarehouse, setSelectedWarehouse] = useState('wh-kotsyubinske');
     const [showWarehouseSelector, setShowWarehouseSelector] = useState(false);
+    const { user } = useAuth();
     const { warehouses } = useInventory();
 
-    useEffect(() => {
-        if (isOpen && orderId) {
-            loadOrder();
-        }
-    }, [isOpen, orderId]);
-
-    const loadOrder = async () => {
+    const loadOrder = useCallback(async () => {
         setLoading(true);
         const data = await ordersService.getOrderWithItems(orderId);
         if (data) {
@@ -44,7 +40,14 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
             setReceivedQuantities(quantities);
         }
         setLoading(false);
-    };
+    }, [orderId]);
+
+    useEffect(() => {
+        if (isOpen && orderId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            loadOrder();
+        }
+    }, [isOpen, orderId, loadOrder]);
 
     const handleStatusChange = async (newStatus: string) => {
         if (!order) return;
@@ -152,7 +155,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
         return map[status] || status;
     };
 
-    const canEditQuantities = order?.status === 'delivered' || order?.status === 'shipped';
+    const canEditQuantities = user?.role !== 'guest' && (order?.status === 'delivered' || order?.status === 'shipped');
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Детали заказа">
@@ -217,7 +220,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                 </div>
                                 <Button
                                     onClick={handleReceiveOrder}
-                                    disabled={saving}
+                                    disabled={saving || user?.role === 'guest'}
                                     className="bg-emerald-600 hover:bg-emerald-700"
                                 >
                                     {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -226,7 +229,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                 <Button
                                     variant="ghost"
                                     onClick={() => setShowWarehouseSelector(false)}
-                                    disabled={saving}
+                                    disabled={saving || user?.role === 'guest'}
                                 >
                                     Отмена
                                 </Button>
@@ -300,7 +303,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                 <Button
                                     variant="ghost"
                                     onClick={handleCancel}
-                                    disabled={saving}
+                                    disabled={saving || user?.role === 'guest'}
                                     className="text-red-400 hover:text-red-300"
                                 >
                                     <XCircle className="w-4 h-4 mr-2" />
@@ -313,7 +316,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                             {order.status === 'ordered' && (
                                 <Button
                                     onClick={() => handleStatusChange('shipped')}
-                                    disabled={saving}
+                                    disabled={saving || user?.role === 'guest'}
                                     className="bg-amber-600 hover:bg-amber-700"
                                 >
                                     <Truck className="w-4 h-4 mr-2" />
@@ -334,7 +337,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                                     />
                                     <Button
                                         onClick={handleReceiveOrder}
-                                        disabled={saving || !selectedWarehouse}
+                                        disabled={saving || !selectedWarehouse || user?.role === 'guest'}
                                         className="bg-emerald-600 hover:bg-emerald-700"
                                     >
                                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

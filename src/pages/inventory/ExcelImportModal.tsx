@@ -48,6 +48,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStep('upload');
             setParsedData([]);
             setParsedSuppliers([]);
@@ -121,7 +122,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 defval: '',
                 raw: false,
                 header: 1 // Get as array of arrays
-            }) as any[][];
+            }) as Array<Array<unknown>>;
 
             if (!rawData || rawData.length === 0) {
                 setError('Файл пуст или не содержит данных. Проверьте, что выбрана правильная вкладка.');
@@ -148,7 +149,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             // Extract headers from found row
             const headerRow = rawData[headerRowIndex] || [];
-            const headers = headerRow.map((h: any) => String(h || '').trim());
+            const headers = headerRow.map((h) => String(h || '').trim());
 
             // Check row ABOVE headers for month names (common Excel structure: month row, then "план витрат" row)
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
@@ -157,7 +158,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Helper function to parse month name to date string (ROBUST V2.17 - FORCE HISTORICAL)
             const parseMonthToDate = (monthName: string, year?: number): string | null => {
                 const cleanInput = String(monthName || '').trim();
-                let monthLower = cleanInput.toLowerCase();
+                const monthLower = cleanInput.toLowerCase();
 
                 // 1. SEEK EXPLICIT YEAR
                 let explicitYear: number | undefined = undefined;
@@ -169,7 +170,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 }
                 // Strategy B: Short Year "25", "26" at strict boundary
                 else {
-                    const shortYearMatch = cleanInput.match(/(?:^|[\s\.\-])(2[1-9])(?:\b|$)/);
+                    const shortYearMatch = cleanInput.match(/(?:^|[\s.-])(2[1-9])(?:\b|$)/);
                     if (shortYearMatch) {
                         const yy = parseInt(shortYearMatch[1]);
                         explicitYear = 2000 + yy;
@@ -272,7 +273,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             // Convert to array of objects using found headers
             const data = dataRows.map(row => {
-                const obj: any = {};
+                const obj: Record<string, unknown> = {};
                 headers.forEach((header, index) => {
                     const key = header || `__EMPTY_${index}`;
                     obj[key] = row[index] || '';
@@ -290,7 +291,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const columnNames = headers.filter(h => h && !h.startsWith('__EMPTY'));
 
             // Helper function to find column by multiple possible names (case-insensitive, trim)
-            const findColumn = (row: any, possibleNames: string[]): string => {
+            const findColumn = (row: Record<string, unknown>, possibleNames: string[]): string => {
                 for (const name of possibleNames) {
                     // Try exact match first
                     if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
@@ -363,7 +364,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             let lastCategory = 'other';
 
             // Flexible column mapping (supports both English and Russian headers, case-insensitive)
-            const items: ParsedItem[] = data.map((row: any) => {
+            const items: ParsedItem[] = data.map((row: Record<string, unknown>) => {
                 // Try multiple column name variations (case-insensitive)
                 // Supports Russian, Ukrainian, and English column names
                 const code = findColumn(row, [
@@ -521,7 +522,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 if (category === 'other' && groupValue && groupValue !== '') {
                     const validCategories: string[] = [...KNOWN_CATEGORIES, 'other'];
                     if (validCategories.includes(groupValue)) {
-                        category = groupValue as any;
+                        category = groupValue;
                     } else {
                         // If unknown category, normalize and use it as dynamic category
                         const normalizedGroup = groupValue
@@ -633,7 +634,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     let day = 1;
                     let month = new Date().getMonth() + 1; // Default to current month
 
-                    const stockMatch = headerLower.match(/(?:залишки|остаток)?.*(\d{1,2})[\./-](\d{1,2})/);
+                    const stockMatch = headerLower.match(/(?:залишки|остаток)?.*(\d{1,2})[./-](\d{1,2})/);
 
                     if (stockMatch) {
                         day = parseInt(stockMatch[1]);
@@ -723,7 +724,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     // Here we focus on CONSUMPTION columns (Dates).
 
                     let dateString: string | null = null;
-                    let isFact = isExplicitFact(header);
+                    const isFact = isExplicitFact(header);
 
                     // A. Try Standard Date Pattern (DD.MM.YYYY)
                     const dateMatch = header.match(/\d{2}\.\d{2}\.\d{4}/);
@@ -876,7 +877,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
 
             // Extract unique suppliers from "Поставщик" or "Supplier" column
             const suppliersMap = new Map<string, ParsedSupplier>();
-            data.forEach((row: any) => {
+            data.forEach((row: Record<string, unknown>) => {
                 const supplierName = findColumn(row, [
                     'Supplier', 'Поставщик', 'Постачальник', 'Основний постачальник',
                     'Основной поставщик', 'Supplier Name', 'Поставщик товара',
@@ -932,9 +933,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             localStorage.setItem('planned_consumption_updated', Date.now().toString());
 
             setStep('success');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Ошибка импорта:', err);
-            const errorMessage = err?.message || 'Ошибка при сохранении в базу данных. Проверьте консоль браузера (F12) для деталей.';
+            const errorMessage = err instanceof Error ? err.message : 'Ошибка при сохранении в базу данных. Проверьте консоль браузера (F12) для деталей.';
             setError(errorMessage);
             setStep('preview');
         }

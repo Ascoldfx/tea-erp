@@ -91,14 +91,14 @@ export const ordersService = {
         // Manually join the data
         const items = orderItems.map(orderItem => ({
             ...orderItem,
-            received_quantity: (orderItem as any).received_quantity || 0,
+            received_quantity: (orderItem as Record<string, unknown>).received_quantity as number || 0,
             item: itemsData.find(item => item.id === orderItem.item_id)
         }));
 
         // Determine supplier or contractor based on what's available
-        const supplier = (order.suppliers as any) || null;
-        const contractor = (order.contractors as any) || null;
-        
+        const supplier = ((order.suppliers as unknown) as { name: string }) || null;
+        const contractor = ((order.contractors as unknown) as { name: string }) || null;
+
         return {
             ...order,
             supplier,

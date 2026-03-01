@@ -8,14 +8,16 @@ import { Truck, Plus, AlertTriangle, CheckCircle, Package, Trash } from 'lucide-
 import { useInventory } from '../../hooks/useInventory';
 import { clsx } from 'clsx';
 import type { JobStatus } from '../../types/contractors';
+import { useAuth } from '../../context/AuthContext';
 
 export function ContractorsList() {
+    const { user } = useAuth();
     const { items: inventoryItems } = useInventory();
     // TODO: Implement ContractorsService
-    const contractors: any[] = [];
-    const jobs: any[] = [];
+    const contractors: Array<{ id: string; name: string; contactPerson?: string; phone?: string; email?: string; address?: string }> = [];
+    const jobs: Array<{ id: string; contractorId: string; description: string; date: string; totalAmount: number; status: JobStatus }> = [];
     // TODO: Use real recipes
-    const recipes: any[] = [];
+    const recipes = useMemo<Array<{ id: string; name: string; ingredients: Array<{ itemId: string; quantity: number }> }>>(() => [], []);
     const [activeTab, setActiveTab] = useState<'contractors' | 'jobs'>('contractors');
     // State for tabs
 
@@ -51,7 +53,7 @@ export function ContractorsList() {
             // assuming standard batch = 100kg.
             const batches = jobItem.quantityKg / 100;
 
-            recipe.ingredients.forEach((ing: any) => {
+            recipe.ingredients.forEach((ing) => {
                 allIngredients[ing.itemId] = (allIngredients[ing.itemId] || 0) + (ing.quantity * batches);
             });
         });
@@ -83,7 +85,7 @@ export function ContractorsList() {
                 status: missing <= 0 ? 'ok' : 'shortage'
             };
         });
-    }, [newJob]);
+    }, [newJob, inventoryItems, recipes]);
 
 
     const handleCreateJob = (e: React.FormEvent) => {
@@ -124,14 +126,18 @@ export function ContractorsList() {
                     <p className="text-slate-400 mt-1">Управление внешними производствами и заказами</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleAddContractor}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Добавить подрядчика
-                    </Button>
-                    <Button onClick={() => setIsJobModalOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Создать задачу
-                    </Button>
+                    {user?.role !== 'guest' && (
+                        <>
+                            <Button variant="outline" onClick={handleAddContractor}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Добавить подрядчика
+                            </Button>
+                            <Button onClick={() => setIsJobModalOpen(true)}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Создать задачу
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 

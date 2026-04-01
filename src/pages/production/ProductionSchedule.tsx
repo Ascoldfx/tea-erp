@@ -38,9 +38,16 @@ export default function ProductionSchedule() {
 
     const loadData = async () => {
         try {
+            // Используем отдельные catch, чтобы ошибка в getBatches не блокировала загрузку рецептов
             const [loadedBatches, loadedRecipes] = await Promise.all([
-                productionService.getBatches(),
-                recipesService.getRecipes()
+                productionService.getBatches().catch(err => {
+                    console.error('[Schedule] getBatches failed:', err);
+                    return [] as import('../../types/production').ProductionBatch[];
+                }),
+                recipesService.getRecipes().catch(err => {
+                    console.error('[Schedule] getRecipes failed:', err);
+                    return [] as import('../../types/production').Recipe[];
+                }),
             ]);
             setBatches(loadedBatches);
             setRecipes(loadedRecipes);

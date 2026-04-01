@@ -54,7 +54,7 @@ export const productionService = {
 
         if (error) {
             console.error('Error fetching production batches:', error);
-            throw new Error('Ошибка при загрузке партий производства');
+            return []; // Не бросаем ошибку, чтобы не блокировать загрузку рецептов
         }
 
         return (data || []).map(mapBatchRow);

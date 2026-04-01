@@ -1,16 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-// import { MOCK_BATCHES, MOCK_RECIPES } from '../../data/mockProduction';
-import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Clock, Plus, Calculator, Calendar, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ProductionBatch, Recipe } from '../../types/production';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { productionService } from '../../services/productionService';
+import { recipesService } from '../../services/recipesService';
 
 export default function ProductionSchedule() {
     const navigate = useNavigate();
@@ -19,9 +20,10 @@ export default function ProductionSchedule() {
     const [activeTab, setActiveTab] = useState<'planning' | 'actual'>('planning');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [newBatchData, setNewBatchData] = useState<{
         recipeId: string;
-        targetQuantity?: number;
+        targetQuantity?: number; // В килограммах!
         weekNumber: number;
     }>({
         recipeId: '',
@@ -29,6 +31,29 @@ export default function ProductionSchedule() {
         weekNumber: 1
     });
 
+    // Data state
+    const [batches, setBatches] = useState<ProductionBatch[]>([]);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const loadData = async () => {
+        try {
+            const [loadedBatches, loadedRecipes] = await Promise.all([
+                productionService.getBatches(),
+                recipesService.getRecipes()
+            ]);
+            setBatches(loadedBatches);
+            setRecipes(loadedRecipes);
+        } catch (error) {
+            console.error('Error loading production schedule data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, []);
 
     // Get current month and weeks with navigation
     const [viewDate, setViewDate] = useState(new Date());
@@ -92,7 +117,6 @@ export default function ProductionSchedule() {
             grouped[week.weekNumber] = { planned: [], actual: [] };
         });
 
-        const batches: ProductionBatch[] = []; // MOCK_BATCHES
         batches.forEach(batch => {
             if (!batch.startDate) return;
             const batchDate = new Date(batch.startDate);
@@ -108,15 +132,64 @@ export default function ProductionSchedule() {
         });
 
         return grouped;
-    }, [weeks]);
+    }, [weeks, batches]);
 
-    const handleCreateBatch = (e: React.FormEvent) => {
+    const handleCreateBatch = async (e: React.FormEvent) => {
         e.preventDefault();
-        alert(`Партия запланирована на неделю ${newBatchData.weekNumber}!`);
-        setIsCreateModalOpen(false);
-        setNewBatchData({ recipeId: '', targetQuantity: undefined, weekNumber: 1 });
+        if (!newBatchData.recipeId || !newBatchData.targetQuantity) return;
+        setSaving(true);
+        try {
+            const selectedRecipe = recipes.find(r => r.id === newBatchData.recipeId);
+            const outputWeightKg = selectedRecipe?.outputQuantity || 1; 
+            
+            // Преобразуем введенные КГ в количество пачек/ящиков
+            const targetPacks = newBatchData.targetQuantity / outputWeightKg;
+
+            // Находим начальную дату выбранной недели (присваиваем понедельник как старт)
+            const targetWeek = weeks.find(w => w.weekNumber === newBatchData.weekNumber);
+            const startDate = targetWeek ? targetWeek.startDate : new Date();
+
+            // Format YYYY-MM-DD avoiding timezone offset messing up the day
+            const isoDate = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+            // Передаём рецепт с ингредиентами для резервирования сырья
+            await productionService.createBatch(
+                {
+                    recipeId: newBatchData.recipeId,
+                    status: 'planned',
+                    targetQuantity: targetPacks,
+                    startDate: isoDate
+                },
+                selectedRecipe // рецепт с ингредиентами → автоматически резервирует planned_consumption
+            );
+
+            await loadData();
+            setIsCreateModalOpen(false);
+            setNewBatchData({ recipeId: '', targetQuantity: undefined, weekNumber: 1 });
+            alert(t('production.batchCreated') || `Партия успешно запланирована!`);
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка при создании партии');
+        } finally {
+            setSaving(false);
+        }
     };
 
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const handleDeleteBatch = async (id: string) => {
+        if (!window.confirm('Удалить партию? Резерв сырья будет отменён.')) return;
+        setDeletingId(id);
+        try {
+            await productionService.deleteBatch(id);
+            await loadData();
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка при удалении партии');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const monthName = viewDate.toLocaleDateString(language === 'uk' ? 'uk-UA' : 'ru-RU', { month: 'long', year: 'numeric' });
 
@@ -210,7 +283,13 @@ export default function ProductionSchedule() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-6">
-                                {weeks.map((week, weekIndex) => {
+                                {loading ? (
+                                    <div className="flex flex-col items-center py-12 text-slate-500">
+                                        <Loader2 className="w-8 h-8 animate-spin mb-4 text-emerald-500" />
+                                        <p>{t('common.loading') || 'Загрузка...'}</p>
+                                    </div>
+                                ) : (
+                                    weeks.map((week, weekIndex) => {
                                     const weekBatches = batchesByWeek[week.weekNumber] || { planned: [], actual: [] };
                                     const plannedBatches = weekBatches.planned;
 
@@ -235,23 +314,36 @@ export default function ProductionSchedule() {
                                             {plannedBatches.length > 0 ? (
                                                 <div className="space-y-2">
                                                     {plannedBatches.map(batch => {
-                                                        const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
-                                                        const totalOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
+                                                        const recipe = recipes.find(r => r.id === batch.recipeId);
+                                                        // targetQuantity в БД = кол-во пачек. Умножаем на outputQuantity чтобы получить КГ назад.
+                                                        const totalOutputKg = batch.targetQuantity * (recipe?.outputQuantity || 0);
 
                                                         return (
-                                                            <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                                                            <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg group">
                                                                 <div>
                                                                     <p className="text-slate-200 font-medium">{recipe?.name || 'Unknown'}</p>
                                                                     <p className="text-xs text-slate-400">
-                                                                        {t('production.planned') || 'Запланировано'}: {totalOutput.toLocaleString()} кг
+                                                                        {t('production.planned') || 'Запланировано'}: {totalOutputKg.toLocaleString()} кг
                                                                     </p>
                                                                 </div>
-                                                                <span className={clsx(
-                                                                    "px-2.5 py-0.5 rounded-full text-xs font-medium",
-                                                                    batch.status === 'in_progress' ? 'bg-blue-900/30 text-blue-400' : 'bg-slate-700 text-slate-300'
-                                                                )}>
-                                                                    {batch.status === 'in_progress' ? (t('production.inProgress') || 'В работе') : (t('production.planned') || 'Запланировано')}
-                                                                </span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={clsx(
+                                                                        "px-2.5 py-0.5 rounded-full text-xs font-medium",
+                                                                        batch.status === 'in_progress' ? 'bg-blue-900/30 text-blue-400' : 'bg-slate-700 text-slate-300'
+                                                                    )}>
+                                                                        {batch.status === 'in_progress' ? (t('production.inProgress') || 'В работе') : (t('production.planned') || 'Запланировано')}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => handleDeleteBatch(batch.id)}
+                                                                        disabled={deletingId === batch.id}
+                                                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded text-slate-500 hover:text-red-400 hover:bg-red-900/20 disabled:opacity-50"
+                                                                        title="Удалить партию"
+                                                                    >
+                                                                        {deletingId === batch.id
+                                                                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                            : <Trash2 className="w-3.5 h-3.5" />}
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}
@@ -263,7 +355,8 @@ export default function ProductionSchedule() {
                                             )}
                                         </div>
                                     );
-                                })}
+                                })
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -280,7 +373,14 @@ export default function ProductionSchedule() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {weeks.map((week, weekIndex) => {
+                            {loading ? (
+                                <div className="flex flex-col items-center py-12 text-slate-500">
+                                    <Loader2 className="w-8 h-8 animate-spin mb-4 text-emerald-500" />
+                                    <p>{t('common.loading') || 'Загрузка...'}</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {weeks.map((week, weekIndex) => {
                                 const weekBatches = batchesByWeek[week.weekNumber] || { planned: [], actual: [] };
                                 const actualBatches = weekBatches.actual;
 
@@ -305,9 +405,10 @@ export default function ProductionSchedule() {
 
                                         <div className="space-y-2">
                                             {actualBatches.map(batch => {
-                                                const recipe = null as unknown as Recipe; // MOCK_RECIPES.find(r => r.id === batch.recipeId);
-                                                const plannedOutput = batch.targetQuantity * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
-                                                const actualOutput = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0) / 1000; // TODO: Update conversion logic for 1 pack base
+                                                const recipe = recipes.find(r => r.id === batch.recipeId);
+                                                // Возвращаем в КГ
+                                                const plannedOutputKg = batch.targetQuantity * (recipe?.outputQuantity || 0); 
+                                                const actualOutputKg = (batch.producedQuantity || 0) * (recipe?.outputQuantity || 0); 
 
                                                 return (
                                                     <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
@@ -315,10 +416,10 @@ export default function ProductionSchedule() {
                                                             <p className="text-slate-200 font-medium">{recipe?.name || 'Unknown'}</p>
                                                             <div className="flex items-center gap-4 mt-1">
                                                                 <p className="text-xs text-slate-400">
-                                                                    {t('production.planned') || 'Запланировано'}: <span className="text-slate-300">{plannedOutput.toLocaleString()} кг</span>
+                                                                    {t('production.planned') || 'Запланировано'}: <span className="text-slate-300">{plannedOutputKg.toLocaleString()} кг</span>
                                                                 </p>
                                                                 <p className="text-xs text-emerald-400">
-                                                                    {t('production.produced') || 'Произведено'}: <span className="font-semibold">{actualOutput.toLocaleString()} кг</span>
+                                                                    {t('production.produced') || 'Произведено'}: <span className="font-semibold">{actualOutputKg.toLocaleString()} кг</span>
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -329,14 +430,16 @@ export default function ProductionSchedule() {
                                                 );
                                             })}
                                         </div>
-                                    </div>
-                                );
-                            })}
-
-                            {Object.values(batchesByWeek).every(w => w.actual.length === 0) && (
-                                <p className="text-slate-500 text-sm italic text-center py-8">
-                                    {t('production.noActual') || 'Нет данных о фактическом производстве'}
-                                </p>
+                                        </div>
+                                    );
+                                })}
+                                
+                                {Object.values(batchesByWeek).every(w => w.actual.length === 0) && (
+                                    <p className="text-slate-500 text-sm italic text-center py-8">
+                                        {t('production.noActual') || 'Нет данных о фактическом производстве'}
+                                    </p>
+                                )}
+                                </>
                             )}
                         </div>
                     </CardContent>
@@ -353,7 +456,7 @@ export default function ProductionSchedule() {
                         label={t('production.recipe') || 'Технологическая карта (Рецепт)'}
                         options={[
                             { value: '', label: t('production.selectRecipe') || 'Выберите продукт...' },
-                            // ...MOCK_RECIPES.map(r => ({ value: r.id, label: r.name }))
+                            ...recipes.map(r => ({ value: r.id, label: r.name }))
                         ]}
                         value={newBatchData.recipeId}
                         onChange={e => setNewBatchData({ ...newBatchData, recipeId: e.target.value })}
@@ -384,7 +487,8 @@ export default function ProductionSchedule() {
                         <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)}>
                             {t('common.cancel') || 'Отмена'}
                         </Button>
-                        <Button type="submit">
+                        <Button type="submit" disabled={saving}>
+                            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             {t('production.create') || 'Создать заказ'}
                         </Button>
                     </div>

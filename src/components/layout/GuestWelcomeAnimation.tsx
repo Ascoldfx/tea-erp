@@ -34,7 +34,7 @@ export default function GuestWelcomeAnimation() {
                 clearTimeout(hideTimer);
             };
         }
-    }, [user?.role, show]);
+    }, [user, user?.role, show]);
 
     if (!show) return null;
 

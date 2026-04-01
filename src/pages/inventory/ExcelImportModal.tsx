@@ -7,7 +7,7 @@ import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
 import { parseStockValueStrict } from '../../utils/excelParser';
-
+import { warehouseNameMap, parseMonthToDate, findColumn, determineCategory } from '../../utils/excelParserLogic';
 interface ExcelImportModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -155,86 +155,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const monthRowIndex = headerRowIndex > 0 ? headerRowIndex - 1 : -1;
             const monthRow = monthRowIndex >= 0 ? rawData[monthRowIndex] || [] : [];
 
-            // Helper function to parse month name to date string (ROBUST V2.17 - FORCE HISTORICAL)
-            const parseMonthToDate = (monthName: string, year?: number): string | null => {
-                const cleanInput = String(monthName || '').trim();
-                const monthLower = cleanInput.toLowerCase();
-
-                // 1. SEEK EXPLICIT YEAR
-                let explicitYear: number | undefined = undefined;
-
-                // Strategy A: Full Year "2025"
-                const fullYearMatch = cleanInput.match(/20\d{2}/);
-                if (fullYearMatch) {
-                    explicitYear = parseInt(fullYearMatch[0]);
-                }
-                // Strategy B: Short Year "25", "26" at strict boundary
-                else {
-                    const shortYearMatch = cleanInput.match(/(?:^|[\s.-])(2[1-9])(?:\b|$)/);
-                    if (shortYearMatch) {
-                        const yy = parseInt(shortYearMatch[1]);
-                        explicitYear = 2000 + yy;
-                    }
-                }
-
-                // Month Map with short names
-                const monthMap: Record<string, number> = {
-                    'январь': 1, 'января': 1, 'янв': 1, 'січень': 1, 'січня': 1, 'січ': 1, 'january': 1, 'jan': 1,
-                    'февраль': 2, 'февраля': 2, 'фев': 2, 'лютий': 2, 'лютого': 2, 'лют': 2, 'february': 2, 'feb': 2,
-                    'март': 3, 'марта': 3, 'мар': 3, 'березень': 3, 'березня': 3, 'бер': 3, 'march': 3, 'mar': 3,
-                    'апрель': 4, 'апреля': 4, 'апр': 4, 'квітень': 4, 'квітня': 4, 'кві': 4, 'april': 4, 'apr': 4,
-                    'май': 5, 'мая': 5, 'травень': 5, 'травня': 5, 'тра': 5, 'may': 5,
-                    'июнь': 6, 'июня': 6, 'июн': 6, 'червень': 6, 'червня': 6, 'чер': 6, 'june': 6, 'jun': 6,
-                    'июль': 7, 'июля': 7, 'июл': 7, 'липень': 7, 'липня': 7, 'лип': 7, 'july': 7, 'jul': 7,
-                    'август': 8, 'августа': 8, 'авг': 8, 'серпень': 8, 'серпня': 8, 'сер': 8, 'august': 8, 'aug': 8,
-                    'сентябрь': 9, 'сентября': 9, 'сен': 9, 'вересень': 9, 'вересня': 9, 'вер': 9, 'september': 9, 'sep': 9,
-                    'октябрь': 10, 'октября': 10, 'окт': 10, 'жовтень': 10, 'жовтня': 10, 'жов': 10, 'october': 10, 'oct': 10,
-                    'ноябрь': 11, 'ноября': 11, 'ноя': 11, 'листопад': 11, 'листопада': 11, 'лис': 11, 'november': 11, 'nov': 11,
-                    'декабрь': 12, 'декабря': 12, 'дек': 12, 'грудень': 12, 'грудня': 12, 'гру': 12, 'december': 12, 'dec': 12
-                };
-
-                // STRICT FIND: Check for month key with word boundaries
-                // Prevents "Група" matching "Гру", "витрат" matching "тра"
-                let foundMonth: number | undefined = undefined;
-                const sortedKeys = Object.keys(monthMap).sort((a, b) => b.length - a.length); // Longest first
-
-                for (const key of sortedKeys) {
-                    // Regex explanation:
-                    // (?:^|[^a-zа-я0-9]) -> Start or non-alphanumeric char (delimiter)
-                    // ${key} -> The month key
-                    // (?:$|[^a-zа-я0-9]) -> End or non-alphanumeric char
-                    // Case insensitive ('i')
-                    // This is more robust than \b for Cyrillic support in some environments
-                    const regex = new RegExp(`(?:^|[^a-zа-яёіїє0-9])${key}(?:$|[^a-zа-яёіїє0-9])`, 'i');
-                    if (regex.test(monthLower)) {
-                        foundMonth = monthMap[key];
-                        // console.log(`[Parse V2.17] Matched "${key}" in "${cleanInput}"`);
-                        break;
-                    }
-                }
-
-                if (foundMonth) {
-                    // Year Determination
-                    const now = new Date();
-                    const currentYear = now.getFullYear();
-                    // currentMonth unused in v3.2
-
-                    let finalYear = year || currentYear;
-
-                    if (explicitYear) {
-                        finalYear = explicitYear;
-                    }
-
-                    // v3.2 LITERAL IMPORT: Removed Force Rollback.
-                    // User reports that dates should be interpreted literally.
-                    // "Dec 2026" means Dec 2026. "Dec 2025" means Dec 2025.
-                    // The previous logic (V2.17) caused confusion by altering years.
-
-                    return `${finalYear}-${String(foundMonth).padStart(2, '0')}-01`;
-                }
-
-                return null;
-            };
+            // Removed parseMonthToDate
 
             // Map column indices to month dates (if month is found in row above headers)
             // Месяц указывается СТРОГО над столбцом (в той же колонке)
@@ -290,35 +211,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             // Get all column names (for error messages)
             const columnNames = headers.filter(h => h && !h.startsWith('__EMPTY'));
 
-            // Helper function to find column by multiple possible names (case-insensitive, trim)
-            const findColumn = (row: Record<string, unknown>, possibleNames: string[]): string => {
-                for (const name of possibleNames) {
-                    // Try exact match first
-                    if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
-                        return String(row[name]).trim();
-                    }
-                    // Try case-insensitive match
-                    for (const key in row) {
-                        const keyLower = key.trim().toLowerCase();
-                        const nameLower = name.toLowerCase().trim();
-                        // Exact match
-                        if (keyLower === nameLower) {
-                            const value = row[key];
-                            if (value !== undefined && value !== null && value !== '') {
-                                return String(value).trim();
-                            }
-                        }
-                        // Partial match (header contains the name)
-                        if (keyLower.includes(nameLower) || nameLower.includes(keyLower)) {
-                            const value = row[key];
-                            if (value !== undefined && value !== null && value !== '') {
-                                return String(value).trim();
-                            }
-                        }
-                    }
-                }
-                return '';
-            };
+            // Removed findColumn
 
             // Find date columns (e.g., "01.12.2023", "01.12.2025")
             const datePattern = /\d{2}\.\d{2}\.\d{4}/;
@@ -413,133 +306,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     lastCategory = groupValue;
                 }
 
-                // Map group values to categories
-                // STRICT LOGIC: Each material can belong to ONLY ONE category
-                // Priority order matters - check most specific first
-                // IMPORTANT: If groupValue is empty, always use 'other'
-                let category = 'other'; // default to 'other'
-
-                // If no group value provided, always use 'other'
-                if (!groupValue || groupValue === '') {
-                    category = 'other';
-                }
-                // 1. Ароматизаторы - если указано в группе (более гибкая проверка)
-                else if (groupValue === 'flavor' ||
-                    groupValue === 'ароматизатор' || groupValue === 'ароматизаторы' ||
-                    groupValue === 'ароматизатори' || groupValue === 'ароматизаторів' ||
-                    groupValue.startsWith('ароматизатор') ||
-                    groupValue.includes('ароматизатор') ||
-                    groupValue.includes('flavor')) {
-                    category = 'flavor';
-                }
-                // 2. Ярлыки - более гибкая проверка (было строго)
-                else if (groupValue === 'label' ||
-                    groupValue.includes('ярлик') ||
-                    groupValue.includes('ярлики') ||
-                    groupValue.includes('ярлык') ||
-                    groupValue.includes('ярлыки') ||
-                    groupValue.includes('label')) {
-                    category = 'label';
-                }
-                // 3. Стикеры/этикетки/наклейки - ТОЛЬКО если явно указано в группе (строгая проверка)
-                else if (groupValue === 'sticker' || groupValue === 'стикер' || groupValue === 'стикеры' || groupValue === 'стикери' ||
-                    groupValue === 'этикетка' || groupValue === 'этикетки' || groupValue === 'етикетка' || groupValue === 'етикетки' ||
-                    groupValue === 'наклейка' || groupValue === 'наклейки' || groupValue === 'наклейка' || groupValue === 'наклейки' ||
-                    groupValue.startsWith('стикер') || groupValue.startsWith('этикетк') || groupValue.startsWith('етикетк') ||
-                    groupValue.startsWith('наклейк') || groupValue.startsWith('наклейк') ||
-                    groupValue.includes(' стикер') || groupValue.includes(' этикетк') || groupValue.includes(' етикетк') ||
-                    groupValue.includes(' наклейк') || groupValue.includes(' наклейк')) {
-                    category = 'sticker';
-                }
-                // 4. Картонная упаковка - отдельная категория (проверяем ПЕРЕД конвертами и общей упаковкой)
-                // Приоритет картона выше, чтобы позиции с группой "картон" не попадали в другие категории
-                if (groupValue === 'картон' || groupValue.includes('картон') || groupValue.includes('картонн') ||
-                    groupValue === 'packaging_cardboard' || groupValue.trim().toLowerCase() === 'картон') {
-                    category = 'packaging_cardboard';
-                }
-                // 5. Конверты - отдельная категория (проверяем ПОСЛЕ картона)
-                else if (groupValue === 'envelope' || groupValue === 'конверт' || groupValue === 'конверты' || groupValue === 'конверти' ||
-                    groupValue.startsWith('конверт') || groupValue.includes(' конверт')) {
-                    // Убрали проверку по названию nameLower.includes('конверт'), чтобы картон не попадал в конверты
-                    category = 'envelope';
-                }
-                // 5a. Коробки и пачки - теперь это картонная упаковка
-                else if (groupValue === 'packaging_box' || groupValue === 'коробка' || groupValue === 'коробки' ||
-                    (groupValue.includes('коробк') && !groupValue.includes('гофро'))) {
-                    category = 'packaging_cardboard';
-                }
-                // 6. Гофроящики - отдельная категория (проверяем ПЕРЕД общей упаковкой)
-                else if (groupValue.includes('г/я') || groupValue.includes('гофро') || groupValue.includes('гофроящик') ||
-                    (groupValue.includes('ящик') && groupValue.includes('гофро'))) {
-                    category = 'packaging_crate';
-                }
-                // 7. Мягкая упаковка (м/у) - отдельная категория
-                else if (groupValue === 'soft_packaging' || groupValue === 'м/у' || groupValue === 'м\'яка упаковка' ||
-                    groupValue.includes('мягкая упаковка') || groupValue.includes('м\'яка упаковка') ||
-                    (groupValue.includes('упаковк') && (groupValue.includes('мягк') || groupValue.includes('м\'як')))) {
-                    category = 'soft_packaging';
-                }
-                // 8. Пачки - теперь это картонная упаковка (проверяем ПЕРЕД общей упаковкой)
-                else if (groupValue === 'пачка' || groupValue === 'пачки' || groupValue.startsWith('пачка') ||
-                    (groupValue.includes('пачка') && !groupValue.includes('упаковк'))) {
-                    category = 'packaging_cardboard';
-                }
-                // 9. Упаковка (общая) - только если НЕ картон, НЕ гофро, НЕ мягкая (пленка, пакет, бумага, нитки)
-                else if ((groupValue.includes('упаковк') || groupValue.includes('пленк') || groupValue.includes('пакет') ||
-                    groupValue.includes('папір') || groupValue.includes('нитки') || groupValue === 'packaging_consumable') &&
-                    !groupValue.includes('картон') && !groupValue.includes('гофро') &&
-                    !groupValue.includes('мягк') && !groupValue.includes('м\'як')) {
-                    category = 'packaging_consumable';
-                }
-                // 10. Сырье, цедра, травы, чай
-                else if (groupValue === 'tea_bulk' || groupValue.includes('сировин') || groupValue.includes('цедра') ||
-                    groupValue.includes('трав') || groupValue.includes('чай') ||
-                    (groupValue.includes('чай') && !groupValue.includes('упаковк'))) {
-                    category = 'tea_bulk';
-                }
-
-                // FALLBACK: Check Name for specific keywords if category is still 'other' (or to override generic groups)
-                const nameLower = name.toLowerCase();
-
-                if (category === 'other') {
-                    if (nameLower.includes('ярлык') || nameLower.includes('ярлик') || nameLower.includes('label')) {
-                        category = 'label';
-                    } else if (nameLower.includes('стикер') || nameLower.includes('наклейк') || nameLower.includes('етикетк')) {
-                        category = 'sticker';
-                    } else if (nameLower.includes('ароматизатор') || nameLower.includes('flavor')) {
-                        category = 'flavor';
-                    } else if (nameLower.includes('конверт') || nameLower.includes('envelope')) {
-                        category = 'envelope';
-                    }
-                }
-
-                // 11. Если значение существует, но не совпадает с известными категориями
-                const KNOWN_CATEGORIES = [
-                    'tea_bulk', 'flavor', 'packaging_consumable', 'packaging_crate',
-                    'label', 'sticker', 'soft_packaging', 'envelope', 'packaging_cardboard'
-                ];
-
-                if (category === 'other' && groupValue && groupValue !== '') {
-                    const validCategories: string[] = [...KNOWN_CATEGORIES, 'other'];
-                    if (validCategories.includes(groupValue)) {
-                        category = groupValue;
-                    } else {
-                        // If unknown category, normalize and use it as dynamic category
-                        const normalizedGroup = groupValue
-                            .toLowerCase()
-                            .trim()
-                            .replace(/\s+/g, '_')
-                            .replace(/[^a-z0-9_а-яёіїє]/g, '')
-                            .substring(0, 50);
-
-                        if (normalizedGroup && normalizedGroup.length > 0) {
-                            category = normalizedGroup;
-                            console.log(`[Category Debug] Using dynamic category: "${normalizedGroup}" from groupValue: "${groupValue}"`);
-                        } else {
-                            category = 'other';
-                        }
-                    }
-                }
+                const category = determineCategory(groupValue, name);
 
                 // Find stock columns
                 // Формат: "залишки на [дата] [склад]"
@@ -547,30 +314,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                 let stockMain = 0; // Общий остаток (база/1С)
                 const stockWarehouses: Record<string, number> = {}; // Остатки на складах подрядчиков
 
-                // Маппинг названий складов на их ID
-                const warehouseNameMap: Record<string, string> = {
-                    'база': 'wh-kotsyubinske',
-                    'базы': 'wh-kotsyubinske',
-                    '1с': 'wh-kotsyubinske',
-                    '1 с': 'wh-kotsyubinske',
-                    'коцюбинське': 'wh-kotsyubinske',
-                    'коцюбинское': 'wh-kotsyubinske',
-                    'тс': 'wh-ts',
-                    'ts': 'wh-ts',
-                    'май': 'wh-ts', // Старое название
-                    'кава': 'wh-kava',
-                    'kava': 'wh-kava',
-                    'бакалея': 'wh-bakaleya',
-                    'bakaleya': 'wh-bakaleya',
-                    'фіто': 'wh-fito',
-                    'фито': 'wh-fito',
-                    'fito': 'wh-fito',
-                    'фото': 'wh-fito', // Опечатка
-                    'тс трейд': 'wh-ts-treyd',
-                    'тс трейт': 'wh-ts-treyd',
-                    'ts treyd': 'wh-ts-treyd',
-                    'ts treyt': 'wh-ts-treyd'
-                };
+                // Removed warehouseNameMap
 
                 // Find storage location column
                 const storageLocation = findColumn(row, [

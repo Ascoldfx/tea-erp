@@ -19,4 +19,12 @@ export interface ContractorJob {
     description: string;
     status: JobStatus;
     totalAmount: number; // Cost of service
+    items?: ContractorJobItem[]; // Joined relations
+}
+
+export interface ContractorJobItem {
+    id: string;
+    jobId: string;
+    recipeId: string;
+    quantityKg: number;
 }

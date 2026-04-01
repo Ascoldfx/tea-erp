@@ -1,23 +1,45 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
-import { Truck, Plus, AlertTriangle, CheckCircle, Package, Trash } from 'lucide-react';
+import { Truck, Plus, AlertTriangle, CheckCircle, Package, Trash, Loader2 } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
 import { clsx } from 'clsx';
-import type { JobStatus } from '../../types/contractors';
+import type { JobStatus, Contractor, ContractorJob } from '../../types/contractors';
 import { useAuth } from '../../context/AuthContext';
+import { contractorsService } from '../../services/contractorsService';
+import { recipesService } from '../../services/recipesService';
+import type { Recipe } from '../../types/production';
 
 export function ContractorsList() {
     const { user } = useAuth();
     const { items: inventoryItems } = useInventory();
-    // TODO: Implement ContractorsService
-    const contractors: Array<{ id: string; name: string; contactPerson?: string; phone?: string; email?: string; address?: string }> = [];
-    const jobs: Array<{ id: string; contractorId: string; description: string; date: string; totalAmount: number; status: JobStatus }> = [];
-    // TODO: Use real recipes
-    const recipes = useMemo<Array<{ id: string; name: string; ingredients: Array<{ itemId: string; quantity: number }> }>>(() => [], []);
+    const [contractors, setContractors] = useState<Contractor[]>([]);
+    const [jobs, setJobs] = useState<ContractorJob[]>([]);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [loadedContractors, loadedJobs, loadedRecipes] = await Promise.all([
+                    contractorsService.getContractors(),
+                    contractorsService.getJobs(),
+                    recipesService.getRecipes()
+                ]);
+                setContractors(loadedContractors);
+                setJobs(loadedJobs);
+                setRecipes(loadedRecipes);
+            } catch (err) {
+                console.error("Error loading contractors data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
+    }, []);
     const [activeTab, setActiveTab] = useState<'contractors' | 'jobs'>('contractors');
     // State for tabs
 
@@ -88,10 +110,36 @@ export function ContractorsList() {
     }, [newJob, inventoryItems, recipes]);
 
 
-    const handleCreateJob = (e: React.FormEvent) => {
+    const [savingJob, setSavingJob] = useState(false);
+
+    const handleCreateJob = async (e: React.FormEvent) => {
         e.preventDefault();
-        alert('Задача создана! Логистика уведомлена о недостающих материалах.');
-        setIsJobModalOpen(false);
+        setSavingJob(true);
+        try {
+            await contractorsService.createJob(
+                {
+                    contractorId: newJob.contractorId,
+                    date: newJob.date,
+                    description: `Заказ продукции (${newJob.items.length} позиций)`,
+                    status: 'planned',
+                    totalAmount: 0
+                },
+                newJob.items
+            );
+            
+            // Reload jobs explicitly
+            const updatedJobs = await contractorsService.getJobs();
+            setJobs(updatedJobs);
+            
+            alert('Задача создана! Логистика уведомлена о недостающих материалах.');
+            setIsJobModalOpen(false);
+            setNewJob({ contractorId: '', items: [{ recipeId: '', quantityKg: 0 }], date: '' });
+        } catch (error) {
+            console.error('Failed to save job:', error);
+            alert('Ошибка при создании задачи');
+        } finally {
+            setSavingJob(false);
+        }
     };
 
     const handleAddContractor = () => {
@@ -128,11 +176,11 @@ export function ContractorsList() {
                 <div className="flex gap-2">
                     {user?.role !== 'guest' && (
                         <>
-                            <Button variant="outline" onClick={handleAddContractor}>
+                            <Button variant="outline" onClick={handleAddContractor} disabled={loading}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Добавить подрядчика
                             </Button>
-                            <Button onClick={() => setIsJobModalOpen(true)}>
+                            <Button onClick={() => setIsJobModalOpen(true)} disabled={loading}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Создать задачу
                             </Button>
@@ -169,8 +217,9 @@ export function ContractorsList() {
             {/* Content Tabs */}
             {activeTab === 'contractors' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {contractors.length === 0 && <div className="col-span-3 text-center text-slate-500 py-8">Нет подрядчиков</div>}
-                    {contractors.map(contractor => (
+                    {loading && <div className="col-span-3 text-center text-slate-500 py-8"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500"/> Загрузка...</div>}
+                    {!loading && contractors.length === 0 && <div className="col-span-3 text-center text-slate-500 py-8">Нет подрядчиков</div>}
+                    {!loading && contractors.map(contractor => (
                         <Card key={contractor.id} className="hover:border-emerald-500/50 transition-colors cursor-pointer">
                             <CardContent className="pt-6">
                                 <div className="flex items-start justify-between mb-4">
@@ -219,8 +268,9 @@ export function ContractorsList() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {jobs.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-slate-500">Нет задач</td></tr>}
-                                    {jobs.map(job => (
+                                    {loading && <tr><td colSpan={6} className="text-center py-8 text-slate-500"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500"/> Загрузка...</td></tr>}
+                                    {!loading && jobs.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-slate-500">Нет задач</td></tr>}
+                                    {!loading && jobs.map(job => (
                                         <tr key={job.id} className="hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-200">{job.id}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-slate-400">
@@ -374,7 +424,8 @@ export function ContractorsList() {
                         <Button type="button" variant="ghost" onClick={() => setIsJobModalOpen(false)}>
                             Отмена
                         </Button>
-                        <Button type="submit">
+                        <Button type="submit" disabled={savingJob}>
+                            {savingJob ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             Создать задачу
                         </Button>
                     </div>

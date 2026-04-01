@@ -12,8 +12,11 @@ const KG_CATEGORIES = [
     'blend',
 ];
 
-/** Categories where price is quoted per 1000 pieces (ярлыки, стикеры) */
-const PER_THOUSAND_CATEGORIES = ['label', 'sticker'];
+/** Categories where price is quoted per 1000 pieces (only ярлыки) */
+const PER_THOUSAND_CATEGORIES = ['label'];
+
+/** Categories that support foreign-currency pricing */
+export const FOREIGN_CURRENCY_CATEGORIES = ['flavor', 'tea_bulk', 'blend', 'raw_material', 'semi_finished'];
 
 /** Categories priced per piece */
 const PER_PCS_CATEGORIES = ['packaging_crate', 'packaging_cardboard', 'envelope', 'soft_packaging'];

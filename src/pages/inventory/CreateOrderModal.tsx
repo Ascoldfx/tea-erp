@@ -7,7 +7,7 @@ import { inventoryService } from '../../services/inventoryService';
 import { supabase } from '../../lib/supabase';
 import { Plus, Trash, DollarSign, ShoppingCart } from 'lucide-react';
 import type { InventoryItem } from '../../types/inventory';
-import { getPricingUnit } from '../../utils/unitDisplay';
+import { getPricingUnit, FOREIGN_CURRENCY_CATEGORIES } from '../../utils/unitDisplay';
 
 interface CreateOrderModalProps {
     isOpen: boolean;
@@ -18,6 +18,8 @@ interface OrderItem {
     itemId: string;
     quantity: number | string;
     costPerUnit: number | string;
+    currency: '₴' | '$' | '€';
+    exchangeRate: number | string; // rate to UAH, used when currency != ₴
 }
 
 interface Contractor {
@@ -31,7 +33,7 @@ interface Contractor {
 
 export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
     const [contractorId, setContractorId] = useState('');
-    const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0 }]);
+    const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Data from database
@@ -87,10 +89,14 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
         // }
     }, [contractorId, contractors]);
 
-    const totalCost = items.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.costPerUnit)), 0);
+    // Total in UAH: convert foreign-currency items using their exchange rate
+    const totalCost = items.reduce((acc, item) => {
+        const rate = item.currency !== '₴' ? (Number(item.exchangeRate) || 1) : 1;
+        return acc + Number(item.quantity) * Number(item.costPerUnit) * rate;
+    }, 0);
 
     const handleAddItem = () => {
-        setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0 }]);
+        setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -186,7 +192,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             alert(`Заказ успешно размещен! ID: ${orderData.id.slice(0, 8)}...`);
             onClose();
             setContractorId('');
-            setItems([{ itemId: '', quantity: 0, costPerUnit: 0 }]);
+            setItems([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
             setPrepayment(0);
             setDeliveryCost(0);
 
@@ -296,17 +302,61 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                         required
                                     />
                                 </div>
-                                <div className="w-36">
+                                <div className="w-52">
                                     <div className="space-y-1">
-                                        <Input
-                                            label={index === 0 ? "Цена (₴)" : undefined}
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={item.costPerUnit}
-                                            onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
-                                            required
-                                        />
+                                        {/* Currency selector (for aromas, tea raw materials, etc.) */}
+                                        {selectedMaterial && FOREIGN_CURRENCY_CATEGORIES.includes((selectedMaterial.category || '').toLowerCase()) ? (
+                                            <div className="flex gap-1 items-end">
+                                                <div className="flex-1">
+                                                    <Input
+                                                        label={index === 0 ? `Цена (${item.currency})` : undefined}
+                                                        type="number"
+                                                        min="0"
+                                                        step="any"
+                                                        value={item.costPerUnit}
+                                                        onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="w-16 pb-0.5">
+                                                    <select
+                                                        value={item.currency}
+                                                        onChange={e => handleItemChange(index, 'currency', e.target.value as '₴' | '$' | '€')}
+                                                        className="w-full h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-2 text-sm"
+                                                    >
+                                                        <option>₴</option>
+                                                        <option>$</option>
+                                                        <option>€</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                label={index === 0 ? "Цена (₴)" : undefined}
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                value={item.costPerUnit}
+                                                onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
+                                                required
+                                            />
+                                        )}
+                                        {/* Exchange rate field when foreign currency */}
+                                        {item.currency !== '₴' && (
+                                            <div className="flex gap-1 items-center">
+                                                <span className="text-xs text-slate-500 whitespace-nowrap">1 {item.currency} =</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="any"
+                                                    value={item.exchangeRate}
+                                                    onChange={e => handleItemChange(index, 'exchangeRate', e.target.value === '' ? '' : Number(e.target.value))}
+                                                    placeholder="Курс ₴"
+                                                    className="w-full h-7 bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 text-xs"
+                                                />
+                                                <span className="text-xs text-slate-500">₴</span>
+                                            </div>
+                                        )}
                                         {item.itemId && (
                                             <p className="text-xs text-slate-500">{pricing.label}</p>
                                         )}

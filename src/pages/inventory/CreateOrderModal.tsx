@@ -19,8 +19,21 @@ interface OrderItem {
     quantity: number | string;
     costPerUnit: number | string;
     currency: '₴' | '$' | '€';
-    exchangeRate: number | string; // rate to UAH, used when currency != ₴
+    exchangeRate: number | string; // UAH per 1 unit of foreign currency
+    tara?: string;                 // container size for flavors e.g. '9', '12', '25'
 }
+
+/** Categories that support foreign currency pricing (expanded to include labels) */
+const MULTI_CURRENCY_CATEGORIES = [...FOREIGN_CURRENCY_CATEGORIES, 'label', 'sticker'];
+
+/** Tara options for aromatic materials */
+const FLAVOR_TARA_OPTIONS = [
+    { value: '', label: 'Выберите тару...' },
+    { value: '9', label: '9 кг (канистра)' },
+    { value: '12', label: '12 кг' },
+    { value: '25', label: '25 кг (бочка)' },
+    { value: 'custom', label: 'Другой' },
+];
 
 interface Contractor {
     id: string;
@@ -33,7 +46,7 @@ interface Contractor {
 
 export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
     const [contractorId, setContractorId] = useState('');
-    const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
+    const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1, tara: '' }]);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Data from database
@@ -96,7 +109,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     }, 0);
 
     const handleAddItem = () => {
-        setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
+        setItems([...items, { itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1, tara: '' }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -267,49 +280,87 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                         {items.map((item, index) => {
                             const selectedMaterial = normalizedMaterials.find(m => m.id === item.itemId);
                             const pricing = getPricingUnit(selectedMaterial || {});
+                            const cat = (selectedMaterial?.category || '').toLowerCase();
+                            const isForeignCurrency = MULTI_CURRENCY_CATEGORIES.includes(cat);
+                            const isFlavor = cat === 'flavor' || cat.includes('ароматизатор');
+                            // Live UAH equivalent when price entered in foreign currency
+                            const uahEquiv = item.currency !== '₴' && Number(item.costPerUnit) > 0 && Number(item.exchangeRate) > 0
+                                ? (Number(item.costPerUnit) * Number(item.exchangeRate))
+                                : null;
                             return (
-                            <div key={index} className="flex gap-2 items-end">
-                                <div className="flex-1">
-                                    <Select
-                                        label={index === 0 ? "Материал" : undefined}
-                                        options={[
-                                            { value: '', label: 'Выберите материал' },
-                                            // USE NORMALIZED MATERIALS for deduplication
-                                            ...(searchTerm ? normalizedMaterials.filter(m =>
-                                                m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                m.sku?.toLowerCase().includes(searchTerm.toLowerCase())
-                                            ) : normalizedMaterials)
-                                                .map(m => ({
-                                                    value: m.id,
-                                                    // Display SKU FIRST as requested
-                                                    label: `${m.sku ? `[${m.sku}] ` : ''}${m.name || 'Без названия'}`
-                                                }))
-                                        ]}
-                                        value={item.itemId}
-                                        onChange={e => handleItemChange(index, 'itemId', e.target.value)}
-                                        required
-                                        disabled={loading}
-                                    />
+                            <div key={index} className="space-y-2 p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                                {/* Material + delete */}
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1">
+                                        <Select
+                                            label={index === 0 ? "Материал" : undefined}
+                                            options={[
+                                                { value: '', label: 'Выберите материал' },
+                                                ...(searchTerm ? normalizedMaterials.filter(m =>
+                                                    m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                    m.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+                                                ) : normalizedMaterials)
+                                                    .map(m => ({
+                                                        value: m.id,
+                                                        label: `${m.sku ? `[${m.sku}] ` : ''}${m.name || 'Без названия'}`
+                                                    }))
+                                            ]}
+                                            value={item.itemId}
+                                            onChange={e => handleItemChange(index, 'itemId', e.target.value)}
+                                            required
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="mb-0.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0"
+                                        onClick={() => handleRemoveItem(index)}
+                                    >
+                                        <Trash className="w-4 h-4" />
+                                    </Button>
                                 </div>
-                                <div className="w-28">
-                                    <Input
-                                        label={index === 0 ? "Кол-во" : undefined}
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        value={item.quantity}
-                                        onChange={e => handleItemChange(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
-                                        required
-                                    />
-                                </div>
-                                <div className="w-52">
-                                    <div className="space-y-1">
-                                        {/* Currency selector (for aromas, tea raw materials, etc.) */}
-                                        {selectedMaterial && FOREIGN_CURRENCY_CATEGORIES.includes((selectedMaterial.category || '').toLowerCase()) ? (
+
+                                {/* Quantity + Tara + Price */}
+                                <div className="flex gap-2 items-start flex-wrap">
+                                    {/* Quantity */}
+                                    <div className="w-28">
+                                        <Input
+                                            label="Кол-во"
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            value={item.quantity}
+                                            onChange={e => handleItemChange(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
+                                            required
+                                        />
+                                        <p className="text-xs text-slate-500 mt-0.5">{pricing.label.replace('за ', '')}</p>
+                                    </div>
+
+                                    {/* Tara — only for flavors */}
+                                    {isFlavor && (
+                                        <div className="w-36">
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">Тара</label>
+                                            <select
+                                                value={item.tara || ''}
+                                                onChange={e => handleItemChange(index, 'tara', e.target.value)}
+                                                className="w-full h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-2 text-sm"
+                                            >
+                                                {FLAVOR_TARA_OPTIONS.map(o => (
+                                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {/* Price block */}
+                                    <div className="flex-1 min-w-[180px] space-y-1.5">
+                                        {isForeignCurrency ? (
+                                            // Price + currency selector
                                             <div className="flex gap-1 items-end">
                                                 <div className="flex-1">
                                                     <Input
-                                                        label={index === 0 ? `Цена (${item.currency})` : undefined}
+                                                        label={`Цена (${item.currency})`}
                                                         type="number"
                                                         min="0"
                                                         step="any"
@@ -318,7 +369,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                                         required
                                                     />
                                                 </div>
-                                                <div className="w-16 pb-0.5">
+                                                <div className="w-14 pb-0.5">
                                                     <select
                                                         value={item.currency}
                                                         onChange={e => handleItemChange(index, 'currency', e.target.value as '₴' | '$' | '€')}
@@ -332,7 +383,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                             </div>
                                         ) : (
                                             <Input
-                                                label={index === 0 ? "Цена (₴)" : undefined}
+                                                label="Цена (₴)"
                                                 type="number"
                                                 min="0"
                                                 step="any"
@@ -341,7 +392,8 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                                 required
                                             />
                                         )}
-                                        {/* Exchange rate field when foreign currency */}
+
+                                        {/* Exchange rate row */}
                                         {item.currency !== '₴' && (
                                             <div className="flex gap-1 items-center">
                                                 <span className="text-xs text-slate-500 whitespace-nowrap">1 {item.currency} =</span>
@@ -352,24 +404,27 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                                     value={item.exchangeRate}
                                                     onChange={e => handleItemChange(index, 'exchangeRate', e.target.value === '' ? '' : Number(e.target.value))}
                                                     placeholder="Курс ₴"
-                                                    className="w-full h-7 bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 text-xs"
+                                                    className="w-24 h-7 bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 text-xs"
                                                 />
                                                 <span className="text-xs text-slate-500">₴</span>
                                             </div>
                                         )}
-                                        {item.itemId && (
+
+                                        {/* Live UAH equivalent */}
+                                        {uahEquiv !== null ? (
+                                            <div className="flex items-center gap-1 px-2 py-1 bg-emerald-950/50 border border-emerald-800/40 rounded text-xs">
+                                                <span className="text-slate-400">≈</span>
+                                                <span className="text-emerald-400 font-semibold">
+                                                    {uahEquiv.toLocaleString('uk-UA', { maximumFractionDigits: 4 })} ₴
+                                                </span>
+                                                <span className="text-slate-500">/ {pricing.label.replace('за ', '')}</span>
+                                                <span className="text-slate-600 ml-auto italic text-[10px]">сохр. в ₴</span>
+                                            </div>
+                                        ) : item.itemId ? (
                                             <p className="text-xs text-slate-500">{pricing.label}</p>
-                                        )}
+                                        ) : null}
                                     </div>
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    className="mb-0.5 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                    onClick={() => handleRemoveItem(index)}
-                                >
-                                    <Trash className="w-4 h-4" />
-                                </Button>
                             </div>
                             );
                         })}

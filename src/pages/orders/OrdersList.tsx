@@ -4,6 +4,7 @@ import { ShoppingCart } from 'lucide-react';
 import { clsx } from 'clsx';
 import OrderDetailsModal from './OrderDetailsModal';
 import { useLanguage } from '../../context/LanguageContext';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 
 interface OrderItem {
     id: string;
@@ -13,6 +14,7 @@ interface OrderItem {
         name: string;
         sku: string;
         unit: string;
+        category: string;
     };
 }
 
@@ -59,7 +61,7 @@ export default function OrdersList() {
 
                     const { data: itemsData } = await supabase
                         .from('order_items')
-                        .select('id, item_id, quantity, received_quantity, items(name, sku, unit)')
+                        .select('id, item_id, quantity, received_quantity, items(name, sku, unit, category)')
                         .eq('order_id', order.id);
 
                     const supplier = ((order.suppliers as unknown) as { name: string }) || null;
@@ -71,7 +73,7 @@ export default function OrdersList() {
                         contractor,
                         items: (itemsData || []).map(item => ({
                             ...item,
-                            item: (item.items as unknown) as { name: string; sku: string; unit: string }
+                            item: (item.items as unknown) as { name: string; sku: string; unit: string; category: string }
                         }))
                     };
                 })
@@ -166,7 +168,6 @@ export default function OrdersList() {
                                         </h3>
                                         <p className="text-sm text-slate-400">
                                             📅 {new Date(order.order_date).toLocaleDateString('ru-RU')}
-                                            {' • '}🆔 {order.id.slice(0, 8)}...
                                         </p>
                                     </div>
                                 </div>
@@ -204,11 +205,11 @@ export default function OrdersList() {
                                                     </span>
                                                     <div className="text-right">
                                                         <span className="text-slate-400">
-                                                            {item.quantity} {item.item?.unit || 'шт'}
+                                                            {item.quantity.toLocaleString()} {getDisplayUnit(item.item || {})}
                                                         </span>
                                                         {hasReceivedQty && (
                                                             <div className={qtyDiffers ? "text-amber-400 text-xs" : "text-emerald-400 text-xs"}>
-                                                                Факт: {receivedQty} {item.item?.unit || 'шт'}
+                                                                Факт: {receivedQty.toLocaleString()} {getDisplayUnit(item.item || {})}
                                                             </div>
                                                         )}
                                                     </div>

@@ -176,7 +176,7 @@ export default function ProductionSchedule() {
             alert(t('production.batchCreated') || `Партия успешно запланирована!`);
         } catch (err) {
             console.error(err);
-            alert('Ошибка при создании партии');
+            alert('Ошибка при создании партии:\n' + (err instanceof Error ? err.message : String(err)));
         } finally {
             setSaving(false);
         }

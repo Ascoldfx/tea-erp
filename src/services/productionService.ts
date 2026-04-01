@@ -80,7 +80,7 @@ export const productionService = {
                 produced_quantity: batch.producedQuantity ?? null,
                 materials_handover_date: batch.materialsHandoverDate ?? null,
                 materials_accepted_date: batch.materialsAcceptedDate ?? null,
-                machine_id: batch.machineId ?? null,
+                // machine_id omitted — column may not be in Supabase schema cache yet
             })
             .select()
             .single();

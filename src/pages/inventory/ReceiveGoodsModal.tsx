@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useInventory } from '../../hooks/useInventory';
-// import { MOCK_CONTRACTORS } from '../../data/mockContractors';
-const MOCK_CONTRACTORS: { id: string, name: string }[] = [];
+import { supabase } from '../../lib/supabase';
 import { Plus, Trash, CheckCircle } from 'lucide-react';
 
 interface ReceiveGoodsModalProps {
@@ -19,16 +18,32 @@ interface OrderItem {
     costWithVat: number;
 }
 
+interface Contractor {
+    id: string;
+    name: string;
+}
+
 export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModalProps) {
     const [contractorId, setContractorId] = useState('');
     const [warehouseId, setWarehouseId] = useState('');
-    // Defaulting warehouse to "Main Stock" if possible, otherwise empty
-    // costWithVat: cost per unit including VAT
     const { items: inventoryItems, warehouses } = useInventory();
     const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costWithVat: 0 }]);
-
-    // Logistics Only
+    const [contractors, setContractors] = useState<Contractor[]>([]);
     const [specificationNumber, setSpecificationNumber] = useState('');
+
+    // Load contractors when modal opens
+    useEffect(() => {
+        if (isOpen && supabase) {
+            supabase
+                .from('contractors')
+                .select('id, name')
+                .order('name')
+                .then(({ data, error }) => {
+                    if (error) console.error('Error loading contractors:', error);
+                    else setContractors(data || []);
+                });
+        }
+    }, [isOpen]);
 
     const handleAddItem = () => {
         setItems([...items, { itemId: '', quantity: 0, costWithVat: 0 }]);
@@ -46,11 +61,11 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const contractor = MOCK_CONTRACTORS.find(c => c.id === contractorId)?.name;
+        const contractor = contractors.find(c => c.id === contractorId)?.name;
 
         const summary = [
             `МАТЕРИАЛЫ ПРИНЯТЫ`,
-            `Поставщик: ${contractor}`,
+            `Поставщик: ${contractor || 'Не выбран'}`,
             `Спецификация: ${specificationNumber || 'Не указана'}`,
             `Склад: ${warehouses.find(w => w.id === warehouseId)?.name}`,
             `Позиций: ${items.length}`
@@ -73,7 +88,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
                         label="Поставщик"
                         options={[
                             { value: '', label: 'Выберите поставщика...' },
-                            ...MOCK_CONTRACTORS.map(c => ({ value: c.id, label: c.name }))
+                            ...contractors.map(c => ({ value: c.id, label: c.name }))
                         ]}
                         value={contractorId}
                         onChange={e => setContractorId(e.target.value)}
@@ -115,7 +130,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose }: ReceiveGoodsModal
                                     label={index === 0 ? "Материал" : undefined}
                                     options={[
                                         { value: '', label: 'Выбрать...' },
-                                        ...inventoryItems.map(i => ({ value: i.id, label: i.name }))
+                                        ...inventoryItems.map(i => ({ value: i.id, label: `${i.sku ? `[${i.sku}] ` : ''}${i.name}` }))
                                     ]}
                                     value={item.itemId}
                                     onChange={e => handleItemChange(index, 'itemId', e.target.value)}

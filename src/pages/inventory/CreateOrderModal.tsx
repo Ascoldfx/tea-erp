@@ -7,6 +7,7 @@ import { inventoryService } from '../../services/inventoryService';
 import { supabase } from '../../lib/supabase';
 import { Plus, Trash, DollarSign, ShoppingCart } from 'lucide-react';
 import type { InventoryItem } from '../../types/inventory';
+import { getPricingUnit } from '../../utils/unitDisplay';
 
 interface CreateOrderModalProps {
     isOpen: boolean;
@@ -257,7 +258,10 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                 Добавить позицию
                             </Button>
                         </div>
-                        {items.map((item, index) => (
+                        {items.map((item, index) => {
+                            const selectedMaterial = normalizedMaterials.find(m => m.id === item.itemId);
+                            const pricing = getPricingUnit(selectedMaterial || {});
+                            return (
                             <div key={index} className="flex gap-2 items-end">
                                 <div className="flex-1">
                                     <Select
@@ -281,25 +285,32 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                         disabled={loading}
                                     />
                                 </div>
-                                <div className="w-24">
+                                <div className="w-28">
                                     <Input
                                         label={index === 0 ? "Кол-во" : undefined}
                                         type="number"
                                         min="0"
+                                        step="any"
                                         value={item.quantity}
                                         onChange={e => handleItemChange(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
                                         required
                                     />
                                 </div>
-                                <div className="w-24">
-                                    <Input
-                                        label={index === 0 ? "Цена (₴)" : undefined}
-                                        type="number"
-                                        min="0"
-                                        value={item.costPerUnit}
-                                        onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
-                                        required
-                                    />
+                                <div className="w-36">
+                                    <div className="space-y-1">
+                                        <Input
+                                            label={index === 0 ? "Цена (₴)" : undefined}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={item.costPerUnit}
+                                            onChange={e => handleItemChange(index, 'costPerUnit', e.target.value === '' ? '' : Number(e.target.value))}
+                                            required
+                                        />
+                                        {item.itemId && (
+                                            <p className="text-xs text-slate-500">{pricing.label}</p>
+                                        )}
+                                    </div>
                                 </div>
                                 <Button
                                     type="button"
@@ -310,7 +321,8 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
                                     <Trash className="w-4 h-4" />
                                 </Button>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

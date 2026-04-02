@@ -12,6 +12,9 @@ import { getPricingUnit, FOREIGN_CURRENCY_CATEGORIES } from '../../utils/unitDis
 interface CreateOrderModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialMaterialId?: string;
+    initialQuantity?: number;
+    initialTransitAmount?: number;
 }
 
 interface OrderItem {
@@ -44,7 +47,7 @@ interface Contractor {
     email?: string;
 }
 
-export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
+export default function CreateOrderModal({ isOpen, onClose, initialMaterialId, initialQuantity, initialTransitAmount }: CreateOrderModalProps) {
     const [contractorId, setContractorId] = useState('');
     const [items, setItems] = useState<OrderItem[]>([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1, tara: '' }]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -64,8 +67,20 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     useEffect(() => {
         if (isOpen) {
             loadData();
+            if (initialMaterialId || initialQuantity) {
+                setItems([{ 
+                    itemId: initialMaterialId || '', 
+                    quantity: initialQuantity || 0, 
+                    costPerUnit: 0, 
+                    currency: '₴', 
+                    exchangeRate: 1, 
+                    tara: '' 
+                }]);
+            } else {
+                setItems([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1, tara: '' }]);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, initialMaterialId, initialQuantity]);
 
     const loadData = async () => {
         setLoading(true);
@@ -224,6 +239,16 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Размещение заказа поставщику">
             <form onSubmit={handleSubmit} className="space-y-6">
+
+                {initialTransitAmount && initialTransitAmount > 0 ? (
+                    <div className="bg-blue-900/40 border border-blue-500/50 p-3 rounded-lg text-blue-200 text-sm flex items-start gap-3">
+                        <span className="text-xl leading-none">📦</span>
+                        <div>
+                            <p className="font-semibold text-blue-100">Обратите внимание: уже в пути {initialTransitAmount.toLocaleString()}</p>
+                            <p className="text-blue-300">По этому материалу уже есть ожидающие заказы в статусах "pending" или "in_progress".</p>
+                        </div>
+                    </div>
+                ) : null}
 
                 {/* Contractor & Logistics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -5,11 +5,13 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
-import { Calendar, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Search, ShoppingCart } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { supabase } from '../../lib/supabase';
 import MaterialDetailsModal from '../inventory/MaterialDetailsModal';
+import { getDisplayUnit } from '../../utils/unitDisplay';
+import CreateOrderModal from '../inventory/CreateOrderModal';
 
 interface PlanningDataItem {
     item: InventoryItem;
@@ -35,6 +37,10 @@ export default function ProductionPlanning() {
     const [selectedItem, setSelectedItem] = useState<(InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
+    // State for order modal pre-fill
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+    const [orderModalInitData, setOrderModalInitData] = useState<{ id: string, qty: number, transit: number } | null>(null);
+
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -44,45 +50,7 @@ export default function ProductionPlanning() {
         quantity: number;
     }>>([]);
 
-    // Добавляем логирование для отладки
     useEffect(() => {
-        console.log('[ProductionPlanning] === ОТЛАДКА ПЛАНИРОВАНИЯ ===');
-        console.log('[ProductionPlanning] Items:', items.length);
-        console.log('[ProductionPlanning] Planned consumption entries:', plannedConsumption.length);
-        console.log('[ProductionPlanning] Selected month:', selectedMonth + 1, selectedYear);
-        console.log('[ProductionPlanning] Actual consumptions:', actualConsumptions.length);
-
-        if (plannedConsumption.length > 0) {
-            const targetYearMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-            const matching = plannedConsumption.filter(pc => {
-                const dateStr = String(pc.plannedDate || '').trim();
-                return dateStr.startsWith(targetYearMonth);
-            });
-            console.log(`[ProductionPlanning] Matching planned consumption for ${targetYearMonth}:`, matching.length);
-            if (matching.length > 0) {
-                console.log('[ProductionPlanning] Sample matching entries:', matching.slice(0, 5).map(pc => ({
-                    itemId: pc.itemId,
-                    date: pc.plannedDate,
-                    quantity: pc.quantity,
-                    itemSku: items.find(i => i.id === pc.itemId)?.sku || 'NOT FOUND'
-                })));
-            } else {
-                // Показываем все доступные месяцы
-                const allMonths = [...new Set(plannedConsumption.map(pc => {
-                    const dateStr = String(pc.plannedDate || '').trim();
-                    return dateStr.substring(0, 7); // YYYY-MM
-                }))].sort();
-                console.log('[ProductionPlanning] Available months in planned consumption:', allMonths);
-            }
-        }
-
-        if (actualConsumptions.length > 0) {
-            console.log('[ProductionPlanning] Sample actual consumptions:', actualConsumptions.slice(0, 5).map(ac => ({
-                item_id: ac.item_id,
-                quantity: ac.quantity,
-                itemSku: items.find(i => i.id === ac.item_id)?.sku || 'NOT FOUND'
-            })));
-        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items.length, plannedConsumption.length, actualConsumptions.length, selectedMonth, selectedYear]);
 
@@ -106,20 +74,10 @@ export default function ProductionPlanning() {
                     return false;
                 }
             });
-            console.log(`[ProductionPlanning] Entries for ${targetYearMonth}:`, matchingEntries.length);
-            if (matchingEntries.length > 0) {
-                console.log('[ProductionPlanning] Sample matching entries:', matchingEntries.slice(0, 3));
-            } else {
-                console.warn('[ProductionPlanning] No matching entries found for selected month!');
-                // Log all unique months in planned consumption
-                const allMonths = [...new Set(plannedConsumption.map(pc => {
-                    const dateStr = String(pc.plannedDate || '').trim();
-                    return dateStr.substring(0, 7); // YYYY-MM
-                }))].sort();
-                console.log('[ProductionPlanning] Available months in data:', allMonths);
+            
+            if (matchingEntries.length === 0) {
+                // No planned consumption for this month
             }
-        } else {
-            console.warn('[ProductionPlanning] No planned consumption data loaded!');
         }
     }, [plannedConsumption, selectedMonth, selectedYear]);
     const [selectedCategory, setSelectedCategory] = useState<string>('packaging_cardboard');
@@ -146,11 +104,9 @@ export default function ProductionPlanning() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshKey]);
 
-    // Listen for storage events to refresh when data is imported from another tab
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === 'inventory_updated' || e.key === 'planned_consumption_updated') {
-                console.log('[ProductionPlanning] Storage event detected, refreshing data...');
                 refresh();
             }
         };
@@ -206,9 +162,8 @@ export default function ProductionPlanning() {
                 }));
 
                 setOpenOrders(ordersArray);
-                console.log('[ProductionPlanning] Open orders items:', ordersArray.length);
             } catch (error) {
-                console.error('[ProductionPlanning] Error fetching open orders:', error);
+                console.error('Error fetching open orders:', error);
                 setOpenOrders([]);
             }
         };
@@ -267,9 +222,8 @@ export default function ProductionPlanning() {
                 }));
 
                 setActualArrivals(arrivalsArray);
-                console.log('[ProductionPlanning] Actual arrivals:', arrivalsArray.length);
             } catch (error) {
-                console.error('[ProductionPlanning] Error fetching actual arrivals:', error);
+                console.error('Error fetching actual arrivals:', error);
                 setActualArrivals([]);
             }
         };
@@ -318,8 +272,6 @@ export default function ProductionPlanning() {
                     return false;
                 });
 
-                console.log(`[ProductionPlanning] Filtered ${filteredMovements.length} actual consumption movements for ${selectedYear}-${selectedMonth + 1} from ${movements?.length || 0} total`);
-
                 if (movementsError) throw movementsError;
 
                 // Sum quantity by item_id
@@ -338,9 +290,8 @@ export default function ProductionPlanning() {
                 }));
 
                 setActualConsumptions(consumptionsArray);
-                console.log('[ProductionPlanning] Actual consumptions:', consumptionsArray.length);
             } catch (error) {
-                console.error('[ProductionPlanning] Error fetching actual consumption:', error);
+                console.error('Error fetching actual consumption:', error);
                 setActualConsumptions([]);
             }
         };
@@ -586,10 +537,6 @@ export default function ProductionPlanning() {
 
             // Get actual consumption from stock_movements (priority over planned)
             const actualConsumption = actualConsumptionMap.get(item.id) || 0;
-
-            if (actualConsumption > 0) {
-                console.log(`[ProductionPlanning] Item ${item.sku} (${item.id}): actual consumption = ${actualConsumption} for ${targetYearMonth}`);
-            }
 
             // Calculate previous month difference (remainder from previous month)
             // Current stock (totalStock) is the stock at the START of current month
@@ -912,6 +859,7 @@ export default function ProductionPlanning() {
                                         <th className="px-4 py-3 text-right">{t('production.plannedConsumption') || 'планируемый расход'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.actualConsumption') || 'Фактический расход'}</th>
                                         <th className="px-4 py-3 text-right">{t('production.difference') || 'Разница'}</th>
+                                        <th className="px-4 py-3 text-right">К заказу</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
@@ -936,14 +884,14 @@ export default function ProductionPlanning() {
                                                     className="px-4 py-3 text-right text-slate-300 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.totalStock.toLocaleString()} {data.item.unit || 'шт'}
+                                                    {data.totalStock.toLocaleString()} {getDisplayUnit(data.item)}
                                                 </td>
                                                 <td
                                                     className="px-4 py-3 text-right text-amber-400 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.plannedArrival > 0
-                                                        ? `${data.plannedArrival.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        ? `${data.plannedArrival.toLocaleString()} ${getDisplayUnit(data.item)}`
                                                         : '-'
                                                     }
                                                 </td>
@@ -952,7 +900,7 @@ export default function ProductionPlanning() {
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.actualArrival > 0
-                                                        ? `${data.actualArrival.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        ? `${data.actualArrival.toLocaleString()} ${getDisplayUnit(data.item)}`
                                                         : '-'
                                                     }
                                                 </td>
@@ -960,14 +908,14 @@ export default function ProductionPlanning() {
                                                     className="px-4 py-3 text-right text-blue-400 whitespace-nowrap cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
-                                                    {data.totalPlannedConsumption.toLocaleString()} {data.item.unit || 'шт'}
+                                                    {data.totalPlannedConsumption.toLocaleString()} {getDisplayUnit(data.item)}
                                                 </td>
                                                 <td
                                                     className="px-4 py-3 text-right text-orange-400 whitespace-nowrap font-medium cursor-pointer"
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.actualConsumption > 0
-                                                        ? `${data.actualConsumption.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        ? `${data.actualConsumption.toLocaleString()} ${getDisplayUnit(data.item)}`
                                                         : '-'
                                                     }
                                                 </td>
@@ -979,9 +927,32 @@ export default function ProductionPlanning() {
                                                     onDoubleClick={() => handleItemClick(data)}
                                                 >
                                                     {data.difference !== 0
-                                                        ? `${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString()} ${data.item.unit || 'шт'}`
+                                                        ? `${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString()} ${getDisplayUnit(data.item)}`
                                                         : '0'
                                                     }
+                                                </td>
+                                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                                    {data.difference < 0 ? (
+                                                        <div className="flex items-center justify-end gap-3">
+                                                            <span className="font-medium text-amber-400">
+                                                                {Math.abs(data.difference).toLocaleString()} {getDisplayUnit(data.item)}
+                                                            </span>
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-7 px-2.5 bg-amber-600 hover:bg-amber-700 text-xs"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOrderModalInitData({ id: data.item.id, qty: Math.abs(data.difference), transit: data.plannedArrival });
+                                                                    setIsOrderModalOpen(true);
+                                                                }}
+                                                            >
+                                                                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+                                                                Заказать
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-500">—</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -999,6 +970,17 @@ export default function ProductionPlanning() {
                 onClose={() => setIsDetailsModalOpen(false)}
                 item={selectedItem}
                 warehouses={warehouses}
+            />
+
+            <CreateOrderModal 
+                isOpen={isOrderModalOpen}
+                onClose={() => {
+                    setIsOrderModalOpen(false);
+                    setOrderModalInitData(null);
+                }}
+                initialMaterialId={orderModalInitData?.id}
+                initialQuantity={orderModalInitData?.qty}
+                initialTransitAmount={orderModalInitData?.transit}
             />
 
         </div >

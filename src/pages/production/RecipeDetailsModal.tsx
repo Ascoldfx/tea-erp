@@ -7,6 +7,7 @@ import MaterialDetailsModal from './MaterialDetailsModal';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../../hooks/useInventory';
 import { useAuth } from '../../context/AuthContext';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 
 // Функция для получения нормы текущего месяца
 const getCurrentMonthNorm = (monthlyNorms?: Array<{ date: string; quantity: number }>): number | null => {
@@ -232,19 +233,15 @@ export default function RecipeDetailsModal({ recipe, allRecipes = [], onRecipeSe
                                                 }).length;
 
                                                 // Получаем единицу измерения
-                                                let unit = '';
+                                                let unit = '-';
                                                 if (tempMaterial) {
-                                                    // Для временных материалов берем единицу из них, если есть, или '-'
-                                                    unit = tempMaterial.unit ? (tempMaterial.unit === 'pcs' ? 'шт' : tempMaterial.unit === 'kg' ? 'кг' : tempMaterial.unit) : '-';
+                                                    unit = getDisplayUnit(tempMaterial);
                                                 } else {
                                                     const foundItem = items.find(i => i.id === ing.itemId);
-                                                    if (foundItem && foundItem.unit) {
-                                                        unit = foundItem.unit === 'pcs' ? 'шт' : foundItem.unit === 'kg' ? 'кг' : foundItem.unit;
+                                                    if (foundItem) {
+                                                        unit = getDisplayUnit(foundItem);
                                                     } else if (ing.unit) {
-                                                        // Если в товаре нет единицы, но она есть в ингредиенте (сохранена при импорте)
-                                                        unit = ing.unit === 'pcs' ? 'шт' : ing.unit === 'kg' ? 'кг' : ing.unit;
-                                                    } else {
-                                                        unit = '-';
+                                                        unit = getDisplayUnit({ unit: ing.unit });
                                                     }
                                                 }
 

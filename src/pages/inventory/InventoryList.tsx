@@ -12,6 +12,7 @@ import type { InventoryItem, StockLevel } from '../../types/inventory';
 import { clsx } from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 import { useInventory } from '../../hooks/useInventory';
 import ExcelImportModal from './ExcelImportModal';
 import { inventoryService } from '../../services/inventoryService';
@@ -62,33 +63,6 @@ const normalizeCategory = (cat: string): string => {
     if (lower === 'арри' || lower === 'arri' || lower === 'ароматизатори' || lower === 'ароматизаторы') return 'flavor';
 
     return cat;
-};
-
-// Helper to determine display unit
-const getDisplayUnit = (item: InventoryItem) => {
-    const cat = normalizeCategory(item.category).toLowerCase();
-
-    // Categories that should ALWAYS be in KG
-    // "сырье, ароматизаторы, н/ф, купажи, пленки, чайное сырье"
-    const kgCategories = [
-        'tea_bulk', // Чайное сырье
-        'flavor',   // Ароматизаторы (includes 'арри')
-        'packaging_consumable', // Пленки (usually mapped here)
-        'raw_material', // Сырье (if exists)
-        'semi_finished', // Н/Ф (if exists)
-        'blend' // Купажи (if exists)
-    ];
-
-    // Also check by string match if category keys are raw
-    if (kgCategories.includes(cat) ||
-        cat.includes('сырье') || cat.includes('сировин') ||
-        cat.includes('н/ф') || cat.includes('нф') ||
-        cat.includes('купаж') || cat.includes('blend') ||
-        cat.includes('пленк') || cat.includes('плівк')) {
-        return 'kg';
-    }
-
-    return item.unit === 'pcs' ? 'шт' : item.unit;
 };
 
 export default function InventoryList() {

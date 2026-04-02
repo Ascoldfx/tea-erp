@@ -9,6 +9,7 @@ import type { Recipe } from '../../types/production';
 const MOCK_RECIPES: Recipe[] = [];
 import { inventoryService } from '../../services/inventoryService';
 import { useInventory } from '../../hooks/useInventory';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 
 interface MaterialDetailsModalProps {
     item: (InventoryItem & { totalStock: number; stockLevels: StockLevel[] }) | null;
@@ -162,7 +163,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                 {/* Header Stats */}
                 <div className="bg-slate-800 p-4 rounded-lg text-slate-200">
                     <span className="text-slate-400 text-sm block">Общий остаток</span>
-                    <span className="text-2xl font-bold">{item.totalStock} <span className="text-sm font-normal text-slate-500">{item.unit === 'pcs' ? 'шт' : item.unit}</span></span>
+                    <span className="text-2xl font-bold">{item.totalStock} <span className="text-sm font-normal text-slate-500">{getDisplayUnit(item)}</span></span>
                 </div>
 
                 {/* Tab Header */}
@@ -183,7 +184,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                 return (
                                     <div key={stock.id} className="bg-slate-800/50 p-3 rounded border border-slate-700">
                                         <p className="text-xs text-slate-400">{warehouse?.name || stock.warehouseId}</p>
-                                        <p className="font-semibold text-slate-200">{stock.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}</p>
+                                        <p className="font-semibold text-slate-200">{stock.quantity} {getDisplayUnit(item)}</p>
                                     </div>
                                 );
                             }) : (
@@ -212,7 +213,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-sm font-bold text-blue-400">
-                                                        {plan.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                        {plan.quantity} {getDisplayUnit(item)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -242,7 +243,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                                 </div>
                                                 <div className="text-right ml-3">
                                                     <p className="text-xs text-slate-400">
-                                                        {t('materials.norm') || 'Норма'}: {fg.quantity} {item.unit === 'pcs' ? 'шт' : item.unit}
+                                                        {t('materials.norm') || 'Норма'}: {fg.quantity} {getDisplayUnit(item)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -280,7 +281,7 @@ export default function MaterialDetailsModal({ item, isOpen, onClose, warehouses
                                         <p className={clsx("font-semibold",
                                             log.type === 'in' ? "text-emerald-400" : "text-red-400"
                                         )}>
-                                            {log.type === 'in' ? '+' : '-'}{log.quantity} {item.unit}
+                                            {log.type === 'in' ? '+' : '-'}{log.quantity} {getDisplayUnit(item)}
                                         </p>
                                         <p className="text-xs text-slate-500">
                                             {log.created_at ? new Date(log.created_at).toLocaleDateString('ru-RU') : ''}

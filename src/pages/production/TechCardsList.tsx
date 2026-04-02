@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { TOP_25_SKUS } from '../../data/top25Skus';
 import { recipesService } from '../../services/recipesService';
 import type { Recipe } from '../../types/production';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 
 export default function TechCardsList() {
     const { user } = useAuth();
@@ -204,8 +205,8 @@ export default function TechCardsList() {
 
     const getItemName = (id: string) => items.find(i => i.id === id)?.name || id;
     const getItemUnit = (id: string) => {
-        const unit = items.find(i => i.id === id)?.unit || '';
-        return unit === 'pcs' ? 'шт' : unit;
+        const item = items.find(i => i.id === id);
+        return item ? getDisplayUnit(item) : '';
     };
 
     // Парсинг количества пачек в ящике из названия (формат: название (число))
@@ -431,7 +432,7 @@ export default function TechCardsList() {
                                                             )}
                                                         </span>
                                                         <span className="text-slate-500">
-                                                            {ing.quantity} {tempMaterial ? (tempMaterial.unit === 'pcs' ? 'шт' : (tempMaterial.unit || '-')) : (getItemUnit(ing.itemId) || (ing.unit === 'pcs' ? 'шт' : ing.unit) || '-')}
+                                                            {ing.quantity} {tempMaterial ? getDisplayUnit(tempMaterial) : (getItemUnit(ing.itemId) || getDisplayUnit({ unit: ing.unit }) || '-')}
                                                         </span>
                                                     </li>
                                                 );

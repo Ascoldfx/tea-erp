@@ -8,6 +8,7 @@ import { useInventory } from '../../hooks/useInventory';
 import { useLanguage } from '../../context/LanguageContext';
 import MaterialDetailsModal from '../inventory/MaterialDetailsModal';
 import type { InventoryItem, StockLevel } from '../../types/inventory';
+import { getDisplayUnit } from '../../utils/unitDisplay';
 
 interface Contractor {
     id: string;
@@ -120,7 +121,7 @@ export default function ContractorDetailsModal({ isOpen, onClose, contractor }: 
                     sku: item?.sku || '',
                     category: item?.category || 'other',
                     quantity: s.quantity,
-                    unit: item?.unit === 'pcs' ? 'шт' : (item?.unit || 'шт')
+                    unit: item ? getDisplayUnit(item) : 'шт'
                 };
             });
     };

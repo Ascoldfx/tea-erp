@@ -188,13 +188,18 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
 
             if (orderError) throw orderError;
 
-            // 2. Create Order Items
-            const orderItems = items.map(item => ({
-                order_id: orderData.id,
-                item_id: item.itemId,
-                quantity: Number(item.quantity),
-                price_per_unit: Number(item.costPerUnit)
-            }));
+            // 2. Create Order Items — price_per_unit always stored in UAH
+            const orderItems = items.map(item => {
+                // If price entered in foreign currency, convert to UAH
+                const rate = item.currency !== '₴' ? (Number(item.exchangeRate) || 1) : 1;
+                const priceUAH = Number(item.costPerUnit) * rate;
+                return {
+                    order_id: orderData.id,
+                    item_id: item.itemId,
+                    quantity: Number(item.quantity),
+                    price_per_unit: priceUAH  // always UAH
+                };
+            });
 
             const { error: itemsError } = await supabase
                 .from('order_items')
@@ -205,7 +210,7 @@ export default function CreateOrderModal({ isOpen, onClose }: CreateOrderModalPr
             alert(`Заказ успешно размещен! ID: ${orderData.id.slice(0, 8)}...`);
             onClose();
             setContractorId('');
-            setItems([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1 }]);
+            setItems([{ itemId: '', quantity: 0, costPerUnit: 0, currency: '₴', exchangeRate: 1, tara: '' }]);
             setPrepayment(0);
             setDeliveryCost(0);
 

@@ -19,7 +19,7 @@ const PER_THOUSAND_CATEGORIES = ['label'];
 export const FOREIGN_CURRENCY_CATEGORIES = ['flavor', 'tea_bulk', 'blend', 'raw_material', 'semi_finished'];
 
 /** Categories priced per piece */
-const PER_PCS_CATEGORIES = ['packaging_crate', 'packaging_cardboard', 'envelope', 'soft_packaging'];
+const PER_PCS_CATEGORIES = ['packaging_crate', 'packaging_cardboard', 'envelope', 'soft_packaging', 'sticker'];
 
 function normalizeCategory(cat: string): string {
     if (!cat) return 'other';
@@ -43,6 +43,9 @@ function isKgCategory(cat: string): boolean {
 export function getDisplayUnit(item: { unit?: string | null; category?: string | null }): string {
     const cat = normalizeCategory(item.category || '').toLowerCase();
 
+    // Explicit piece categories — always шт regardless of DB unit field
+    if (PER_PCS_CATEGORIES.includes(cat)) return 'шт';
+
     if (isKgCategory(cat)) return 'кг';
 
     const u = (item.unit || '').toLowerCase();
@@ -50,7 +53,7 @@ export function getDisplayUnit(item: { unit?: string | null; category?: string |
     if (u === 'kg' || u === 'кг') return 'кг';
     if (u === 'l' || u === 'л' || u === 'litre' || u === 'liter') return 'л';
     if (u === 'g' || u === 'г' || u === 'gram') return 'г';
-    return u || 'шт';
+    return 'шт'; // safe fallback — unknown units treated as pieces
 }
 
 /**

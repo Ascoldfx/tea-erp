@@ -413,34 +413,90 @@ export default function InventoryList() {
                 </div>
             </div>
 
-            {/* Search and Warehouse Filter */}
-            <div className="flex flex-col gap-4">
-                <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Поиск по названию, артикулу или месту..."
-                        className="pl-10"
-                    />
+            {/* Filters Section */}
+            <div className="flex flex-col gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                {/* Search and Zero Balance Toggle Row */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div className="relative w-full max-w-md">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                        <Input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Поиск по названию, артикулу..."
+                            className="pl-10 bg-slate-950/50 border-slate-800"
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => setShowZeroBalance(!showZeroBalance)}
+                        className={clsx(
+                            "px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border flex items-center justify-center gap-2 w-full md:w-auto whitespace-nowrap shadow-sm",
+                            showZeroBalance
+                                ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40"
+                                : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
+                        )}
+                        title="Включает или отключает отображение товаров, которых нет в наличии"
+                    >
+                        <Filter className="w-4 h-4 flex-shrink-0" />
+                        {showZeroBalance ? 'Остатки: Показать все' : 'Остатки: Скрыть пустые'}
+                    </button>
                 </div>
 
-                <div className="flex gap-2 pb-2 overflow-x-auto items-center">
+                {/* Categories Row */}
+                <div className="flex gap-2 overflow-x-auto pb-1 items-center scrollbar-hide">
+                    <span className="text-xs font-semibold text-slate-500 uppercase mr-1 flex-shrink-0">Группа:</span>
+                    <button
+                        onClick={() => setSelectedCategory('all')}
+                        className={clsx(
+                            "px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 border",
+                            selectedCategory === 'all' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                        )}
+                    >
+                        {t('materials.filter.allGroups')}
+                    </button>
+
+                    {dynamicCategories.length > 0 ? (
+                        dynamicCategories.map(category => {
+                            const label = formatCategoryName(category);
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className={clsx(
+                                        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 border",
+                                        selectedCategory === category ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                                    )}
+                                    title={`Категория: ${category}`}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })
+                    ) : (
+                        <span className="text-sm text-slate-500 italic px-3 flex-shrink-0">
+                            {t('materials.filter.noCategories') || 'Нет категорий.'}
+                        </span>
+                    )}
+                </div>
+
+                {/* Warehouses Row */}
+                <div className="flex gap-2 overflow-x-auto items-center scrollbar-hide pt-1">
+                    <span className="text-xs font-semibold text-slate-500 uppercase mr-1 flex-shrink-0">Склад:</span>
                     <button
                         onClick={() => setSelectedWarehouseId(null)}
                         className={clsx(
-                            "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-                            !selectedWarehouseId ? "bg-slate-100 text-slate-900 border-slate-100" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
+                            "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border flex-shrink-0",
+                            !selectedWarehouseId ? "bg-emerald-600 text-white border-emerald-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                         )}
                     >
-                        {t('materials.filter.allGroups').replace('группы', 'склады') || 'Всі склади'}
+                        Все склады
                     </button>
                     {warehouses.map(w => (
                         <button
                             key={w.id}
                             onClick={() => setSelectedWarehouseId(w.id)}
                             className={clsx(
-                                "px-4 py-2 rounded-full text-sm font-medium transition-colors border whitespace-nowrap",
+                                "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border whitespace-nowrap flex-shrink-0",
                                 selectedWarehouseId === w.id ? "bg-emerald-600 text-white border-emerald-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
                             )}
                         >
@@ -448,66 +504,6 @@ export default function InventoryList() {
                         </button>
                     ))}
                 </div>
-            </div>
-
-            {/* Button to show zero stock items */}
-            <div className="flex items-center gap-2 pb-2">
-                <button
-                    onClick={() => setShowZeroBalance(!showZeroBalance)}
-                    className={clsx(
-                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
-                        showZeroBalance
-                            ? "bg-emerald-900/30 text-emerald-400 border-emerald-800 hover:bg-emerald-900/40"
-                            : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
-                    )}
-                >
-                    <Filter className="w-4 h-4" />
-                    {showZeroBalance
-                        ? (t('materials.hideZeroBalance') || 'Скрыть с нулевым остатком')
-                        : (t('materials.showZeroBalance') || 'Показать с нулевым остатком')
-                    }
-                </button>
-            </div>
-
-            {/* Category Filter - Only Dynamic Categories from Database */}
-            <div className="flex flex-wrap gap-2 pb-4 items-center">
-                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <span className="text-sm text-slate-400 mr-2 flex-shrink-0">{t('materials.filter.group')}:</span>
-
-                {/* All Groups Button */}
-                <button
-                    onClick={() => setSelectedCategory('all')}
-                    className={clsx(
-                        "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0",
-                        selectedCategory === 'all' ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                    )}
-                >
-                    {t('materials.filter.allGroups')}
-                </button>
-
-                {/* Dynamic Category Buttons (all categories from database) */}
-                {dynamicCategories.length > 0 ? (
-                    dynamicCategories.map(category => {
-                        const label = formatCategoryName(category);
-                        return (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={clsx(
-                                    "px-3 py-1 rounded-full text-sm font-medium transition-colors flex-shrink-0 border",
-                                    selectedCategory === category ? "bg-blue-600 text-white border-blue-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500"
-                                )}
-                                title={`Категория: ${category}`}
-                            >
-                                {label}
-                            </button>
-                        );
-                    })
-                ) : (
-                    <span className="text-sm text-slate-500 italic px-3">
-                        {t('materials.filter.noCategories') || 'Нет категорий. Импортируйте материалы из Excel.'}
-                    </span>
-                )}
             </div>
 
             {/* List Groups */}

@@ -75,7 +75,7 @@ export default function SuppliersPage() {
             const { data: orders, error: ordersError } = await supabase
                 .from('orders')
                 .select('id')
-                .eq('contractor_id', supplierToDelete.id)
+                .eq('supplier_id', supplierToDelete.id)
                 .limit(1);
 
             if (ordersError) {

@@ -34,7 +34,7 @@ export default function SupplierOrdersModal({ isOpen, onClose, supplierId, suppl
             const { data, error } = await supabase
                 .from('orders')
                 .select('id, status, total_amount, order_date')
-                .eq('contractor_id', supplierId)
+                .eq('supplier_id', supplierId)
                 .order('order_date', { ascending: false });
 
             if (error) throw error;

@@ -1,6 +1,6 @@
 # tea-erp
 
-Canonical map: `graphify-out/wiki/index.md` — читай его первым на любой структурный вопрос.
+Canonical map: `graphify-out/tea-wiki/index.md` — читай его первым на любой структурный вопрос.
 
 Stack: React 18 + TypeScript + Vite + TailwindCSS + Supabase + react-router-dom v6.
 Deploy: Vercel. DB: Supabase (15 таблиц, см. [[db-schema]]).
